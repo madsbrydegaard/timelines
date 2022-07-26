@@ -1,17 +1,27 @@
+var __defProp = Object.defineProperty;
+var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __propIsEnum = Object.prototype.propertyIsEnumerable;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues = (a, b) => {
+  for (var prop in b || (b = {}))
+    if (__hasOwnProp.call(b, prop))
+      __defNormalProp(a, prop, b[prop]);
+  if (__getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(b)) {
+      if (__propIsEnum.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    }
+  return a;
+};
+
 // src/dater.ts
 var Dater = class {
   constructor(date) {
     this.date = date || new Date();
   }
-  date;
   get asArray() {
-    return [
-      this.date.getFullYear(),
-      this.date.getMonth(),
-      this.date.getDate(),
-      this.date.getHours(),
-      this.date.getMinutes()
-    ];
+    return [this.date.getFullYear(), this.date.getMonth(), this.date.getDate(), this.date.getHours(), this.date.getMinutes()];
   }
   get inMinutes() {
     return Math.floor(this.date.getTime() / 6e4);
@@ -93,13 +103,14 @@ var dater = function(input) {
   }
 };
 
-// src/index.ts
+// src/timeline.ts
 var timeline = {
   timelineDurationMinutes() {
     return this.endMoment.inMinutes - this.startMoment.inMinutes;
   },
   viewWidth() {
-    return this.el?.offsetWidth || 0;
+    var _a;
+    return ((_a = this.el) == null ? void 0 : _a.offsetWidth) || 0;
   },
   viewStartMinutes() {
     return this.startMoment.inMinutes - this.viewDurationMinutes() * this.options.pivot;
@@ -224,9 +235,7 @@ var timeline = {
     const timelineViewDifferenceMinutes = this.viewStartMinutes() - timelineStartMomentExtended;
     const timestampDistanceMinutes = timelineDurationMinutesExtended * granularity;
     const currentTimestampDistanceByLevelMinutes = timestampDistanceMinutes / iterator;
-    const integerDifFraction = Math.floor(
-      timelineViewDifferenceMinutes / currentTimestampDistanceByLevelMinutes
-    );
+    const integerDifFraction = Math.floor(timelineViewDifferenceMinutes / currentTimestampDistanceByLevelMinutes);
     const currentDifInMinutes = integerDifFraction * currentTimestampDistanceByLevelMinutes;
     const c = document.createDocumentFragment();
     for (let i = 0; i < this.options.labelCount + 2; i++) {
@@ -248,10 +257,7 @@ var timeline = {
     this.el.appendChild(c);
   },
   initialize(element, options) {
-    this.options = {
-      ...this.options,
-      ...options
-    };
+    this.options = __spreadValues(__spreadValues({}, this.options), options);
     this.startMoment = dater(this.options.start);
     this.endMoment = dater(this.options.end);
     if (typeof element === "string") {
@@ -287,4 +293,3 @@ window["timeline"] = timeline;
 export {
   timeline
 };
-//# sourceMappingURL=timeline.esm.js.map

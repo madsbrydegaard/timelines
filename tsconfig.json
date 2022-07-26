@@ -1,11 +1,11 @@
 {
+  "include": ["src/**/*"],
   "compilerOptions": {
     "declaration": true,
-    "target": "esnext",
-    "lib": ["esnext", "dom"],
-    "strict": true,
-    "noImplicitAny": false,
+    "emitDeclarationOnly": true,
+    "target": "ES6",
     "esModuleInterop": true,
-    "moduleResolution": "node"
+    "noImplicitAny": false,
+    "outFile": "dist/timeline.d.ts",
   }
 }

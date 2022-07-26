@@ -5,12 +5,12 @@
   "main": "dist/timeline.js",
   "module": "dist/timeline.js",
   "scripts": {
-    "build": "node esbuild.js",
+    "build": "node esbuild.js && tsc",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",
   "keywords": [],
-  "author": "",
+  "author": "Mads Brydegaard (mb@vidcore.com)",
   "license": "ISC",
   "devDependencies": {
     "esbuild": "^0.14.50",
