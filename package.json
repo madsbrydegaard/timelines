@@ -1,0 +1,19 @@
+{
+  "name": "timeline.io",
+  "version": "1.0.0",
+  "description": "Timeline wrapper with support for zoom and pan",
+  "main": "dist/timeline.js",
+  "module": "dist/timeline.js",
+  "scripts": {
+    "build": "node esbuild.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "esbuild": "^0.14.50",
+    "typescript": "^4.7.4"
+  }
+}
