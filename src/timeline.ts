@@ -1,4 +1,4 @@
-import { IDater, dater } from "./dater.js";
+import { IDater, Dater } from "./dater.js";
 interface ITimelineOptions {
 	labelCount: number;
 	ratio: number;
@@ -164,7 +164,7 @@ export const timeline: ITimeline = {
 		);
 	},
 	format(minutes: number): string {
-		const moment = dater(minutes);
+		const moment = new Dater(minutes);
 		if (this.viewDurationMinutes() < 1440 * 4) {
 			// minutes in an day = 1440
 			return moment.asYMDHM;
@@ -225,8 +225,8 @@ export const timeline: ITimeline = {
 			...this.options,
 			...options,
 		};
-		this.startMoment = dater(this.options.start);
-		this.endMoment = dater(this.options.end);
+		this.startMoment = new Dater(this.options.start);
+		this.endMoment = new Dater(this.options.end);
 
 		if (typeof element === "string") {
 			const elem = document.querySelector(element) as HTMLElement;
@@ -257,8 +257,8 @@ export const timeline: ITimeline = {
 		mouseX: 0,
 	},
 	el: undefined,
-	startMoment: dater("-100y"),
-	endMoment: dater("now"),
+	startMoment: new Dater("-100y"),
+	endMoment: new Dater("now"),
 };
 
-window["timeline"] = timeline;
+// window["timeline"] = timeline;

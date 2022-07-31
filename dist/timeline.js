@@ -18,8 +18,43 @@
 
   // src/dater.ts
   var Dater = class {
-    constructor(date) {
-      this.date = date || new Date();
+    constructor(input) {
+      this.parseArray = function(input) {
+        this.date.setFullYear(input[0] || this.date.getFullYear());
+        this.date.setMonth(input[1] ? input[1] + 1 : 0);
+        this.date.setDate(input[2] ? input[2] : 1);
+        this.date.setHours(input[3] ? input[3] : 0);
+        this.date.setMinutes(input[4] ? input[4] : 0);
+      };
+      this.parseMinutes = function(minutes) {
+        this.date = new Date(minutes * 6e4);
+      };
+      this.parseString = function(input) {
+        switch (input) {
+          case "-100y":
+            this.date.setFullYear(this.date.getFullYear() - 100);
+        }
+      };
+      this.date = new Date();
+      if (!input)
+        return;
+      if (Array.isArray(input)) {
+        let inputArray = input;
+        if (inputArray.length === 0)
+          throw new Error("argument Array cannot be empty");
+        const isNumberArray = inputArray.every((value) => {
+          return typeof value === "number";
+        });
+        if (!isNumberArray)
+          throw new Error("input Array must contain only numbers");
+        this.parseArray(inputArray);
+      }
+      if (typeof input === "string") {
+        this.parseString(input);
+      }
+      if (typeof input === "number") {
+        this.parseMinutes(input);
+      }
     }
     get asArray() {
       return [this.date.getFullYear(), this.date.getMonth(), this.date.getDate(), this.date.getHours(), this.date.getMinutes()];
@@ -51,56 +86,6 @@
     }
     get asY() {
       return this.date.getFullYear().toString();
-    }
-  };
-  var dater = function(input) {
-    const fromArray = function(array) {
-      const result2 = new Dater();
-      result2.date.setFullYear(array[0] || result2.date.getFullYear());
-      result2.date.setMonth(array[1] ? array[1] + 1 : 0);
-      result2.date.setDate(array[2] ? array[2] : 1);
-      result2.date.setHours(array[3] ? array[3] : 0);
-      result2.date.setMinutes(array[4] ? array[4] : 0);
-      return result2;
-    };
-    const fromMinutes = function(minutes) {
-      const result2 = new Dater(new Date(minutes * 6e4));
-      return result2;
-    };
-    const result = new Dater();
-    if (!input)
-      return result;
-    switch (typeof input) {
-      case "object":
-        switch (input.constructor.name) {
-          case "Array":
-            if (input.length === 0)
-              throw new Error("argument Array cannot be empty");
-            if (typeof input[0] !== "number")
-              throw new Error("argument Array must contain only numbers");
-            return fromArray(input);
-          default:
-            return result;
-        }
-      case "number": {
-        return fromMinutes(input);
-      }
-      case "string":
-        switch (input) {
-          case "now":
-            return result;
-          case "-100y":
-            result.date.setFullYear(result.date.getFullYear() - 100);
-            return result;
-          default:
-            if (isNaN(Number(input))) {
-              throw new Error("Argument not supported `" + input + "`");
-            } else {
-              return result;
-            }
-        }
-      default:
-        return result;
     }
   };
 
@@ -213,7 +198,7 @@
       );
     },
     format(minutes) {
-      const moment = dater(minutes);
+      const moment = new Dater(minutes);
       if (this.viewDurationMinutes() < 1440 * 4) {
         return moment.asYMDHM;
       }
@@ -259,8 +244,8 @@
     },
     initialize(element, options) {
       this.options = __spreadValues(__spreadValues({}, this.options), options);
-      this.startMoment = dater(this.options.start);
-      this.endMoment = dater(this.options.end);
+      this.startMoment = new Dater(this.options.start);
+      this.endMoment = new Dater(this.options.end);
       if (typeof element === "string") {
         const elem = document.querySelector(element);
         if (!elem)
@@ -287,8 +272,7 @@
       mouseX: 0
     },
     el: void 0,
-    startMoment: dater("-100y"),
-    endMoment: dater("now")
+    startMoment: new Dater("-100y"),
+    endMoment: new Dater("now")
   };
-  window["timeline"] = timeline;
 })();

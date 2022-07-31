@@ -15,11 +15,9 @@
 	</head>
 	<body>
 		<div id="timelineContainer"></div>
-		<script src="../dist/timeline.js" defer></script>
-		<script>
-			window.onload = () => {
-				timeline.initialize("#timelineContainer");
-			};
+		<script type="module">
+			import {timeline} from '../dist/timeline.esm.js'
+			timeline.initialize("#timelineContainer")
 		</script>
 	</body>
 </html>

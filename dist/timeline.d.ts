@@ -8,9 +8,12 @@ declare module "dater" {
         asYM: string;
         asY: string;
     }
-    class Dater implements IDater {
-        constructor(date?: Date);
+    export class Dater implements IDater {
+        constructor(input: number[] | string | number);
         date: Date;
+        private parseArray;
+        private parseMinutes;
+        private parseString;
         get asArray(): number[];
         get inMinutes(): number;
         get asYMDHM(): string;
@@ -18,7 +21,6 @@ declare module "dater" {
         get asYM(): string;
         get asY(): string;
     }
-    export const dater: (input: any) => Dater;
 }
 declare module "timeline" {
     import { IDater } from "dater";
