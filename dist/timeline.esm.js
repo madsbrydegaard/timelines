@@ -18,24 +18,24 @@ var __spreadValues = (a, b) => {
 // src/dater.ts
 var Dater = class {
   constructor(input) {
-    this.parseArray = function(input) {
+    this.parseArray = (input) => {
       this.date.setFullYear(input[0] || this.date.getFullYear());
       this.date.setMonth(input[1] ? input[1] + 1 : 0);
       this.date.setDate(input[2] ? input[2] : 1);
       this.date.setHours(input[3] ? input[3] : 0);
       this.date.setMinutes(input[4] ? input[4] : 0);
     };
-    this.parseMinutes = function(minutes) {
+    this.parseMinutes = (minutes) => {
       this.date = new Date(minutes * 6e4);
     };
-    this.parseString = function(input) {
+    this.parseString = (input) => {
       switch (input) {
         case "-100y":
           this.date.setFullYear(this.date.getFullYear() - 100);
       }
     };
     this.date = new Date();
-    if (!input)
+    if (input === void 0)
       return;
     if (Array.isArray(input)) {
       let inputArray = input;
@@ -196,6 +196,24 @@ var Timeline = class {
       { passive: false }
     );
   }
+  setupHTML() {
+    this.element.style.position = "relative";
+    this.element.style.overflow = "hidden";
+    this.timelineContainer = document.createElement("div");
+    this.timelineContainer.className = "timelineContainer";
+    this.timelineContainer.style.width = "100%";
+    this.timelineContainer.style.transform = "translate(0, calc(-100%))";
+    this.timelineContainer.style.textAlign = "center";
+    this.timelineContainer.style.position = "absolute";
+    this.timelineContainer.style.zIndex = "-1";
+    switch (this.options.position) {
+      case "top":
+        this.timelineContainer.style.top = "0";
+      default:
+        this.timelineContainer.style.bottom = "0";
+    }
+    this.element.appendChild(this.timelineContainer);
+  }
   format(minutes) {
     const moment = new Dater(minutes);
     if (this.viewDurationMinutes() < 1440 * 4) {
@@ -238,10 +256,19 @@ var Timeline = class {
       e.innerHTML = this.format(momentInMinutes);
       c.appendChild(e);
     }
-    this.element.innerHTML = "";
-    this.element.appendChild(c);
+    this.timelineContainer.innerHTML = "";
+    this.timelineContainer.appendChild(c);
+    const update = new CustomEvent("update", {
+      detail: { options: this.options },
+      bubbles: true,
+      cancelable: true,
+      composed: false
+    });
+    this.element.dispatchEvent(update);
+    if (this.callback)
+      this.callback(this.options);
   }
-  constructor(element, options) {
+  constructor(element, options, callback) {
     if (!element)
       throw new Error(`Element argument is empty. Please add DOM element | selector as first arg`);
     if (typeof element === "string") {
@@ -263,13 +290,14 @@ var Timeline = class {
       end: "now",
       minZoom: 1,
       maxZoom: 1e5,
-      mouseX: 0
+      mouseX: 0,
+      position: "bottom"
     }), options);
     this.startMoment = new Dater(this.options.start);
     this.endMoment = new Dater(this.options.end);
-    this.element.style.position = "relative";
-    this.element.style.overflow = "hidden";
+    this.setupHTML();
     this.registerListeners(this.element);
+    this.callback = callback;
     this.update();
   }
 };

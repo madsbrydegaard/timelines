@@ -15,7 +15,7 @@ export interface IDater {
 export class Dater implements IDater {
 	constructor(input: number[] | string | number) {
 		this.date = new Date();
-		if(!input) return;
+		if(input === undefined) return;
 
 		if(Array.isArray(input)){
 			let inputArray = input as number[];
@@ -38,17 +38,17 @@ export class Dater implements IDater {
 	}
 	// Date object wrapper so not able to handle dates beyond limits of date object. Eg < -270.000 and > 270.000 years
 	date!: Date;
-	private parseArray = function (input: number[]) {
+	parseArray = (input: number[]) => {
 		this.date.setFullYear(input[0] || this.date.getFullYear());
 		this.date.setMonth(input[1] ? input[1] + 1 : 0);
 		this.date.setDate(input[2] ? input[2] : 1);
 		this.date.setHours(input[3] ? input[3] : 0);
 		this.date.setMinutes(input[4] ? input[4] : 0);
 	};
-	private parseMinutes = function (minutes: number) {
+	parseMinutes = (minutes: number) => {
 		this.date = new Date(minutes * 60000);
 	};
-	private parseString = function (input: string) {
+	parseString = (input: string) => {
 		switch (input) {
 			case "-100y":
 				this.date.setFullYear(this.date.getFullYear() - 100);

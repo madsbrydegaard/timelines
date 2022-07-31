@@ -10,6 +10,7 @@ interface ITimelineOptions {
 	minZoom: number;
 	maxZoom: number;
 	mouseX: number;
+	position: string;
 }
 interface ITimeline {
 	options: ITimelineOptions;
@@ -26,9 +27,6 @@ interface ITimeline {
 	setPivot: (deltaPivot: number) => void;
 	zoom: (direction: Direction, mouseX: number) => void;
 	move: (deltaPivot: number) => void;
-	registerListeners: (element: HTMLElement) => void;
-	format: (minutes: number) => string;
-	update: () => void;
 }
 enum Direction {
 	In = -1,Out = 1
@@ -162,6 +160,28 @@ export class Timeline implements ITimeline {
 			{ passive: false }
 		);
 	}
+	setupHTML(){
+		// Register parent as position = "relative" for absolute positioning to work
+		this.element.style.position = "relative";
+		// Register parent overflow = "hidden" to hide overflow moments
+		this.element.style.overflow = "hidden";
+
+		this.timelineContainer = document.createElement("div");
+		// this.timelineContainer.className = "timelineContainer";
+		this.timelineContainer.style.width = "100%";
+		this.timelineContainer.style.height = "1rem";
+		this.timelineContainer.style.textAlign = "center";
+		this.timelineContainer.style.position = "absolute";
+		this.timelineContainer.style.zIndex = "-1";
+		switch(this.options.position){
+			case "top":
+				this.timelineContainer.style.top = "0";
+			default:
+				this.timelineContainer.style.bottom = "0";
+				this.timelineContainer.style.transform = "translate(0, calc(-220%))";
+		}
+		this.element.appendChild(this.timelineContainer);
+	}
 	format(minutes: number): string {
 		const moment = new Dater(minutes);
 		if (this.viewDurationMinutes() < 1440 * 4) {
@@ -216,10 +236,23 @@ export class Timeline implements ITimeline {
 			e.innerHTML = this.format(momentInMinutes);
 			c.appendChild(e);
 		}
-		this.element.innerHTML = "";
-		this.element.appendChild(c);
+		this.timelineContainer.innerHTML = "";
+		this.timelineContainer.appendChild(c);
+
+		// Dispatch DOM event
+		const update = new CustomEvent("update", {
+			detail: {options: this.options},
+			bubbles: true,
+			cancelable: true,
+			composed: false,
+		});
+		this.element.dispatchEvent(update);
+
+		// Dispatch callback
+		if(this.callback) this.callback(this.options);
 	}
-	constructor(element: HTMLElement | string, options: object) {
+	constructor(element: HTMLElement | string, options: object, callback?: (option: ITimelineOptions) => void) {
+		// Handle DOM Element
 		if(!element) throw new Error(`Element argument is empty. Please add DOM element | selector as first arg`);
 		if (typeof element === "string") {
 			const elem = document.querySelector(element) as HTMLElement;
@@ -230,6 +263,7 @@ export class Timeline implements ITimeline {
 			this.element = element;
 		}
 
+		// Handle options
 		this.options = {
 			...{
 				labelCount: 5,
@@ -242,22 +276,31 @@ export class Timeline implements ITimeline {
 				minZoom: 1,
 				maxZoom: 100000,
 				mouseX: 0,
+				position: "bottom",
 			},
 			...options,
 		};
+
+		// Handle start and end moments
 		this.startMoment = new Dater(this.options.start);
 		this.endMoment = new Dater(this.options.end);
 
-		// Register parent as position = "relative" for absolute positioning to work
-		this.element.style.position = "relative";
-		// Register parent overflow = "hidden" to hide overflow moments
-		this.element.style.overflow = "hidden";
+		// Handle DOM elements setup
+		this.setupHTML();
 
+		// Register Mouse and Resize event handlers
 		this.registerListeners(this.element);
+
+		// Register callback
+		this.callback = callback;
+
+		// Draw
 		this.update();
 	}
 	options: ITimelineOptions
 	element: HTMLElement
 	startMoment: IDater
 	endMoment: IDater
+	callback: (option: ITimelineOptions) => void
+	timelineContainer: HTMLDivElement
 };

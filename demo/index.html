@@ -7,7 +7,7 @@
 		<style>
 			#timelineContainer {
 				width: 50%;
-				height: 100px;
+				height: 50px;
 				margin: auto;
 				border: 1px solid black;
 			}
@@ -15,9 +15,14 @@
 	</head>
 	<body>
 		<div id="timelineContainer"></div>
+		<div id="log"></div>
 		<script type="module">
 			import {Timeline} from '../dist/timeline.esm.js'
-			const tl = new Timeline("#timelineContainer");
+
+			const log = document.querySelector("#log");
+			const tl = new Timeline("#timelineContainer", null, (options) => {
+				log.innerHTML = options.ratio
+			});
 		</script>
 	</body>
 </html>

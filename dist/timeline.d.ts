@@ -11,9 +11,9 @@ declare module "dater" {
     export class Dater implements IDater {
         constructor(input: number[] | string | number);
         date: Date;
-        private parseArray;
-        private parseMinutes;
-        private parseString;
+        parseArray: (input: number[]) => void;
+        parseMinutes: (minutes: number) => void;
+        parseString: (input: string) => void;
         get asArray(): number[];
         get inMinutes(): number;
         get asYMDHM(): string;
@@ -35,6 +35,7 @@ declare module "timeline" {
         minZoom: number;
         maxZoom: number;
         mouseX: number;
+        position: string;
     }
     interface ITimeline {
         options: ITimelineOptions;
@@ -51,9 +52,6 @@ declare module "timeline" {
         setPivot: (deltaPivot: number) => void;
         zoom: (direction: Direction, mouseX: number) => void;
         move: (deltaPivot: number) => void;
-        registerListeners: (element: HTMLElement) => void;
-        format: (minutes: number) => string;
-        update: () => void;
     }
     enum Direction {
         In = -1,
@@ -71,12 +69,15 @@ declare module "timeline" {
         zoom(direction: Direction, mouseX: number): void;
         move(deltaPivot: number): void;
         registerListeners(element: HTMLElement): void;
+        setupHTML(): void;
         format(minutes: number): string;
         update(): void;
-        constructor(element: HTMLElement | string, options: object);
+        constructor(element: HTMLElement | string, options: object, callback?: (option: ITimelineOptions) => void);
         options: ITimelineOptions;
         element: HTMLElement;
         startMoment: IDater;
         endMoment: IDater;
+        callback: (option: ITimelineOptions) => void;
+        timelineContainer: HTMLDivElement;
     }
 }
