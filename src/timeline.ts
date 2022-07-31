@@ -23,7 +23,7 @@ interface ITimeline {
 	viewEndMinutes: () => number;
 	viewDurationMinutes: () => number;
 	view2MinutesRatio: (minutes: number) => number;
-	setRatio: (direction: Direction, deltaRatio: number) => void;
+	setRatio: (direction: Direction, deltaRatio: number) => boolean;
 	setPivot: (deltaPivot: number) => void;
 	zoom: (direction: Direction, mouseX: number) => void;
 	move: (deltaPivot: number) => void;
@@ -50,22 +50,25 @@ export class Timeline implements ITimeline {
 	view2MinutesRatio(minutes: number) {
 		return (minutes - this.viewStartMinutes()) / this.viewDurationMinutes();
 	}
-	setRatio(direction: Direction, deltaRatio: number) {
+	setRatio(direction: Direction, deltaRatio: number): boolean {
 		let newRatio = this.options.ratio - deltaRatio;
 
 		// If zoom OUT - test if zoom is allowed
 		const ratioMin = this.options.minZoom;
 		if (direction === Direction.Out && newRatio <= ratioMin) {
-			newRatio = ratioMin;
+			this.options.ratio = ratioMin;
+			return false;
 		}
 
 		// If zoom IN - test if zoom is allowed
 		const ratioMax = this.options.maxZoom;
 		if (direction === Direction.In && newRatio >= ratioMax) {
-			newRatio = ratioMax;
+			this.options.ratio = ratioMax;
+			return false;
 		}
 
 		this.options.ratio = newRatio;
+		return true;
 	}
 	setPivot(deltaPivot: number) {
 		let newPivot = this.options.pivot + deltaPivot;
@@ -93,8 +96,8 @@ export class Timeline implements ITimeline {
 		const mouseX2timeline = (mouseX2view - this.options.pivot) / this.options.ratio;
 		const deltaPivot = mouseX2timeline * deltaRatio;
 
-		this.setRatio(direction, deltaRatio);
-		this.setPivot(deltaPivot);
+		if(this.setRatio(direction, deltaRatio))
+			this.setPivot(deltaPivot);
 
 		this.update();
 	}

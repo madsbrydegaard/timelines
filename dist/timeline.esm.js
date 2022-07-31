@@ -113,13 +113,16 @@ var Timeline = class {
     let newRatio = this.options.ratio - deltaRatio;
     const ratioMin = this.options.minZoom;
     if (direction === 1 /* Out */ && newRatio <= ratioMin) {
-      newRatio = ratioMin;
+      this.options.ratio = ratioMin;
+      return false;
     }
     const ratioMax = this.options.maxZoom;
     if (direction === -1 /* In */ && newRatio >= ratioMax) {
-      newRatio = ratioMax;
+      this.options.ratio = ratioMax;
+      return false;
     }
     this.options.ratio = newRatio;
+    return true;
   }
   setPivot(deltaPivot) {
     let newPivot = this.options.pivot + deltaPivot;
@@ -138,8 +141,8 @@ var Timeline = class {
     const mouseX2view = (this.options.mouseX || 0) / this.viewWidth();
     const mouseX2timeline = (mouseX2view - this.options.pivot) / this.options.ratio;
     const deltaPivot = mouseX2timeline * deltaRatio;
-    this.setRatio(direction, deltaRatio);
-    this.setPivot(deltaPivot);
+    if (this.setRatio(direction, deltaRatio))
+      this.setPivot(deltaPivot);
     this.update();
   }
   move(deltaPivot) {

@@ -48,7 +48,7 @@ declare module "timeline" {
         viewEndMinutes: () => number;
         viewDurationMinutes: () => number;
         view2MinutesRatio: (minutes: number) => number;
-        setRatio: (direction: Direction, deltaRatio: number) => void;
+        setRatio: (direction: Direction, deltaRatio: number) => boolean;
         setPivot: (deltaPivot: number) => void;
         zoom: (direction: Direction, mouseX: number) => void;
         move: (deltaPivot: number) => void;
@@ -64,7 +64,7 @@ declare module "timeline" {
         viewEndMinutes(): number;
         viewDurationMinutes(): number;
         view2MinutesRatio(minutes: number): number;
-        setRatio(direction: Direction, deltaRatio: number): void;
+        setRatio(direction: Direction, deltaRatio: number): boolean;
         setPivot(deltaPivot: number): void;
         zoom(direction: Direction, mouseX: number): void;
         move(deltaPivot: number): void;

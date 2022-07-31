@@ -15,13 +15,13 @@
 	</head>
 	<body>
 		<div id="timelineContainer"></div>
-		<div id="log"></div>
+		<pre><code id="log"></code></pre>
 		<script type="module">
 			import {Timeline} from '../dist/timeline.esm.js'
 
 			const log = document.querySelector("#log");
 			const tl = new Timeline("#timelineContainer", null, (options) => {
-				log.innerHTML = options.ratio
+				log.innerHTML = JSON.stringify(options, undefined, 2)
 			});
 		</script>
 	</body>
