@@ -200,9 +200,8 @@ var Timeline = class {
     this.element.style.position = "relative";
     this.element.style.overflow = "hidden";
     this.timelineContainer = document.createElement("div");
-    this.timelineContainer.className = "timelineContainer";
     this.timelineContainer.style.width = "100%";
-    this.timelineContainer.style.transform = "translate(0, calc(-100%))";
+    this.timelineContainer.style.height = "1rem";
     this.timelineContainer.style.textAlign = "center";
     this.timelineContainer.style.position = "absolute";
     this.timelineContainer.style.zIndex = "-1";
@@ -211,6 +210,7 @@ var Timeline = class {
         this.timelineContainer.style.top = "0";
       default:
         this.timelineContainer.style.bottom = "0";
+        this.timelineContainer.style.transform = "translate(0, calc(-220%))";
     }
     this.element.appendChild(this.timelineContainer);
   }
