@@ -13,7 +13,7 @@ interface ITimelineOptions {
 }
 interface ITimeline {
 	options: ITimelineOptions;
-	el: HTMLElement | undefined;
+	element: HTMLElement | undefined;
 	startMoment: IDater;
 	endMoment: IDater;
 	timelineDurationMinutes: () => number;
@@ -29,30 +29,29 @@ interface ITimeline {
 	registerListeners: (element: HTMLElement) => void;
 	format: (minutes: number) => string;
 	update: () => void;
-	initialize: (element: HTMLElement | string, options: object) => void;
 }
 enum Direction {
 	In = -1,Out = 1
 }
-export const timeline: ITimeline = {
+export class Timeline implements ITimeline {
 	timelineDurationMinutes() {
 		return this.endMoment.inMinutes - this.startMoment.inMinutes;
-	},
+	}
 	viewWidth() {
-		return this.el?.offsetWidth || 0;
-	},
+		return this.element?.offsetWidth || 0;
+	}
 	viewStartMinutes() {
 		return this.startMoment.inMinutes - this.viewDurationMinutes() * this.options.pivot;
-	},
+	}
 	viewEndMinutes() {
 		return this.viewStartMinutes() + this.viewDurationMinutes();
-	},
+	}
 	viewDurationMinutes() {
 		return this.timelineDurationMinutes() / this.options.ratio;
-	},
+	}
 	view2MinutesRatio(minutes: number) {
 		return (minutes - this.viewStartMinutes()) / this.viewDurationMinutes();
-	},
+	}
 	setRatio(direction: Direction, deltaRatio: number) {
 		let newRatio = this.options.ratio - deltaRatio;
 
@@ -69,7 +68,7 @@ export const timeline: ITimeline = {
 		}
 
 		this.options.ratio = newRatio;
-	},
+	}
 	setPivot(deltaPivot: number) {
 		let newPivot = this.options.pivot + deltaPivot;
 
@@ -84,7 +83,7 @@ export const timeline: ITimeline = {
 		}
 
 		this.options.pivot = newPivot;
-	},
+	}
 	zoom(direction: Direction, mouseX: number) {
 		this.options.mouseX = mouseX;
 
@@ -100,13 +99,13 @@ export const timeline: ITimeline = {
 		this.setPivot(deltaPivot);
 
 		this.update();
-	},
+	}
 	move(deltaPivot: number) {
 		this.setPivot(deltaPivot);
 		this.update();
-	},
+	}
 	registerListeners(element: HTMLElement) {
-		const vm: ITimeline = this;
+		const vm = this;
 		window.addEventListener(
 			"resize",
 			function () {
@@ -162,7 +161,7 @@ export const timeline: ITimeline = {
 			},
 			{ passive: false }
 		);
-	},
+	}
 	format(minutes: number): string {
 		const moment = new Dater(minutes);
 		if (this.viewDurationMinutes() < 1440 * 4) {
@@ -179,9 +178,9 @@ export const timeline: ITimeline = {
 		}
 		// minutes in a year = 525948.766
 		return moment.asY;
-	},
+	}
 	update() {
-		if (!this.el) return;
+		if (!this.element) return;
 		const currentLevel = Math.floor(this.options.ratio);
 		// https://math.stackexchange.com/questions/3381728/find-closest-power-of-2-to-a-specific-number
 		const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
@@ -217,48 +216,48 @@ export const timeline: ITimeline = {
 			e.innerHTML = this.format(momentInMinutes);
 			c.appendChild(e);
 		}
-		this.el.innerHTML = "";
-		this.el.appendChild(c);
-	},
-	initialize(element: HTMLElement | string, options: object) {
+		this.element.innerHTML = "";
+		this.element.appendChild(c);
+	}
+	constructor(element: HTMLElement | string, options: object) {
+		if(!element) throw new Error(`Element argument is empty. Please add DOM element | selector as first arg`);
+		if (typeof element === "string") {
+			const elem = document.querySelector(element) as HTMLElement;
+			if (!elem) throw new Error(`Selector could not be found [${element}]`);
+			this.element = elem;
+		} 
+		if(element instanceof Element) {
+			this.element = element;
+		}
+
 		this.options = {
-			...this.options,
+			...{
+				labelCount: 5,
+				ratio: 1,
+				pivot: 0,
+				zoomSpeed: 0.025,
+				dragSpeed: 0.003,
+				start: "-100y",
+				end: "now",
+				minZoom: 1,
+				maxZoom: 100000,
+				mouseX: 0,
+			},
 			...options,
 		};
 		this.startMoment = new Dater(this.options.start);
 		this.endMoment = new Dater(this.options.end);
 
-		if (typeof element === "string") {
-			const elem = document.querySelector(element) as HTMLElement;
-			if (!elem) throw new Error(`Selector could not be found [${element}]`);
-			this.el = elem;
-		} else {
-			this.el = element;
-		}
-
 		// Register parent as position = "relative" for absolute positioning to work
-		this.el.style.position = "relative";
+		this.element.style.position = "relative";
 		// Register parent overflow = "hidden" to hide overflow moments
-		this.el.style.overflow = "hidden";
+		this.element.style.overflow = "hidden";
 
-		this.registerListeners(this.el);
+		this.registerListeners(this.element);
 		this.update();
-	},
-	options: {
-		labelCount: 5,
-		ratio: 1,
-		pivot: 0,
-		zoomSpeed: 0.025,
-		dragSpeed: 0.003,
-		start: "-100y",
-		end: "now",
-		minZoom: 1,
-		maxZoom: 100000,
-		mouseX: 0,
-	},
-	el: undefined,
-	startMoment: new Dater("-100y"),
-	endMoment: new Dater("now"),
+	}
+	options: ITimelineOptions
+	element: HTMLElement
+	startMoment: IDater
+	endMoment: IDater
 };
-
-// window["timeline"] = timeline;

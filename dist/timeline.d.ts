@@ -38,7 +38,7 @@ declare module "timeline" {
     }
     interface ITimeline {
         options: ITimelineOptions;
-        el: HTMLElement | undefined;
+        element: HTMLElement | undefined;
         startMoment: IDater;
         endMoment: IDater;
         timelineDurationMinutes: () => number;
@@ -54,11 +54,29 @@ declare module "timeline" {
         registerListeners: (element: HTMLElement) => void;
         format: (minutes: number) => string;
         update: () => void;
-        initialize: (element: HTMLElement | string, options: object) => void;
     }
     enum Direction {
         In = -1,
         Out = 1
     }
-    export const timeline: ITimeline;
+    export class Timeline implements ITimeline {
+        timelineDurationMinutes(): number;
+        viewWidth(): number;
+        viewStartMinutes(): number;
+        viewEndMinutes(): number;
+        viewDurationMinutes(): number;
+        view2MinutesRatio(minutes: number): number;
+        setRatio(direction: Direction, deltaRatio: number): void;
+        setPivot(deltaPivot: number): void;
+        zoom(direction: Direction, mouseX: number): void;
+        move(deltaPivot: number): void;
+        registerListeners(element: HTMLElement): void;
+        format(minutes: number): string;
+        update(): void;
+        constructor(element: HTMLElement | string, options: object);
+        options: ITimelineOptions;
+        element: HTMLElement;
+        startMoment: IDater;
+        endMoment: IDater;
+    }
 }

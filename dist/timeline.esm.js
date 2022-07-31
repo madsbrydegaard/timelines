@@ -89,26 +89,26 @@ var Dater = class {
 };
 
 // src/timeline.ts
-var timeline = {
+var Timeline = class {
   timelineDurationMinutes() {
     return this.endMoment.inMinutes - this.startMoment.inMinutes;
-  },
+  }
   viewWidth() {
     var _a;
-    return ((_a = this.el) == null ? void 0 : _a.offsetWidth) || 0;
-  },
+    return ((_a = this.element) == null ? void 0 : _a.offsetWidth) || 0;
+  }
   viewStartMinutes() {
     return this.startMoment.inMinutes - this.viewDurationMinutes() * this.options.pivot;
-  },
+  }
   viewEndMinutes() {
     return this.viewStartMinutes() + this.viewDurationMinutes();
-  },
+  }
   viewDurationMinutes() {
     return this.timelineDurationMinutes() / this.options.ratio;
-  },
+  }
   view2MinutesRatio(minutes) {
     return (minutes - this.viewStartMinutes()) / this.viewDurationMinutes();
-  },
+  }
   setRatio(direction, deltaRatio) {
     let newRatio = this.options.ratio - deltaRatio;
     const ratioMin = this.options.minZoom;
@@ -120,7 +120,7 @@ var timeline = {
       newRatio = ratioMax;
     }
     this.options.ratio = newRatio;
-  },
+  }
   setPivot(deltaPivot) {
     let newPivot = this.options.pivot + deltaPivot;
     if (newPivot >= 0) {
@@ -130,7 +130,7 @@ var timeline = {
       newPivot = 1 - this.options.ratio;
     }
     this.options.pivot = newPivot;
-  },
+  }
   zoom(direction, mouseX) {
     this.options.mouseX = mouseX;
     const zoomSpeedScale = this.options.zoomSpeed * this.options.ratio;
@@ -141,11 +141,11 @@ var timeline = {
     this.setRatio(direction, deltaRatio);
     this.setPivot(deltaPivot);
     this.update();
-  },
+  }
   move(deltaPivot) {
     this.setPivot(deltaPivot);
     this.update();
-  },
+  }
   registerListeners(element) {
     const vm = this;
     window.addEventListener(
@@ -195,7 +195,7 @@ var timeline = {
       },
       { passive: false }
     );
-  },
+  }
   format(minutes) {
     const moment = new Dater(minutes);
     if (this.viewDurationMinutes() < 1440 * 4) {
@@ -208,9 +208,9 @@ var timeline = {
       return moment.asYM;
     }
     return moment.asY;
-  },
+  }
   update() {
-    if (!this.el)
+    if (!this.element)
       return;
     const currentLevel = Math.floor(this.options.ratio);
     const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
@@ -238,42 +238,41 @@ var timeline = {
       e.innerHTML = this.format(momentInMinutes);
       c.appendChild(e);
     }
-    this.el.innerHTML = "";
-    this.el.appendChild(c);
-  },
-  initialize(element, options) {
-    this.options = __spreadValues(__spreadValues({}, this.options), options);
-    this.startMoment = new Dater(this.options.start);
-    this.endMoment = new Dater(this.options.end);
+    this.element.innerHTML = "";
+    this.element.appendChild(c);
+  }
+  constructor(element, options) {
+    if (!element)
+      throw new Error(`Element argument is empty. Please add DOM element | selector as first arg`);
     if (typeof element === "string") {
       const elem = document.querySelector(element);
       if (!elem)
         throw new Error(`Selector could not be found [${element}]`);
-      this.el = elem;
-    } else {
-      this.el = element;
+      this.element = elem;
     }
-    this.el.style.position = "relative";
-    this.el.style.overflow = "hidden";
-    this.registerListeners(this.el);
+    if (element instanceof Element) {
+      this.element = element;
+    }
+    this.options = __spreadValues(__spreadValues({}, {
+      labelCount: 5,
+      ratio: 1,
+      pivot: 0,
+      zoomSpeed: 0.025,
+      dragSpeed: 3e-3,
+      start: "-100y",
+      end: "now",
+      minZoom: 1,
+      maxZoom: 1e5,
+      mouseX: 0
+    }), options);
+    this.startMoment = new Dater(this.options.start);
+    this.endMoment = new Dater(this.options.end);
+    this.element.style.position = "relative";
+    this.element.style.overflow = "hidden";
+    this.registerListeners(this.element);
     this.update();
-  },
-  options: {
-    labelCount: 5,
-    ratio: 1,
-    pivot: 0,
-    zoomSpeed: 0.025,
-    dragSpeed: 3e-3,
-    start: "-100y",
-    end: "now",
-    minZoom: 1,
-    maxZoom: 1e5,
-    mouseX: 0
-  },
-  el: void 0,
-  startMoment: new Dater("-100y"),
-  endMoment: new Dater("now")
+  }
 };
 export {
-  timeline
+  Timeline
 };
