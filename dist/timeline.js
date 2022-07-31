@@ -128,16 +128,16 @@
     setRatio(direction, deltaRatio) {
       let newRatio = this.options.ratio - deltaRatio;
       const ratioMin = this.options.minZoom;
-      if (direction > 0 && newRatio <= ratioMin) {
+      if (direction === 1 /* Out */ && newRatio <= ratioMin) {
         newRatio = ratioMin;
       }
       const ratioMax = this.options.maxZoom;
-      if (direction < 0 && newRatio >= ratioMax) {
+      if (direction === -1 /* In */ && newRatio >= ratioMax) {
         newRatio = ratioMax;
       }
       this.options.ratio = newRatio;
     },
-    setPivot(direction, deltaPivot) {
+    setPivot(deltaPivot) {
       let newPivot = this.options.pivot + deltaPivot;
       if (newPivot >= 0) {
         newPivot = 0;
@@ -155,11 +155,11 @@
       const mouseX2timeline = (mouseX2view - this.options.pivot) / this.options.ratio;
       const deltaPivot = mouseX2timeline * deltaRatio;
       this.setRatio(direction, deltaRatio);
-      this.setPivot(direction, deltaPivot);
+      this.setPivot(deltaPivot);
       this.update();
     },
     move(deltaPivot) {
-      this.setPivot(0, deltaPivot);
+      this.setPivot(deltaPivot);
       this.update();
     },
     registerListeners(element) {

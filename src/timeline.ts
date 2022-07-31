@@ -22,14 +22,17 @@ interface ITimeline {
 	viewEndMinutes: () => number;
 	viewDurationMinutes: () => number;
 	view2MinutesRatio: (minutes: number) => number;
-	setRatio: (direction: number, deltaRatio: number) => void;
-	setPivot: (direction: number, deltaPivot: number) => void;
-	zoom: (direction: number, mouseX: number) => void;
+	setRatio: (direction: Direction, deltaRatio: number) => void;
+	setPivot: (deltaPivot: number) => void;
+	zoom: (direction: Direction, mouseX: number) => void;
 	move: (deltaPivot: number) => void;
 	registerListeners: (element: HTMLElement) => void;
 	format: (minutes: number) => string;
 	update: () => void;
 	initialize: (element: HTMLElement | string, options: object) => void;
+}
+enum Direction {
+	In = -1,Out = 1
 }
 export const timeline: ITimeline = {
 	timelineDurationMinutes() {
@@ -50,24 +53,24 @@ export const timeline: ITimeline = {
 	view2MinutesRatio(minutes: number) {
 		return (minutes - this.viewStartMinutes()) / this.viewDurationMinutes();
 	},
-	setRatio(direction: number, deltaRatio: number) {
+	setRatio(direction: Direction, deltaRatio: number) {
 		let newRatio = this.options.ratio - deltaRatio;
 
 		// If zoom OUT - test if zoom is allowed
 		const ratioMin = this.options.minZoom;
-		if (direction > 0 && newRatio <= ratioMin) {
+		if (direction === Direction.Out && newRatio <= ratioMin) {
 			newRatio = ratioMin;
 		}
 
 		// If zoom IN - test if zoom is allowed
 		const ratioMax = this.options.maxZoom;
-		if (direction < 0 && newRatio >= ratioMax) {
+		if (direction === Direction.In && newRatio >= ratioMax) {
 			newRatio = ratioMax;
 		}
 
 		this.options.ratio = newRatio;
 	},
-	setPivot(direction: number, deltaPivot: number) {
+	setPivot(deltaPivot: number) {
 		let newPivot = this.options.pivot + deltaPivot;
 
 		if (newPivot >= 0) {
@@ -82,7 +85,7 @@ export const timeline: ITimeline = {
 
 		this.options.pivot = newPivot;
 	},
-	zoom(direction: number, mouseX: number) {
+	zoom(direction: Direction, mouseX: number) {
 		this.options.mouseX = mouseX;
 
 		// Make zoomSpeed relative to zoomLevel
@@ -94,16 +97,16 @@ export const timeline: ITimeline = {
 		const deltaPivot = mouseX2timeline * deltaRatio;
 
 		this.setRatio(direction, deltaRatio);
-		this.setPivot(direction, deltaPivot);
+		this.setPivot(deltaPivot);
 
 		this.update();
 	},
 	move(deltaPivot: number) {
-		this.setPivot(0, deltaPivot);
+		this.setPivot(deltaPivot);
 		this.update();
 	},
 	registerListeners(element: HTMLElement) {
-		const vm = this;
+		const vm: ITimeline = this;
 		window.addEventListener(
 			"resize",
 			function () {
@@ -118,7 +121,7 @@ export const timeline: ITimeline = {
 			function (event) {
 				event.preventDefault();
 				// Decide whether zoom is IN (-) or OUT (+)
-				var direction = Math.sign(event.deltaY);
+				var direction = Math.sign(event.deltaY) as Direction;
 				// console.log('wheel', direction, event)
 				// Adjust width of timeline for zooming effect
 				vm.zoom(direction, event.offsetX);
