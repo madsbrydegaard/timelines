@@ -2,7 +2,7 @@ declare module "dater" {
     export interface IDater {
         date: Date;
         asArray: number[];
-        inMinutes: number;
+        asMinutes: number;
         asYMDHM: string;
         asYMD: string;
         asYM: string;
@@ -11,11 +11,15 @@ declare module "dater" {
     export class Dater implements IDater {
         constructor(input: number[] | string | number);
         date: Date;
+        toJSON(): {
+            date: Date;
+            asMinutes: number;
+        };
         parseArray: (input: number[]) => void;
         parseMinutes: (minutes: number) => void;
         parseString: (input: string) => void;
         get asArray(): number[];
-        get inMinutes(): number;
+        get asMinutes(): number;
         get asYMDHM(): string;
         get asYMD(): string;
         get asYM(): string;
@@ -23,7 +27,7 @@ declare module "dater" {
     }
 }
 declare module "timeline" {
-    import { IDater } from "dater";
+    import { IDater, Dater } from "dater";
     interface ITimelineOptions {
         labelCount: number;
         ratio: number;
@@ -40,11 +44,11 @@ declare module "timeline" {
     interface ITimeline {
         options: ITimelineOptions;
         element: HTMLElement | undefined;
-        startMoment: IDater;
-        endMoment: IDater;
+        timelineStart: IDater;
+        timelineEnd: IDater;
         timelineDurationMinutes: number;
-        viewStartMinutes: number;
-        viewEndMinutes: number;
+        viewStart: IDater;
+        viewEnd: IDater;
         viewDurationMinutes: number;
     }
     enum Direction {
@@ -57,6 +61,8 @@ declare module "timeline" {
         get viewStartMinutes(): number;
         get viewEndMinutes(): number;
         get viewDurationMinutes(): number;
+        get viewStart(): Dater;
+        get viewEnd(): Dater;
         view2MinutesRatio(minutes: number): number;
         setRatio(direction: Direction, deltaRatio: number): boolean;
         setPivot(deltaPivot: number): void;
@@ -69,18 +75,18 @@ declare module "timeline" {
         constructor(element: HTMLElement | string, options: object, callback?: (option: ITimeline) => void);
         options: ITimelineOptions;
         element: HTMLElement;
-        startMoment: IDater;
-        endMoment: IDater;
+        timelineStart: IDater;
+        timelineEnd: IDater;
         callback: (option: ITimeline) => void;
         timelineContainer: HTMLDivElement;
         toJSON(): {
-            timelineDurationMinutes: number;
-            viewStartMinutes: number;
-            viewEndMinutes: number;
-            viewDurationMinutes: number;
             options: ITimelineOptions;
-            startMoment: IDater;
-            endMoment: IDater;
+            timelineStart: IDater;
+            timelineEnd: IDater;
+            timelineDurationMinutes: number;
+            viewStart: Dater;
+            viewEnd: Dater;
+            viewDurationMinutes: number;
         };
     }
 }

@@ -55,10 +55,16 @@ var Dater = class {
       this.parseMinutes(input);
     }
   }
+  toJSON() {
+    return {
+      date: this.date,
+      asMinutes: this.asMinutes
+    };
+  }
   get asArray() {
     return [this.date.getFullYear(), this.date.getMonth(), this.date.getDate(), this.date.getHours(), this.date.getMinutes()];
   }
-  get inMinutes() {
+  get asMinutes() {
     return Math.floor(this.date.getTime() / 6e4);
   }
   get asYMDHM() {
@@ -91,20 +97,26 @@ var Dater = class {
 // src/timeline.ts
 var Timeline = class {
   get timelineDurationMinutes() {
-    return this.endMoment.inMinutes - this.startMoment.inMinutes;
+    return this.timelineEnd.asMinutes - this.timelineStart.asMinutes;
   }
   get viewWidth() {
     var _a;
     return ((_a = this.element) == null ? void 0 : _a.offsetWidth) || 0;
   }
   get viewStartMinutes() {
-    return this.startMoment.inMinutes - this.viewDurationMinutes * this.options.pivot;
+    return this.timelineStart.asMinutes - this.viewDurationMinutes * this.options.pivot;
   }
   get viewEndMinutes() {
     return this.viewStartMinutes + this.viewDurationMinutes;
   }
   get viewDurationMinutes() {
     return this.timelineDurationMinutes / this.options.ratio;
+  }
+  get viewStart() {
+    return new Dater(this.viewStartMinutes);
+  }
+  get viewEnd() {
+    return new Dater(this.viewEndMinutes);
   }
   view2MinutesRatio(minutes) {
     return (minutes - this.viewStartMinutes) / this.viewDurationMinutes;
@@ -236,7 +248,7 @@ var Timeline = class {
     const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
     const granularity = 1 / (this.options.labelCount + 1);
     const timelineDurationMinutesExtended = this.timelineDurationMinutes * 1.2;
-    const timelineStartMomentExtended = this.startMoment.inMinutes - this.timelineDurationMinutes * 0.1;
+    const timelineStartMomentExtended = this.timelineStart.asMinutes - this.timelineDurationMinutes * 0.1;
     const timelineViewDifferenceMinutes = this.viewStartMinutes - timelineStartMomentExtended;
     const timestampDistanceMinutes = timelineDurationMinutesExtended * granularity;
     const currentTimestampDistanceByLevelMinutes = timestampDistanceMinutes / iterator;
@@ -295,8 +307,8 @@ var Timeline = class {
       mouseX: 0,
       position: "top"
     }), options);
-    this.startMoment = new Dater(this.options.start);
-    this.endMoment = new Dater(this.options.end);
+    this.timelineStart = new Dater(this.options.start);
+    this.timelineEnd = new Dater(this.options.end);
     this.setupHTML();
     this.registerListeners(this.element);
     this.callback = callback;
@@ -304,13 +316,13 @@ var Timeline = class {
   }
   toJSON() {
     return {
-      timelineDurationMinutes: this.timelineDurationMinutes,
-      viewStartMinutes: this.viewStartMinutes,
-      viewEndMinutes: this.viewEndMinutes,
-      viewDurationMinutes: this.viewDurationMinutes,
       options: this.options,
-      startMoment: this.startMoment,
-      endMoment: this.endMoment
+      timelineStart: this.timelineStart,
+      timelineEnd: this.timelineEnd,
+      timelineDurationMinutes: this.timelineDurationMinutes,
+      viewStart: this.viewStart,
+      viewEnd: this.viewEnd,
+      viewDurationMinutes: this.viewDurationMinutes
     };
   }
 };

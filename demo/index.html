@@ -22,6 +22,7 @@
 			const log = document.querySelector("#log");
 			const tl = new Timeline("#timelineContainer", null, (timeline) => {
 				log.innerHTML = JSON.stringify(timeline, undefined, 2)
+				//log.innerHTML = timeline.viewStartDater.asYMDHM
 			});
 		</script>
 	</body>

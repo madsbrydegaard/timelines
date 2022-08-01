@@ -15,11 +15,11 @@ interface ITimelineOptions {
 interface ITimeline {
 	options: ITimelineOptions;
 	element: HTMLElement | undefined;
-	startMoment: IDater;
-	endMoment: IDater;
+	timelineStart: IDater;
+	timelineEnd: IDater;
 	timelineDurationMinutes: number;
-	viewStartMinutes: number;
-	viewEndMinutes: number;
+	viewStart: IDater;
+	viewEnd: IDater;
 	viewDurationMinutes: number;
 }
 enum Direction {
@@ -27,19 +27,25 @@ enum Direction {
 }
 export class Timeline implements ITimeline {
 	get timelineDurationMinutes() {
-		return this.endMoment.inMinutes - this.startMoment.inMinutes;
+		return this.timelineEnd.asMinutes - this.timelineStart.asMinutes;
 	}
 	get viewWidth() {
 		return this.element?.offsetWidth || 0;
 	}
 	get viewStartMinutes() {
-		return this.startMoment.inMinutes - this.viewDurationMinutes * this.options.pivot;
+		return this.timelineStart.asMinutes - this.viewDurationMinutes * this.options.pivot;
 	}
 	get viewEndMinutes() {
 		return this.viewStartMinutes + this.viewDurationMinutes;
 	}
 	get viewDurationMinutes() {
 		return this.timelineDurationMinutes / this.options.ratio;
+	}
+	get viewStart() {
+		return new Dater(this.viewStartMinutes);
+	}
+	get viewEnd() {
+		return new Dater(this.viewEndMinutes);
 	}
 	view2MinutesRatio(minutes: number) {
 		return (minutes - this.viewStartMinutes) / this.viewDurationMinutes;
@@ -204,7 +210,7 @@ export class Timeline implements ITimeline {
 		const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
 		const granularity = 1 / (this.options.labelCount + 1);
 		const timelineDurationMinutesExtended = this.timelineDurationMinutes * 1.2;
-		const timelineStartMomentExtended = this.startMoment.inMinutes - this.timelineDurationMinutes * 0.1;
+		const timelineStartMomentExtended = this.timelineStart.asMinutes - this.timelineDurationMinutes * 0.1;
 		const timelineViewDifferenceMinutes = this.viewStartMinutes - timelineStartMomentExtended;
 		const timestampDistanceMinutes = timelineDurationMinutesExtended * granularity;
 
@@ -239,7 +245,7 @@ export class Timeline implements ITimeline {
 
 		// Dispatch DOM event
 		const update = new CustomEvent("update", {
-			detail: {options: this.options},
+			detail: {timeline: this.toJSON()},
 			bubbles: true,
 			cancelable: true,
 			composed: false,
@@ -280,8 +286,8 @@ export class Timeline implements ITimeline {
 		};
 
 		// Handle start and end moments
-		this.startMoment = new Dater(this.options.start);
-		this.endMoment = new Dater(this.options.end);
+		this.timelineStart = new Dater(this.options.start);
+		this.timelineEnd = new Dater(this.options.end);
 
 		// Handle DOM elements setup
 		this.setupHTML();
@@ -297,19 +303,19 @@ export class Timeline implements ITimeline {
 	}
 	options: ITimelineOptions
 	element: HTMLElement
-	startMoment: IDater
-	endMoment: IDater
+	timelineStart: IDater
+	timelineEnd: IDater
 	callback: (option: ITimeline) => void
 	timelineContainer: HTMLDivElement
 	toJSON(){
 		return {
-			timelineDurationMinutes: this.timelineDurationMinutes,
-			viewStartMinutes: this.viewStartMinutes,
-			viewEndMinutes: this.viewEndMinutes,
-			viewDurationMinutes: this.viewDurationMinutes,
 			options: this.options,
-			startMoment: this.startMoment,
-			endMoment: this.endMoment,
+			timelineStart: this.timelineStart,
+			timelineEnd: this.timelineEnd,
+			timelineDurationMinutes: this.timelineDurationMinutes,
+			viewStart: this.viewStart,
+			viewEnd: this.viewEnd,
+			viewDurationMinutes: this.viewDurationMinutes,
 		}
 	}
 };

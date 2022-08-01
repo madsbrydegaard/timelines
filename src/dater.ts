@@ -1,7 +1,7 @@
 export interface IDater {
 	date: Date;
 	asArray: number[];
-	inMinutes: number;
+	asMinutes: number;
 	asYMDHM: string;
 	asYMD: string;
 	asYM: string;
@@ -38,6 +38,12 @@ export class Dater implements IDater {
 	}
 	// Date object wrapper so not able to handle dates beyond limits of date object. Eg < -270.000 and > 270.000 years
 	date!: Date;
+	toJSON(){
+		return {
+			date: this.date,
+			asMinutes: this.asMinutes,
+		}
+	}
 	parseArray = (input: number[]) => {
 		this.date.setFullYear(input[0] || this.date.getFullYear());
 		this.date.setMonth(input[1] ? input[1] + 1 : 0);
@@ -57,7 +63,7 @@ export class Dater implements IDater {
 	get asArray() {
 		return [this.date.getFullYear(), this.date.getMonth(), this.date.getDate(), this.date.getHours(), this.date.getMinutes()];
 	}
-	get inMinutes() {
+	get asMinutes() {
 		return Math.floor(this.date.getTime() / 60000);
 	}
 	get asYMDHM() {

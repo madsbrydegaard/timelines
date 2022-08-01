@@ -3,7 +3,7 @@ Vanilla js timeline with zoom and pan.
 
 Designed to be part of projects that visualize earth´s history.  
 
-Code re-calculates time on every frame using minutes as lowest timescale. Hence it can currently span ±8,640,000,000,000,000 minutes with zero (0) being birth of Christ (Year 0).
+Code re-calculates time on every frame using minutes as lowest timescale. Hence it can currently span ±8,640,000,000,000,000 minutes with zero (0) being unix time 0 (Jan 1 1970).
 
 Code is also not dependent on expanding divs which makes it able to zoom past any browser limits and hence prepared to span billions of years.
 
