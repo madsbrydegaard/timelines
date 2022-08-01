@@ -170,9 +170,9 @@ export class Timeline implements ITimeline {
 		this.element.style.overflow = "hidden";
 
 		this.timelineContainer = document.createElement("div");
-		// this.timelineContainer.className = "timelineContainer";
+		this.timelineContainer.className = "timelineContainer";
 		this.timelineContainer.style.width = "100%";
-		this.timelineContainer.style.height = "1rem";
+		this.timelineContainer.style.height = "3rem";
 		this.timelineContainer.style.textAlign = "center";
 		this.timelineContainer.style.position = "absolute";
 		this.timelineContainer.style.zIndex = "-1";
@@ -182,7 +182,6 @@ export class Timeline implements ITimeline {
 				break;
 			default:
 				this.timelineContainer.style.bottom = "0";
-				this.timelineContainer.style.transform = "translate(0, calc(-220%))";
 		}
 		this.element.appendChild(this.timelineContainer);
 	}
@@ -190,18 +189,31 @@ export class Timeline implements ITimeline {
 		const moment = new Dater(minutes);
 		if (this.viewDurationMinutes < 1440 * 4) {
 			// minutes in an day = 1440
-			return moment.asYMDHM;
+			return Intl.DateTimeFormat(undefined, {
+				year: "numeric",
+				month: "short",
+				day: "numeric",
+				hour: "numeric",
+				minute: "numeric",
+			}).format(moment.date);
 		}
 		if (this.viewDurationMinutes < 10080 * 6) {
 			// minutes in a week = 10080
-			return moment.asYMD;
+			return Intl.DateTimeFormat(undefined, {
+				year: "numeric",
+				month: "short",
+				day: "numeric",
+			}).format(moment.date);
 		}
 		if (this.viewDurationMinutes < 43829.0639 * 18) {
 			// minutes in a month = 43829.0639
-			return moment.asYM;
+			return Intl.DateTimeFormat(undefined, {
+				year: "numeric",
+				month: "short",
+			}).format(moment.date);
 		}
 		// minutes in a year = 525948.766
-		return moment.asY;
+		return moment.date.getFullYear().toString();
 	}
 	update() {
 		if (!this.element) return;
@@ -230,13 +242,14 @@ export class Timeline implements ITimeline {
 			const timestampViewLeftPosition = timestampViewRatio * 100;
 
 			const e = document.createElement("div");
-			e.className = "moment";
+			e.className = "timelineLabel";
 			e.style.left = timestampViewLeftPosition + "%";
-			e.style.transform = "translate(calc(-50%))";
+			e.style.top = "50%";
+			e.style.transform = "translate(calc(-50%), calc(-50%))";
 			e.style.textAlign = "center";
 			e.style.position = "absolute";
 			e.style.zIndex = "-1";
-			e.style.width = "54px";
+			e.style.width = granularity * 100 + "%";
 			e.innerHTML = this.format(momentInMinutes);
 			c.appendChild(e);
 		}
@@ -280,7 +293,7 @@ export class Timeline implements ITimeline {
 				minZoom: 1,
 				maxZoom: 100000,
 				mouseX: 0,
-				position: "top",
+				position: "bottom",
 			},
 			...options,
 		};

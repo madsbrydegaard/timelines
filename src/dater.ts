@@ -2,10 +2,6 @@ export interface IDater {
 	date: Date;
 	asArray: number[];
 	asMinutes: number;
-	asYMDHM: string;
-	asYMD: string;
-	asYM: string;
-	asY: string;
 }
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
 // It should be noted that the maximum Date is not of the same value as the maximum safe integer (Number.MAX_SAFE_INTEGER is 9,007,199,254,740,991).
@@ -65,31 +61,5 @@ export class Dater implements IDater {
 	}
 	get asMinutes() {
 		return Math.floor(this.date.getTime() / 60000);
-	}
-	get asYMDHM() {
-		return Intl.DateTimeFormat(undefined, {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-			hour: "numeric",
-			minute: "numeric",
-		}).format(this.date);
-	}
-	get asYMD() {
-		return Intl.DateTimeFormat(undefined, {
-			year: "numeric",
-			month: "short",
-			day: "numeric",
-		}).format(this.date);
-	}
-	get asYM() {
-		return Intl.DateTimeFormat(undefined, {
-			year: "numeric",
-			month: "short",
-		}).format(this.date);
-	}
-	get asY() {
-		// minutes in a year = 525948.766
-		return this.date.getFullYear().toString();
 	}
 }

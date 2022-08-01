@@ -5,22 +5,26 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Timeline Demo</title>
 		<style>
-			#timelineContainer {
+			#timeline {
 				width: 50%;
 				height: 150px;
 				margin: auto;
 				border: 1px solid black;
 			}
+			.timelineContainer {
+				border-top: 1px solid black;
+				border-bottom: 1px solid black;
+			}
 		</style>
 	</head>
 	<body>
-		<div id="timelineContainer"></div>
+		<div id="timeline"></div>
 		<pre><code id="log"></code></pre>
 		<script type="module">
 			import {Timeline} from '../dist/timeline.esm.js'
 
 			const log = document.querySelector("#log");
-			const tl = new Timeline("#timelineContainer", null, (timeline) => {
+			const tl = new Timeline("#timeline", {ratio: 100000}, (timeline) => {
 				log.innerHTML = JSON.stringify(timeline, undefined, 2)
 				//log.innerHTML = timeline.viewStartDater.asYMDHM
 			});
