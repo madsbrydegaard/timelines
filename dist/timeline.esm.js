@@ -187,21 +187,32 @@ var Timeline = class {
   setupHTML() {
     this.element.style.position = "relative";
     this.element.style.overflow = "hidden";
-    this.timelineContainer = document.createElement("div");
-    this.timelineContainer.className = "timelineContainer";
-    this.timelineContainer.style.width = "100%";
-    this.timelineContainer.style.height = "3rem";
-    this.timelineContainer.style.textAlign = "center";
-    this.timelineContainer.style.position = "absolute";
-    this.timelineContainer.style.zIndex = "-1";
+    this.labelContainer = document.createElement("div");
+    this.labelContainer.className = "timelineLabelContainer";
+    this.labelContainer.style.width = "100%";
+    this.labelContainer.style.height = "3rem";
+    this.labelContainer.style.textAlign = "center";
+    this.labelContainer.style.position = "absolute";
+    this.labelContainer.style.zIndex = "-1";
     switch (this.options.position) {
       case "top":
-        this.timelineContainer.style.top = "0";
+        this.labelContainer.style.top = "0";
+        break;
+      case "center":
+        this.labelContainer.style.top = "50%";
+        this.labelContainer.style.transform = "translate(0, calc(-50%))";
         break;
       default:
-        this.timelineContainer.style.bottom = "0";
+        this.labelContainer.style.bottom = "0";
     }
-    this.element.appendChild(this.timelineContainer);
+    this.element.appendChild(this.labelContainer);
+    this.dividerContainer = document.createElement("div");
+    this.dividerContainer.className = "timelineDividerContainer";
+    this.dividerContainer.style.width = "100%";
+    this.dividerContainer.style.height = "100%";
+    this.dividerContainer.style.position = "absolute";
+    this.dividerContainer.style.zIndex = "-10";
+    this.element.appendChild(this.dividerContainer);
   }
   format(minutes) {
     const moment = new Dater(minutes);
@@ -242,25 +253,40 @@ var Timeline = class {
     const currentTimestampDistanceByLevelMinutes = timestampDistanceMinutes / iterator;
     const integerDifFraction = Math.floor(timelineViewDifferenceMinutes / currentTimestampDistanceByLevelMinutes);
     const currentDifInMinutes = integerDifFraction * currentTimestampDistanceByLevelMinutes;
-    const c = document.createDocumentFragment();
+    const labels = document.createDocumentFragment();
+    const dividers = document.createDocumentFragment();
     for (let i = 0; i < this.options.labelCount + 2; i++) {
-      const momentInMinutes = (i + 1) * currentTimestampDistanceByLevelMinutes + timelineStartMomentExtended + currentDifInMinutes - currentTimestampDistanceByLevelMinutes;
-      const timestampViewRatio = this.view2MinutesRatio(momentInMinutes);
-      const timestampViewLeftPosition = timestampViewRatio * 100;
-      const e = document.createElement("div");
-      e.className = "timelineLabel";
-      e.style.left = timestampViewLeftPosition + "%";
-      e.style.top = "50%";
-      e.style.transform = "translate(calc(-50%), calc(-50%))";
-      e.style.textAlign = "center";
-      e.style.position = "absolute";
-      e.style.zIndex = "-1";
-      e.style.width = granularity * 100 + "%";
-      e.innerHTML = this.format(momentInMinutes);
-      c.appendChild(e);
+      const labelMinutes = (i + 1) * currentTimestampDistanceByLevelMinutes + timelineStartMomentExtended + currentDifInMinutes - currentTimestampDistanceByLevelMinutes;
+      const dividerMinutes = labelMinutes + currentTimestampDistanceByLevelMinutes / 2;
+      const labelViewRatio = this.view2MinutesRatio(labelMinutes);
+      const labelViewLeftPosition = labelViewRatio * 100;
+      const dividerViewRatio = this.view2MinutesRatio(dividerMinutes);
+      const dividerViewLeftPosition = dividerViewRatio * 100;
+      const label = document.createElement("div");
+      label.className = "timelineLabel";
+      label.style.left = labelViewLeftPosition + "%";
+      label.style.top = "50%";
+      label.style.transform = "translate(calc(-50%), calc(-50%))";
+      label.style.textAlign = "center";
+      label.style.position = "absolute";
+      label.style.zIndex = "-1";
+      label.style.width = granularity * 100 + "%";
+      label.innerHTML = this.format(labelMinutes);
+      labels.appendChild(label);
+      const divider = document.createElement("div");
+      divider.className = "timelineDivider";
+      divider.style.left = dividerViewLeftPosition + "%";
+      divider.style.textAlign = "center";
+      divider.style.position = "absolute";
+      divider.style.height = "100%";
+      divider.style.zIndex = "-10";
+      divider.innerHTML = "";
+      dividers.appendChild(divider);
     }
-    this.timelineContainer.innerHTML = "";
-    this.timelineContainer.appendChild(c);
+    this.labelContainer.innerHTML = "";
+    this.labelContainer.appendChild(labels);
+    this.dividerContainer.innerHTML = "";
+    this.dividerContainer.appendChild(dividers);
     const update = new CustomEvent("update", {
       detail: { timeline: this.toJSON() },
       bubbles: true,

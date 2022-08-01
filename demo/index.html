@@ -11,9 +11,12 @@
 				margin: auto;
 				border: 1px solid black;
 			}
-			.timelineContainer {
+			.timelineLabelContainer {
 				border-top: 1px solid black;
 				border-bottom: 1px solid black;
+			}
+			.timelineDivider {
+				border-left: 1px dashed gray;
 			}
 		</style>
 	</head>
@@ -24,9 +27,8 @@
 			import {Timeline} from '../dist/timeline.esm.js'
 
 			const log = document.querySelector("#log");
-			const tl = new Timeline("#timeline", {ratio: 100000}, (timeline) => {
+			const tl = new Timeline("#timeline", {ratio: 100000, pivot: -50000, position: "center"}, (timeline) => {
 				log.innerHTML = JSON.stringify(timeline, undefined, 2)
-				//log.innerHTML = timeline.viewStartDater.asYMDHM
 			});
 		</script>
 	</body>
