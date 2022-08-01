@@ -42,27 +42,21 @@ declare module "timeline" {
         element: HTMLElement | undefined;
         startMoment: IDater;
         endMoment: IDater;
-        timelineDurationMinutes: () => number;
-        viewWidth: () => number;
-        viewStartMinutes: () => number;
-        viewEndMinutes: () => number;
-        viewDurationMinutes: () => number;
-        view2MinutesRatio: (minutes: number) => number;
-        setRatio: (direction: Direction, deltaRatio: number) => boolean;
-        setPivot: (deltaPivot: number) => void;
-        zoom: (direction: Direction, mouseX: number) => void;
-        move: (deltaPivot: number) => void;
+        timelineDurationMinutes: number;
+        viewStartMinutes: number;
+        viewEndMinutes: number;
+        viewDurationMinutes: number;
     }
     enum Direction {
         In = -1,
         Out = 1
     }
     export class Timeline implements ITimeline {
-        timelineDurationMinutes(): number;
-        viewWidth(): number;
-        viewStartMinutes(): number;
-        viewEndMinutes(): number;
-        viewDurationMinutes(): number;
+        get timelineDurationMinutes(): number;
+        get viewWidth(): number;
+        get viewStartMinutes(): number;
+        get viewEndMinutes(): number;
+        get viewDurationMinutes(): number;
         view2MinutesRatio(minutes: number): number;
         setRatio(direction: Direction, deltaRatio: number): boolean;
         setPivot(deltaPivot: number): void;
@@ -72,12 +66,21 @@ declare module "timeline" {
         setupHTML(): void;
         format(minutes: number): string;
         update(): void;
-        constructor(element: HTMLElement | string, options: object, callback?: (option: ITimelineOptions) => void);
+        constructor(element: HTMLElement | string, options: object, callback?: (option: ITimeline) => void);
         options: ITimelineOptions;
         element: HTMLElement;
         startMoment: IDater;
         endMoment: IDater;
-        callback: (option: ITimelineOptions) => void;
+        callback: (option: ITimeline) => void;
         timelineContainer: HTMLDivElement;
+        toJSON(): {
+            timelineDurationMinutes: number;
+            viewStartMinutes: number;
+            viewEndMinutes: number;
+            viewDurationMinutes: number;
+            options: ITimelineOptions;
+            startMoment: IDater;
+            endMoment: IDater;
+        };
     }
 }

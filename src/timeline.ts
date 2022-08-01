@@ -17,38 +17,32 @@ interface ITimeline {
 	element: HTMLElement | undefined;
 	startMoment: IDater;
 	endMoment: IDater;
-	timelineDurationMinutes: () => number;
-	viewWidth: () => number;
-	viewStartMinutes: () => number;
-	viewEndMinutes: () => number;
-	viewDurationMinutes: () => number;
-	view2MinutesRatio: (minutes: number) => number;
-	setRatio: (direction: Direction, deltaRatio: number) => boolean;
-	setPivot: (deltaPivot: number) => void;
-	zoom: (direction: Direction, mouseX: number) => void;
-	move: (deltaPivot: number) => void;
+	timelineDurationMinutes: number;
+	viewStartMinutes: number;
+	viewEndMinutes: number;
+	viewDurationMinutes: number;
 }
 enum Direction {
 	In = -1,Out = 1
 }
 export class Timeline implements ITimeline {
-	timelineDurationMinutes() {
+	get timelineDurationMinutes() {
 		return this.endMoment.inMinutes - this.startMoment.inMinutes;
 	}
-	viewWidth() {
+	get viewWidth() {
 		return this.element?.offsetWidth || 0;
 	}
-	viewStartMinutes() {
-		return this.startMoment.inMinutes - this.viewDurationMinutes() * this.options.pivot;
+	get viewStartMinutes() {
+		return this.startMoment.inMinutes - this.viewDurationMinutes * this.options.pivot;
 	}
-	viewEndMinutes() {
-		return this.viewStartMinutes() + this.viewDurationMinutes();
+	get viewEndMinutes() {
+		return this.viewStartMinutes + this.viewDurationMinutes;
 	}
-	viewDurationMinutes() {
-		return this.timelineDurationMinutes() / this.options.ratio;
+	get viewDurationMinutes() {
+		return this.timelineDurationMinutes / this.options.ratio;
 	}
 	view2MinutesRatio(minutes: number) {
-		return (minutes - this.viewStartMinutes()) / this.viewDurationMinutes();
+		return (minutes - this.viewStartMinutes) / this.viewDurationMinutes;
 	}
 	setRatio(direction: Direction, deltaRatio: number): boolean {
 		let newRatio = this.options.ratio - deltaRatio;
@@ -56,14 +50,14 @@ export class Timeline implements ITimeline {
 		// If zoom OUT - test if zoom is allowed
 		const ratioMin = this.options.minZoom;
 		if (direction === Direction.Out && newRatio <= ratioMin) {
-			this.options.ratio = ratioMin;
+			//this.options.ratio = ratioMin;
 			return false;
 		}
 
 		// If zoom IN - test if zoom is allowed
 		const ratioMax = this.options.maxZoom;
 		if (direction === Direction.In && newRatio >= ratioMax) {
-			this.options.ratio = ratioMax;
+			//this.options.ratio = ratioMax;
 			return false;
 		}
 
@@ -92,7 +86,7 @@ export class Timeline implements ITimeline {
 		const zoomSpeedScale = this.options.zoomSpeed * this.options.ratio;
 		const deltaRatio = direction * zoomSpeedScale;
 
-		const mouseX2view = (this.options.mouseX || 0) / this.viewWidth();
+		const mouseX2view = (this.options.mouseX || 0) / this.viewWidth;
 		const mouseX2timeline = (mouseX2view - this.options.pivot) / this.options.ratio;
 		const deltaPivot = mouseX2timeline * deltaRatio;
 
@@ -179,6 +173,7 @@ export class Timeline implements ITimeline {
 		switch(this.options.position){
 			case "top":
 				this.timelineContainer.style.top = "0";
+				break;
 			default:
 				this.timelineContainer.style.bottom = "0";
 				this.timelineContainer.style.transform = "translate(0, calc(-220%))";
@@ -187,15 +182,15 @@ export class Timeline implements ITimeline {
 	}
 	format(minutes: number): string {
 		const moment = new Dater(minutes);
-		if (this.viewDurationMinutes() < 1440 * 4) {
+		if (this.viewDurationMinutes < 1440 * 4) {
 			// minutes in an day = 1440
 			return moment.asYMDHM;
 		}
-		if (this.viewDurationMinutes() < 10080 * 6) {
+		if (this.viewDurationMinutes < 10080 * 6) {
 			// minutes in a week = 10080
 			return moment.asYMD;
 		}
-		if (this.viewDurationMinutes() < 43829.0639 * 18) {
+		if (this.viewDurationMinutes < 43829.0639 * 18) {
 			// minutes in a month = 43829.0639
 			return moment.asYM;
 		}
@@ -208,9 +203,9 @@ export class Timeline implements ITimeline {
 		// https://math.stackexchange.com/questions/3381728/find-closest-power-of-2-to-a-specific-number
 		const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
 		const granularity = 1 / (this.options.labelCount + 1);
-		const timelineDurationMinutesExtended = this.timelineDurationMinutes() * 1.2;
-		const timelineStartMomentExtended = this.startMoment.inMinutes - this.timelineDurationMinutes() * 0.1;
-		const timelineViewDifferenceMinutes = this.viewStartMinutes() - timelineStartMomentExtended;
+		const timelineDurationMinutesExtended = this.timelineDurationMinutes * 1.2;
+		const timelineStartMomentExtended = this.startMoment.inMinutes - this.timelineDurationMinutes * 0.1;
+		const timelineViewDifferenceMinutes = this.viewStartMinutes - timelineStartMomentExtended;
 		const timestampDistanceMinutes = timelineDurationMinutesExtended * granularity;
 
 		const currentTimestampDistanceByLevelMinutes = timestampDistanceMinutes / iterator;
@@ -252,9 +247,9 @@ export class Timeline implements ITimeline {
 		this.element.dispatchEvent(update);
 
 		// Dispatch callback
-		if(this.callback) this.callback(this.options);
+		if(this.callback) this.callback(this);
 	}
-	constructor(element: HTMLElement | string, options: object, callback?: (option: ITimelineOptions) => void) {
+	constructor(element: HTMLElement | string, options: object, callback?: (option: ITimeline) => void) {
 		// Handle DOM Element
 		if(!element) throw new Error(`Element argument is empty. Please add DOM element | selector as first arg`);
 		if (typeof element === "string") {
@@ -279,7 +274,7 @@ export class Timeline implements ITimeline {
 				minZoom: 1,
 				maxZoom: 100000,
 				mouseX: 0,
-				position: "bottom",
+				position: "top",
 			},
 			...options,
 		};
@@ -304,6 +299,17 @@ export class Timeline implements ITimeline {
 	element: HTMLElement
 	startMoment: IDater
 	endMoment: IDater
-	callback: (option: ITimelineOptions) => void
+	callback: (option: ITimeline) => void
 	timelineContainer: HTMLDivElement
+	toJSON(){
+		return {
+			timelineDurationMinutes: this.timelineDurationMinutes,
+			viewStartMinutes: this.viewStartMinutes,
+			viewEndMinutes: this.viewEndMinutes,
+			viewDurationMinutes: this.viewDurationMinutes,
+			options: this.options,
+			startMoment: this.startMoment,
+			endMoment: this.endMoment,
+		}
+	}
 };

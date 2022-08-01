@@ -90,35 +90,33 @@ var Dater = class {
 
 // src/timeline.ts
 var Timeline = class {
-  timelineDurationMinutes() {
+  get timelineDurationMinutes() {
     return this.endMoment.inMinutes - this.startMoment.inMinutes;
   }
-  viewWidth() {
+  get viewWidth() {
     var _a;
     return ((_a = this.element) == null ? void 0 : _a.offsetWidth) || 0;
   }
-  viewStartMinutes() {
-    return this.startMoment.inMinutes - this.viewDurationMinutes() * this.options.pivot;
+  get viewStartMinutes() {
+    return this.startMoment.inMinutes - this.viewDurationMinutes * this.options.pivot;
   }
-  viewEndMinutes() {
-    return this.viewStartMinutes() + this.viewDurationMinutes();
+  get viewEndMinutes() {
+    return this.viewStartMinutes + this.viewDurationMinutes;
   }
-  viewDurationMinutes() {
-    return this.timelineDurationMinutes() / this.options.ratio;
+  get viewDurationMinutes() {
+    return this.timelineDurationMinutes / this.options.ratio;
   }
   view2MinutesRatio(minutes) {
-    return (minutes - this.viewStartMinutes()) / this.viewDurationMinutes();
+    return (minutes - this.viewStartMinutes) / this.viewDurationMinutes;
   }
   setRatio(direction, deltaRatio) {
     let newRatio = this.options.ratio - deltaRatio;
     const ratioMin = this.options.minZoom;
     if (direction === 1 /* Out */ && newRatio <= ratioMin) {
-      this.options.ratio = ratioMin;
       return false;
     }
     const ratioMax = this.options.maxZoom;
     if (direction === -1 /* In */ && newRatio >= ratioMax) {
-      this.options.ratio = ratioMax;
       return false;
     }
     this.options.ratio = newRatio;
@@ -138,7 +136,7 @@ var Timeline = class {
     this.options.mouseX = mouseX;
     const zoomSpeedScale = this.options.zoomSpeed * this.options.ratio;
     const deltaRatio = direction * zoomSpeedScale;
-    const mouseX2view = (this.options.mouseX || 0) / this.viewWidth();
+    const mouseX2view = (this.options.mouseX || 0) / this.viewWidth;
     const mouseX2timeline = (mouseX2view - this.options.pivot) / this.options.ratio;
     const deltaPivot = mouseX2timeline * deltaRatio;
     if (this.setRatio(direction, deltaRatio))
@@ -211,6 +209,7 @@ var Timeline = class {
     switch (this.options.position) {
       case "top":
         this.timelineContainer.style.top = "0";
+        break;
       default:
         this.timelineContainer.style.bottom = "0";
         this.timelineContainer.style.transform = "translate(0, calc(-220%))";
@@ -219,13 +218,13 @@ var Timeline = class {
   }
   format(minutes) {
     const moment = new Dater(minutes);
-    if (this.viewDurationMinutes() < 1440 * 4) {
+    if (this.viewDurationMinutes < 1440 * 4) {
       return moment.asYMDHM;
     }
-    if (this.viewDurationMinutes() < 10080 * 6) {
+    if (this.viewDurationMinutes < 10080 * 6) {
       return moment.asYMD;
     }
-    if (this.viewDurationMinutes() < 43829.0639 * 18) {
+    if (this.viewDurationMinutes < 43829.0639 * 18) {
       return moment.asYM;
     }
     return moment.asY;
@@ -236,9 +235,9 @@ var Timeline = class {
     const currentLevel = Math.floor(this.options.ratio);
     const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
     const granularity = 1 / (this.options.labelCount + 1);
-    const timelineDurationMinutesExtended = this.timelineDurationMinutes() * 1.2;
-    const timelineStartMomentExtended = this.startMoment.inMinutes - this.timelineDurationMinutes() * 0.1;
-    const timelineViewDifferenceMinutes = this.viewStartMinutes() - timelineStartMomentExtended;
+    const timelineDurationMinutesExtended = this.timelineDurationMinutes * 1.2;
+    const timelineStartMomentExtended = this.startMoment.inMinutes - this.timelineDurationMinutes * 0.1;
+    const timelineViewDifferenceMinutes = this.viewStartMinutes - timelineStartMomentExtended;
     const timestampDistanceMinutes = timelineDurationMinutesExtended * granularity;
     const currentTimestampDistanceByLevelMinutes = timestampDistanceMinutes / iterator;
     const integerDifFraction = Math.floor(timelineViewDifferenceMinutes / currentTimestampDistanceByLevelMinutes);
@@ -269,7 +268,7 @@ var Timeline = class {
     });
     this.element.dispatchEvent(update);
     if (this.callback)
-      this.callback(this.options);
+      this.callback(this);
   }
   constructor(element, options, callback) {
     if (!element)
@@ -294,7 +293,7 @@ var Timeline = class {
       minZoom: 1,
       maxZoom: 1e5,
       mouseX: 0,
-      position: "bottom"
+      position: "top"
     }), options);
     this.startMoment = new Dater(this.options.start);
     this.endMoment = new Dater(this.options.end);
@@ -302,6 +301,17 @@ var Timeline = class {
     this.registerListeners(this.element);
     this.callback = callback;
     this.update();
+  }
+  toJSON() {
+    return {
+      timelineDurationMinutes: this.timelineDurationMinutes,
+      viewStartMinutes: this.viewStartMinutes,
+      viewEndMinutes: this.viewEndMinutes,
+      viewDurationMinutes: this.viewDurationMinutes,
+      options: this.options,
+      startMoment: this.startMoment,
+      endMoment: this.endMoment
+    };
   }
 };
 export {
