@@ -50,9 +50,9 @@ declare module "timeline" {
         setupHTML(): void;
         format(milliseconds: number): string;
         update(): void;
-        parseDate: (input: number[] | string | number | Date) => Date;
-        parseDateArray: (input: number[]) => Date;
-        parseDateString: (input: string) => Date;
+        parseDate(input: number[] | string | number | Date): Date;
+        parseDateArray(input: number[]): Date;
+        parseDateString(input: string): Date;
         toJSON(): {
             options: ITimelineOptions;
             startDate: Date;

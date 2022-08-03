@@ -18,60 +18,6 @@ var __spreadValues = (a, b) => {
 // src/timeline.ts
 var Timeline = class {
   constructor(element, options, callback) {
-    this.parseDate = (input) => {
-      if (input === void 0)
-        return new Date();
-      if (Array.isArray(input)) {
-        let inputArray = input;
-        if (inputArray.length === 0)
-          throw new Error("argument Array cannot be empty");
-        const isNumberArray = inputArray.every((value) => {
-          return typeof value === "number";
-        });
-        if (!isNumberArray)
-          throw new Error("input Array must contain only numbers");
-        return this.parseDateArray(inputArray);
-      }
-      if (typeof input === "object" && input.constructor.name === "Date") {
-        return input;
-      }
-      if (typeof input === "string") {
-        return this.parseDateString(input);
-      }
-      if (typeof input === "number") {
-        return new Date(input);
-      }
-    };
-    this.parseDateArray = (input) => {
-      const date = new Date();
-      date.setFullYear(input[0] || date.getFullYear());
-      date.setMonth(input[1] ? input[1] - 1 : 0);
-      date.setDate(input[2] ? input[2] : 1);
-      date.setHours(input[3] ? input[3] : 0);
-      date.setMinutes(input[4] ? input[4] : 0);
-      return date;
-    };
-    this.parseDateString = (input) => {
-      switch (input) {
-        case "now":
-          return new Date();
-        case "max":
-          return new Date(864e13);
-        case "min":
-          return new Date(-864e13);
-        case "-100y": {
-          return new Date(Date.now() - 31556926 * 1e3 * 100);
-        }
-        case "100y": {
-          return new Date(Date.now() + 31556926 * 1e3 * 100);
-        }
-        case "1000y": {
-          return new Date(Date.now() + 31556926 * 1e3 * 1e3);
-        }
-        default:
-          throw new Error(`'[${input}]' could not be parsed as a date`);
-      }
-    };
     if (!element)
       throw new Error(`Element argument is empty. Please add DOM element | selector as first arg`);
     if (typeof element === "string") {
@@ -327,6 +273,60 @@ var Timeline = class {
     this.element.dispatchEvent(update);
     if (this.callback)
       this.callback(this);
+  }
+  parseDate(input) {
+    if (input === void 0)
+      return new Date();
+    if (Array.isArray(input)) {
+      let inputArray = input;
+      if (inputArray.length === 0)
+        throw new Error("argument Array cannot be empty");
+      const isNumberArray = inputArray.every((value) => {
+        return typeof value === "number";
+      });
+      if (!isNumberArray)
+        throw new Error("input Array must contain only numbers");
+      return this.parseDateArray(inputArray);
+    }
+    if (typeof input === "object" && input.constructor.name === "Date") {
+      return input;
+    }
+    if (typeof input === "string") {
+      return this.parseDateString(input);
+    }
+    if (typeof input === "number") {
+      return new Date(input);
+    }
+  }
+  parseDateArray(input) {
+    const date = new Date();
+    date.setFullYear(input[0] || date.getFullYear());
+    date.setMonth(input[1] ? input[1] - 1 : 0);
+    date.setDate(input[2] ? input[2] : 1);
+    date.setHours(input[3] ? input[3] : 0);
+    date.setMinutes(input[4] ? input[4] : 0);
+    return date;
+  }
+  parseDateString(input) {
+    switch (input) {
+      case "now":
+        return new Date();
+      case "max":
+        return new Date(864e13);
+      case "min":
+        return new Date(-864e13);
+      case "-100y": {
+        return new Date(Date.now() - 31556926 * 1e3 * 100);
+      }
+      case "100y": {
+        return new Date(Date.now() + 31556926 * 1e3 * 100);
+      }
+      case "1000y": {
+        return new Date(Date.now() + 31556926 * 1e3 * 1e3);
+      }
+      default:
+        throw new Error(`'[${input}]' could not be parsed as a date`);
+    }
   }
   toJSON() {
     return {
