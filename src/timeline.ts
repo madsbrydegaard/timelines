@@ -85,28 +85,28 @@ export class Timeline implements ITimeline {
 		// Draw
 		this.update();
 	}
-	get timelineDuration() {
+	get timelineDuration(): number {
 		return this.timelineEnd.getTime() - this.timelineStart.getTime();
 	}
-	get viewWidth() {
+	get viewWidth(): number {
 		return this.element?.offsetWidth || 0;
 	}
-	get start() {
+	get start(): number {
 		return this.timelineStart.getTime() - this.duration * this.pivot;
 	}
-	get end() {
+	get end(): number {
 		return this.start + this.duration;
 	}
-	get duration() {
+	get duration(): number {
 		return this.timelineDuration / this.ratio;
 	}
-	get startDate() {
+	get startDate(): Date {
 		return new Date(this.start);
 	}
-	get endDate() {
+	get endDate(): Date {
 		return new Date(this.end);
 	}
-	view2TimeRatio(milliseconds: number) {
+	view2TimeRatio(milliseconds: number): number {
 		return (milliseconds - this.start) / this.duration;
 	}
 	setRatio(direction: Direction, deltaRatio: number): boolean {
@@ -124,7 +124,7 @@ export class Timeline implements ITimeline {
 		this.ratio = newRatio;
 		return true;
 	}
-	setPivot(deltaPivot: number) {
+	setPivot(deltaPivot: number): void {
 		let newPivot = this.pivot + deltaPivot;
 
 		if (newPivot >= 0) {
@@ -139,7 +139,7 @@ export class Timeline implements ITimeline {
 
 		this.pivot = newPivot;
 	}
-	zoom(direction: Direction, mouseX: number) {
+	zoom(direction: Direction, mouseX: number): void {
 		// Make zoomSpeed relative to zoomLevel
 		const zoomSpeedScale = this.options.zoomSpeed * this.ratio;
 		const deltaRatio = direction * zoomSpeedScale;
@@ -153,11 +153,11 @@ export class Timeline implements ITimeline {
 
 		this.update();
 	}
-	move(deltaPivot: number) {
+	move(deltaPivot: number): void {
 		this.setPivot(deltaPivot);
 		this.update();
 	}
-	registerListeners(element: HTMLElement) {
+	registerListeners(element: HTMLElement): void {
 		const vm = this;
 		window.addEventListener(
 			"resize",
@@ -215,7 +215,7 @@ export class Timeline implements ITimeline {
 			{ passive: false }
 		);
 	}
-	setupHTML(){
+	setupHTML(): void{
 		// Register parent as position = "relative" for absolute positioning to work
 		this.element.style.position = "relative";
 		// Register parent overflow = "hidden" to hide overflow moments
@@ -279,7 +279,7 @@ export class Timeline implements ITimeline {
 		// minutes in a year = 525948.766
 		return moment.getFullYear().toString();
 	}
-	update() {
+	update(): void {
 		if (!this.element) return;
 		const currentLevel = Math.floor(this.ratio);
 		// https://math.stackexchange.com/questions/3381728/find-closest-power-of-2-to-a-specific-number
@@ -349,7 +349,7 @@ export class Timeline implements ITimeline {
 		// Dispatch callback
 		if(this.callback) this.callback(this);
 	}
-	parseDate = (input: number[] | string | number | Date): Date => {
+	parseDate(input: number[] | string | number | Date): Date {
 		if(input === undefined) return new Date();
 
 		if(Array.isArray(input)){
@@ -375,7 +375,7 @@ export class Timeline implements ITimeline {
 			return new Date(input);
 		}
 	}
-	parseDateArray = (input: number[]): Date => {
+	parseDateArray(input: number[]): Date {
 		const date = new Date();
 		date.setFullYear(input[0] || date.getFullYear());
 		date.setMonth(input[1] ? input[1] - 1 : 0);
@@ -384,7 +384,7 @@ export class Timeline implements ITimeline {
 		date.setMinutes(input[4] ? input[4] : 0);
 		return date;
 	}
-	parseDateString = (input: string): Date => {
+	parseDateString(input: string): Date {
 		// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
 		// It should be noted that the maximum Date is not of the same value as the maximum safe integer (Number.MAX_SAFE_INTEGER is 9,007,199,254,740,991).
 		// Instead, it is defined in ECMA-262 that a maximum of ±100,000,000 (one hundred million) days relative
