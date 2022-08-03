@@ -12,3 +12,8 @@ build({
 	outfile: "dist/timeline.esm.js",
 	format: "esm",
 });
+
+build({
+	...shared,
+	outfile: "dist/timeline.udm.js"
+});

@@ -423,3 +423,5 @@ export class Timeline implements ITimeline {
 		}
 	}
 };
+
+window["Timeline"] = Timeline;

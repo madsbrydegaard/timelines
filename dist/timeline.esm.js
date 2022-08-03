@@ -338,6 +338,7 @@ var Timeline = class {
     };
   }
 };
+window["Timeline"] = Timeline;
 export {
   Timeline
 };
