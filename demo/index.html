@@ -27,7 +27,7 @@
 			import {Timeline} from '../dist/timeline.esm.js'
 
 			const log = document.querySelector("#log");
-			const tl = new Timeline("#timeline", {ratio: 100000, pivot: -50000, position: "center"}, (timeline) => {
+			const tl = new Timeline("#timeline", null, (timeline) => {
 				log.innerHTML = JSON.stringify(timeline, undefined, 2)
 			});
 		</script>

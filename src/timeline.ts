@@ -1,99 +1,151 @@
-import { IDater, Dater } from "./dater.js";
 interface ITimelineOptions {
-	labelCount: number;
-	ratio: number;
-	pivot: number;
-	zoomSpeed: number;
-	dragSpeed: number;
-	start: string | number[];
-	end: string | number[];
-	minZoom: number;
-	maxZoom: number;
-	mouseX: number;
-	position: string;
+	labelCount: number | undefined;
+	zoomSpeed: number | undefined;
+	dragSpeed: number | undefined;
+	startDate: number[] | string | number | Date | undefined;
+	endDate: number[] | string | number | Date | undefined;
+	timelineStartDate: number[] | string | number | Date | undefined;
+	timelineEndDate: number[] | string | number | Date | undefined;
+	minZoom: number | undefined;
+	maxZoom: number | undefined;
+	position: string | undefined;
 }
 interface ITimeline {
 	options: ITimelineOptions;
-	element: HTMLElement | undefined;
-	timelineStart: IDater;
-	timelineEnd: IDater;
-	timelineDurationMinutes: number;
-	viewStart: IDater;
-	viewEnd: IDater;
-	viewDurationMinutes: number;
+	element: HTMLElement;
+	startDate: Date;
+	endDate: Date;
+	ratio: number;
+	pivot: number;
 }
 enum Direction {
 	In = -1,Out = 1
 }
+
 export class Timeline implements ITimeline {
-	get timelineDurationMinutes() {
-		return this.timelineEnd.asMinutes - this.timelineStart.asMinutes;
+	ratio: number
+	pivot: number
+	options: ITimelineOptions
+	element: HTMLElement
+	timelineStart: Date
+	timelineEnd: Date
+	callback: (option: ITimeline) => void
+	labelContainer: HTMLDivElement
+	dividerContainer: HTMLDivElement
+	constructor(element: HTMLElement | string, options: object, callback?: (option: ITimeline) => void) {
+		// Handle DOM Element
+		if(!element) throw new Error(`Element argument is empty. Please add DOM element | selector as first arg`);
+		if (typeof element === "string") {
+			const elem = document.querySelector(element) as HTMLElement;
+			if (!elem) throw new Error(`Selector could not be found [${element}]`);
+			this.element = elem;
+		} 
+		if(element instanceof Element) {
+			this.element = element;
+		}
+
+		// Handle options
+		this.options = {
+			...{
+				labelCount: 5,
+				zoomSpeed: 0.025,
+				dragSpeed: 0.003,
+				startDate: "-100y",
+				endDate: "now",
+				timelineStartDate: "min",
+				timelineEndDate: "1000y",
+				minZoom: 1,
+				maxZoom: 1e11,
+				position: "bottom",
+			},
+			...options,
+		};
+
+		// Set timeline boundaries
+		this.timelineStart = this.parseDate(this.options.timelineStartDate);
+		this.timelineEnd = this.parseDate(this.options.timelineEndDate);
+
+		//Calculate view position on timeline
+		const start = this.parseDate(this.options.startDate);
+		const end = this.parseDate(this.options.endDate);
+		const duration = end.getTime() - start.getTime();
+		
+		this.ratio = this.timelineDuration / duration;
+		this.pivot = (this.timelineStart.getTime() - start.getTime()) / duration;
+		
+		// Handle DOM elements setup
+		this.setupHTML();
+
+		// Register Mouse and Resize event handlers
+		this.registerListeners(this.element);
+
+		// Register callback
+		this.callback = callback;
+
+		// Draw
+		this.update();
+	}
+	get timelineDuration() {
+		return this.timelineEnd.getTime() - this.timelineStart.getTime();
 	}
 	get viewWidth() {
 		return this.element?.offsetWidth || 0;
 	}
-	get viewStartMinutes() {
-		return this.timelineStart.asMinutes - this.viewDurationMinutes * this.options.pivot;
+	get start() {
+		return this.timelineStart.getTime() - this.duration * this.pivot;
 	}
-	get viewEndMinutes() {
-		return this.viewStartMinutes + this.viewDurationMinutes;
+	get end() {
+		return this.start + this.duration;
 	}
-	get viewDurationMinutes() {
-		return this.timelineDurationMinutes / this.options.ratio;
+	get duration() {
+		return this.timelineDuration / this.ratio;
 	}
-	get viewStart() {
-		return new Dater(this.viewStartMinutes);
+	get startDate() {
+		return new Date(this.start);
 	}
-	get viewEnd() {
-		return new Dater(this.viewEndMinutes);
+	get endDate() {
+		return new Date(this.end);
 	}
-	view2MinutesRatio(minutes: number) {
-		return (minutes - this.viewStartMinutes) / this.viewDurationMinutes;
+	view2TimeRatio(milliseconds: number) {
+		return (milliseconds - this.start) / this.duration;
 	}
 	setRatio(direction: Direction, deltaRatio: number): boolean {
-		let newRatio = this.options.ratio - deltaRatio;
-
+		let newRatio = this.ratio - deltaRatio;
 		// If zoom OUT - test if zoom is allowed
-		const ratioMin = this.options.minZoom;
-		if (direction === Direction.Out && newRatio <= ratioMin) {
-			//this.options.ratio = ratioMin;
+		if (direction === Direction.Out && newRatio <= this.options.minZoom) {
 			return false;
 		}
 
 		// If zoom IN - test if zoom is allowed
-		const ratioMax = this.options.maxZoom;
-		if (direction === Direction.In && newRatio >= ratioMax) {
-			//this.options.ratio = ratioMax;
+		if (direction === Direction.In && newRatio >= this.options.maxZoom) {
 			return false;
 		}
 
-		this.options.ratio = newRatio;
+		this.ratio = newRatio;
 		return true;
 	}
 	setPivot(deltaPivot: number) {
-		let newPivot = this.options.pivot + deltaPivot;
+		let newPivot = this.pivot + deltaPivot;
 
 		if (newPivot >= 0) {
 			// pivot larger than allowed (too much to the right)
 			newPivot = 0;
 		}
 
-		if (newPivot + this.options.ratio <= 1) {
+		if (newPivot + this.ratio <= 1) {
 			// pivot smaller than allowed (too much to the left)
-			newPivot = 1 - this.options.ratio;
+			newPivot = 1 - this.ratio;
 		}
 
-		this.options.pivot = newPivot;
+		this.pivot = newPivot;
 	}
 	zoom(direction: Direction, mouseX: number) {
-		this.options.mouseX = mouseX;
-
 		// Make zoomSpeed relative to zoomLevel
-		const zoomSpeedScale = this.options.zoomSpeed * this.options.ratio;
+		const zoomSpeedScale = this.options.zoomSpeed * this.ratio;
 		const deltaRatio = direction * zoomSpeedScale;
 
-		const mouseX2view = (this.options.mouseX || 0) / this.viewWidth;
-		const mouseX2timeline = (mouseX2view - this.options.pivot) / this.options.ratio;
+		const mouseX2view = (mouseX || 0) / this.viewWidth;
+		const mouseX2timeline = (mouseX2view - this.pivot) / this.ratio;
 		const deltaPivot = mouseX2timeline * deltaRatio;
 
 		if(this.setRatio(direction, deltaRatio))
@@ -197,9 +249,9 @@ export class Timeline implements ITimeline {
 		this.dividerContainer.style.zIndex = "-10";
 		this.element.appendChild(this.dividerContainer);
 	}
-	format(minutes: number): string {
-		const moment = new Dater(minutes);
-		if (this.viewDurationMinutes < 1440 * 4) {
+	format(milliseconds: number): string {
+		const moment = new Date(milliseconds);
+		if (this.duration < 1440 * 6e5 * 4) {
 			// minutes in an day = 1440
 			return Intl.DateTimeFormat(undefined, {
 				year: "numeric",
@@ -207,56 +259,54 @@ export class Timeline implements ITimeline {
 				day: "numeric",
 				hour: "numeric",
 				minute: "numeric",
-			}).format(moment.date);
+			}).format(moment);
 		}
-		if (this.viewDurationMinutes < 10080 * 6) {
+		if (this.duration < 10080 * 6e5 * 6) {
 			// minutes in a week = 10080
 			return Intl.DateTimeFormat(undefined, {
 				year: "numeric",
 				month: "short",
 				day: "numeric",
-			}).format(moment.date);
+			}).format(moment);
 		}
-		if (this.viewDurationMinutes < 43829.0639 * 18) {
+		if (this.duration < 43829.0639 * 6e5 * 18) {
 			// minutes in a month = 43829.0639
 			return Intl.DateTimeFormat(undefined, {
 				year: "numeric",
 				month: "short",
-			}).format(moment.date);
+			}).format(moment);
 		}
 		// minutes in a year = 525948.766
-		return moment.date.getFullYear().toString();
+		return moment.getFullYear().toString();
 	}
 	update() {
 		if (!this.element) return;
-		const currentLevel = Math.floor(this.options.ratio);
+		const currentLevel = Math.floor(this.ratio);
 		// https://math.stackexchange.com/questions/3381728/find-closest-power-of-2-to-a-specific-number
 		const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
 		const granularity = 1 / (this.options.labelCount + 1);
-		const timelineDurationMinutesExtended = this.timelineDurationMinutes * 1.2;
-		const timelineStartMomentExtended = this.timelineStart.asMinutes - this.timelineDurationMinutes * 0.1;
-		const timelineViewDifferenceMinutes = this.viewStartMinutes - timelineStartMomentExtended;
-		const timestampDistanceMinutes = timelineDurationMinutesExtended * granularity;
+		const timelineViewDifference = this.start - this.timelineStart.getTime();
+		const timestampDistance = this.timelineDuration * granularity;
 
-		const currentTimestampDistanceByLevelMinutes = timestampDistanceMinutes / iterator;
+		const currentTimestampDistanceByLevel = timestampDistance / iterator;
 
 		// Find integer value of timestamp difference
-		const integerDifFraction = Math.floor(timelineViewDifferenceMinutes / currentTimestampDistanceByLevelMinutes);
-		const currentDifInMinutes = integerDifFraction * currentTimestampDistanceByLevelMinutes;
+		const integerDifFraction = Math.floor(timelineViewDifference / currentTimestampDistanceByLevel);
+		const currentDif = integerDifFraction * currentTimestampDistanceByLevel;
 
 		const labels = document.createDocumentFragment();
 		const dividers = document.createDocumentFragment();
 		for (let i = 0; i < this.options.labelCount + 2; i++) {
-			const labelMinutes =
-				(i + 1) * currentTimestampDistanceByLevelMinutes + timelineStartMomentExtended + currentDifInMinutes - currentTimestampDistanceByLevelMinutes;
-			const dividerMinutes = labelMinutes + (currentTimestampDistanceByLevelMinutes / 2);
+			const labelTime =
+				(i + 1) * currentTimestampDistanceByLevel + this.timelineStart.getTime() + currentDif - currentTimestampDistanceByLevel;
+			const dividerTime = labelTime + (currentTimestampDistanceByLevel / 2);
 
 			// Set label position
-			const labelViewRatio = this.view2MinutesRatio(labelMinutes);
+			const labelViewRatio = this.view2TimeRatio(labelTime);
 			const labelViewLeftPosition = labelViewRatio * 100;
 
 			// Set divider position
-			const dividerViewRatio = this.view2MinutesRatio(dividerMinutes);
+			const dividerViewRatio = this.view2TimeRatio(dividerTime);
 			const dividerViewLeftPosition = dividerViewRatio * 100;
 
 			const label = document.createElement("div");
@@ -268,7 +318,7 @@ export class Timeline implements ITimeline {
 			label.style.position = "absolute";
 			label.style.zIndex = "-1";
 			label.style.width = granularity * 100 + "%";
-			label.innerHTML = this.format(labelMinutes);
+			label.innerHTML = this.format(labelTime);
 			labels.appendChild(label);
 
 			const divider = document.createElement("div");
@@ -299,68 +349,77 @@ export class Timeline implements ITimeline {
 		// Dispatch callback
 		if(this.callback) this.callback(this);
 	}
-	constructor(element: HTMLElement | string, options: object, callback?: (option: ITimeline) => void) {
-		// Handle DOM Element
-		if(!element) throw new Error(`Element argument is empty. Please add DOM element | selector as first arg`);
-		if (typeof element === "string") {
-			const elem = document.querySelector(element) as HTMLElement;
-			if (!elem) throw new Error(`Selector could not be found [${element}]`);
-			this.element = elem;
-		} 
-		if(element instanceof Element) {
-			this.element = element;
+	parseDate = (input: number[] | string | number | Date): Date => {
+		if(input === undefined) return new Date();
+
+		if(Array.isArray(input)){
+			let inputArray = input as number[];
+			if (inputArray.length === 0) throw new Error("argument Array cannot be empty");
+			const isNumberArray =
+			inputArray.every((value) => {
+				return typeof value === 'number';
+			});
+			if (!isNumberArray) throw new Error("input Array must contain only numbers");
+			return this.parseDateArray(inputArray);
 		}
 
-		// Handle options
-		this.options = {
-			...{
-				labelCount: 5,
-				ratio: 1,
-				pivot: 0,
-				zoomSpeed: 0.025,
-				dragSpeed: 0.003,
-				start: "-100y",
-				end: "now",
-				minZoom: 1,
-				maxZoom: 100000,
-				mouseX: 0,
-				position: "bottom",
-			},
-			...options,
-		};
+		if(typeof input === "object" && input.constructor.name === "Date"){
+			return input;
+		}
 
-		// Handle start and end moments
-		this.timelineStart = new Dater(this.options.start);
-		this.timelineEnd = new Dater(this.options.end);
+		if(typeof input === "string"){
+			return this.parseDateString(input);
+		}
 
-		// Handle DOM elements setup
-		this.setupHTML();
-
-		// Register Mouse and Resize event handlers
-		this.registerListeners(this.element);
-
-		// Register callback
-		this.callback = callback;
-
-		// Draw
-		this.update();
+		if(typeof input === "number"){
+			return new Date(input);
+		}
 	}
-	options: ITimelineOptions
-	element: HTMLElement
-	timelineStart: IDater
-	timelineEnd: IDater
-	callback: (option: ITimeline) => void
-	labelContainer: HTMLDivElement
-	dividerContainer: HTMLDivElement
+	parseDateArray = (input: number[]): Date => {
+		const date = new Date();
+		date.setFullYear(input[0] || date.getFullYear());
+		date.setMonth(input[1] ? input[1] - 1 : 0);
+		date.setDate(input[2] ? input[2] : 1);
+		date.setHours(input[3] ? input[3] : 0);
+		date.setMinutes(input[4] ? input[4] : 0);
+		return date;
+	}
+	parseDateString = (input: string): Date => {
+		// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
+		// It should be noted that the maximum Date is not of the same value as the maximum safe integer (Number.MAX_SAFE_INTEGER is 9,007,199,254,740,991).
+		// Instead, it is defined in ECMA-262 that a maximum of ±100,000,000 (one hundred million) days relative
+		// to January 1, 1970 UTC (that is, April 20, 271821 BCE ~ September 13, 275760 CE)
+		// can be represented by the standard Date object (equivalent to ±8,640,000,000,000,000 milliseconds).
+		switch (input) {
+			case "now":
+				return new Date(); 
+			case "max":
+				return new Date(8640e12); 
+			case "min":
+				return new Date(-8640e12); 
+			case "-100y":{
+				// 31556926 = Seconds in a year -> now - 100 years
+				return new Date(Date.now() - (31556926 * 1e3 * 100)); 
+			}
+			case "100y":{
+				// 31556926 = Seconds in a year -> now + 100 years
+				return new Date(Date.now() + (31556926 * 1e3 * 100)); 
+			}
+			case "1000y":{
+				// 31556926 = Seconds in a year -> now + 1000 years
+				return new Date(Date.now() + (31556926 * 1e3 * 1000)); 
+			}
+			default:
+				throw new Error(`'[${input}]' could not be parsed as a date`)
+		}
+	}
 	toJSON(){
 		return {
 			options: this.options,
-			timelineStart: this.timelineStart,
-			timelineEnd: this.timelineEnd,
-			timelineDurationMinutes: this.timelineDurationMinutes,
-			viewStart: this.viewStart,
-			viewEnd: this.viewEnd,
-			viewDurationMinutes: this.viewDurationMinutes,
+			startDate: this.startDate,
+			endDate: this.endDate,
+			ratio: this.ratio,
+			pivot: this.pivot,
 		}
 	}
 };
