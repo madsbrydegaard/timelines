@@ -339,5 +339,7 @@
       };
     }
   };
+
+  // src/timeline.umd.js
   window["Timeline"] = Timeline;
 })();
