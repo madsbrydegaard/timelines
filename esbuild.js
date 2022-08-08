@@ -2,6 +2,7 @@ import { build } from "esbuild";
 
 const shared = {
 	bundle: true,
+	minify: true,
 };
 
 build({

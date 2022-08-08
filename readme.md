@@ -35,6 +35,27 @@ Vanilla setup:
     });
 </script>
 ```
+React setup:  
+```
+import { Timeline } from 'timeline.io'
+import { useEffect, createRef } from 'react';
+
+function App() {
+    const myRef = createRef();
+
+    useEffect(()=>{
+        new Timeline(myRef.current)
+    }, [myRef])
+
+    return (
+        <div className="App">
+            <div ref={myRef}></div>
+        </div>
+    );
+}
+
+export default App;
+```
 ## Documentation:
 ```
 // Constructor
