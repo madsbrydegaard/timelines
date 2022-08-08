@@ -1,11 +1,11 @@
 {
-  "include": ["src/**/*"],
+  "include": ["src/timeline.io.ts"],
   "compilerOptions": {
     "declaration": true,
     "emitDeclarationOnly": true,
     "target": "ES6",
     "esModuleInterop": true,
     "noImplicitAny": false,
-    "outFile": "dist/timeline.d.ts",
+    "outFile": "dist/timeline.io.d.ts",
   }
 }

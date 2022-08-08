@@ -23,10 +23,10 @@
 	<body>
 		<div id="timeline"></div>
 		<pre><code id="log"></code></pre>
-		<script src="../dist/timeline.umd.js"></script>
+		<script src="../dist/timeline.io.umd.js"></script>
 		<script>
 			const log = document.querySelector("#log");
-			const tl = new Timeline("#timeline", null, (timeline) => {
+			new Timeline("#timeline", {startDate: '100bc', endDate: '100ad'}, (timeline) => {
 				log.innerHTML = JSON.stringify(timeline, undefined, 2)
 			});
 		</script>

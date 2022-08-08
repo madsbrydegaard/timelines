@@ -1,5 +1,5 @@
-declare module "types" {
-    export interface ITimelineOptions {
+declare module "timeline.io" {
+    interface ITimelineOptions {
         labelCount: number | undefined;
         zoomSpeed: number | undefined;
         dragSpeed: number | undefined;
@@ -11,7 +11,7 @@ declare module "types" {
         maxZoom: number | undefined;
         position: string | undefined;
     }
-    export interface ITimeline {
+    interface ITimeline {
         options: ITimelineOptions;
         element: HTMLElement;
         startDate: Date;
@@ -19,13 +19,10 @@ declare module "types" {
         ratio: number;
         pivot: number;
     }
-    export enum Direction {
+    enum Direction {
         In = -1,
         Out = 1
     }
-}
-declare module "timeline" {
-    import { ITimeline, ITimelineOptions, Direction } from "types";
     export class Timeline implements ITimeline {
         ratio: number;
         pivot: number;

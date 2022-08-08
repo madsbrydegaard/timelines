@@ -15,7 +15,7 @@ var __spreadValues = (a, b) => {
   return a;
 };
 
-// src/timeline.ts
+// src/timeline.io.ts
 var Timeline = class {
   constructor(element, options, callback) {
     if (!element)
@@ -35,7 +35,7 @@ var Timeline = class {
       dragSpeed: 3e-3,
       startDate: "-100y",
       endDate: "now",
-      timelineStartDate: "min",
+      timelineStartDate: "-1000y",
       timelineEndDate: "1000y",
       minZoom: 1,
       maxZoom: 1e11,
@@ -164,8 +164,10 @@ var Timeline = class {
     );
   }
   setupHTML() {
+    this.element.innerHTML = "";
     this.element.style.position = "relative";
     this.element.style.overflow = "hidden";
+    this.element.style.minHeight = "3rem";
     this.labelContainer = document.createElement("div");
     this.labelContainer.className = "timelineLabelContainer";
     this.labelContainer.style.width = "100%";
@@ -315,16 +317,22 @@ var Timeline = class {
         return new Date(864e13);
       case "min":
         return new Date(-864e13);
-      case "-100y": {
-        return new Date(Date.now() - 31556926 * 1e3 * 100);
-      }
-      case "100y": {
-        return new Date(Date.now() + 31556926 * 1e3 * 100);
-      }
-      case "1000y": {
-        return new Date(Date.now() + 31556926 * 1e3 * 1e3);
-      }
       default:
+        const years = Number(input.replace(/y$/, ""));
+        if (!isNaN(years)) {
+          return new Date(Date.now() + 31556926 * 1e3 * years);
+        }
+        const year0 = new Date("0001-01-01");
+        const yearsBC = Number(input.replace(/bc$/, ""));
+        if (!isNaN(yearsBC)) {
+          console.log("yearsBC", yearsBC);
+          return new Date(year0.getTime() - 31556926 * 1e3 * yearsBC);
+        }
+        const yearsAD = Number(input.replace(/ad$/, ""));
+        if (!isNaN(yearsAD)) {
+          console.log("yearsAD", yearsAD);
+          return new Date(year0.getTime() + 31556926 * 1e3 * yearsAD);
+        }
         throw new Error(`'[${input}]' could not be parsed as a date`);
     }
   }

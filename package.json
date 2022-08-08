@@ -2,8 +2,7 @@
   "name": "timeline.io",
   "version": "1.0.0",
   "description": "Timeline wrapper with support for zoom and pan",
-  "main": "dist/timeline.js",
-  "module": "dist/timeline.js",
+  "main": "index.js",
   "scripts": {
     "build": "node esbuild.js && tsc",
     "test": "echo \"Error: no test specified\" && exit 1"

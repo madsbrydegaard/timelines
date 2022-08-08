@@ -1,4 +1,26 @@
-import {ITimeline, ITimelineOptions, Direction} from './types'
+interface ITimelineOptions {
+	labelCount: number | undefined;
+	zoomSpeed: number | undefined;
+	dragSpeed: number | undefined;
+	startDate: number[] | string | number | Date | undefined;
+	endDate: number[] | string | number | Date | undefined;
+	timelineStartDate: number[] | string | number | Date | undefined;
+	timelineEndDate: number[] | string | number | Date | undefined;
+	minZoom: number | undefined;
+	maxZoom: number | undefined;
+	position: string | undefined;
+}
+interface ITimeline {
+	options: ITimelineOptions;
+	element: HTMLElement;
+	startDate: Date;
+	endDate: Date;
+	ratio: number;
+	pivot: number;
+}
+enum Direction {
+	In = -1,Out = 1
+}
 
 export class Timeline implements ITimeline {
 	ratio: number
@@ -30,7 +52,7 @@ export class Timeline implements ITimeline {
 				dragSpeed: 0.003,
 				startDate: "-100y",
 				endDate: "now",
-				timelineStartDate: "min",
+				timelineStartDate: "-1000y",
 				timelineEndDate: "1000y",
 				minZoom: 1,
 				maxZoom: 1e11,
@@ -89,6 +111,7 @@ export class Timeline implements ITimeline {
 	}
 	setRatio(direction: Direction, deltaRatio: number): boolean {
 		let newRatio = this.ratio - deltaRatio;
+
 		// If zoom OUT - test if zoom is allowed
 		if (direction === Direction.Out && newRatio <= this.options.minZoom) {
 			return false;
@@ -194,10 +217,13 @@ export class Timeline implements ITimeline {
 		);
 	}
 	setupHTML(): void{
+		// Empty parent container
+		this.element.innerHTML = '';
 		// Register parent as position = "relative" for absolute positioning to work
 		this.element.style.position = "relative";
 		// Register parent overflow = "hidden" to hide overflow moments
 		this.element.style.overflow = "hidden";
+		this.element.style.minHeight = "3rem";
 
 		this.labelContainer = document.createElement("div");
 		this.labelContainer.className = "timelineLabelContainer";
@@ -375,19 +401,21 @@ export class Timeline implements ITimeline {
 				return new Date(8640e12); 
 			case "min":
 				return new Date(-8640e12); 
-			case "-100y":{
-				// 31556926 = Seconds in a year -> now - 100 years
-				return new Date(Date.now() - (31556926 * 1e3 * 100)); 
-			}
-			case "100y":{
-				// 31556926 = Seconds in a year -> now + 100 years
-				return new Date(Date.now() + (31556926 * 1e3 * 100)); 
-			}
-			case "1000y":{
-				// 31556926 = Seconds in a year -> now + 1000 years
-				return new Date(Date.now() + (31556926 * 1e3 * 1000)); 
-			}
 			default:
+				// 31556926 = Seconds in a year
+				const years = Number(input.replace(/y$/, ''))
+				if(!isNaN(years)){
+					return new Date(Date.now() + (31556926 * 1e3 * years)); 
+				}
+				const year0 = new Date('0001-01-01');
+				const yearsBC = Number(input.replace(/bc$/, ''))
+				if(!isNaN(yearsBC)){
+					return new Date(year0.getTime() - 31556926 * 1e3 * yearsBC); 
+				}
+				const yearsAD = Number(input.replace(/ad$/, ''))
+				if(!isNaN(yearsAD)){
+					return new Date(year0.getTime() + 31556926 * 1e3 * yearsAD); 
+				}
 				throw new Error(`'[${input}]' could not be parsed as a date`)
 		}
 	}
