@@ -27,7 +27,7 @@
 			import {Timeline} from '../dist/timeline.esm.js'
 
 			const log = document.querySelector("#log");
-			new Timeline("#timeline", null, (timeline) => {
+			new Timeline("#timeline", {startDate: '-500y', endDate: '500y'}, (timeline) => {
 				log.innerHTML = JSON.stringify(timeline, undefined, 2)
 			});
 		</script>
