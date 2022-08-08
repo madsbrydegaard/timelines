@@ -35,7 +35,7 @@
         zoomSpeed: 0.025,
         dragSpeed: 3e-3,
         startDate: "-100y",
-        endDate: "now",
+        endDate: "10y",
         timelineStartDate: "-1000y",
         timelineEndDate: "1000y",
         minZoom: 1,
@@ -326,12 +326,10 @@
           const year0 = new Date("0001-01-01");
           const yearsBC = Number(input.replace(/bc$/, ""));
           if (!isNaN(yearsBC)) {
-            console.log("yearsBC", yearsBC);
             return new Date(year0.getTime() - 31556926 * 1e3 * yearsBC);
           }
           const yearsAD = Number(input.replace(/ad$/, ""));
           if (!isNaN(yearsAD)) {
-            console.log("yearsAD", yearsAD);
             return new Date(year0.getTime() + 31556926 * 1e3 * yearsAD);
           }
           throw new Error(`'[${input}]' could not be parsed as a date`);

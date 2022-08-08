@@ -51,7 +51,7 @@ export class Timeline implements ITimeline {
 				zoomSpeed: 0.025,
 				dragSpeed: 0.003,
 				startDate: "-100y",
-				endDate: "now",
+				endDate: "10y",
 				timelineStartDate: "-1000y",
 				timelineEndDate: "1000y",
 				minZoom: 1,
