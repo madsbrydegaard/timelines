@@ -68,6 +68,8 @@ export class Timeline implements ITimeline {
 		//Calculate view position on timeline
 		const start = this.parseDate(this.options.startDate);
 		const end = this.parseDate(this.options.endDate);
+		if(start.getTime() < this.timelineStart.getTime()) this.timelineStart = start
+		if(end.getTime() > this.timelineEnd.getTime()) this.timelineEnd = end
 		const duration = end.getTime() - start.getTime();
 		
 		this.ratio = this.timelineDuration / duration;
