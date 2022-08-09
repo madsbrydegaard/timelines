@@ -33,7 +33,7 @@ export class Timeline implements ITimeline {
 	callback: (option: ITimeline) => void
 	labelContainer: HTMLDivElement
 	dividerContainer: HTMLDivElement
-	constructor(element: HTMLElement | string, options: object, callback?: (option: ITimeline) => void) {
+	constructor(element: HTMLElement | string, options: object, callback?: (timeline: ITimeline) => void) {
 		// Handle DOM Element
 		if(!element) throw new Error(`Element argument is empty. Please add DOM element | selector as first arg`);
 		if (typeof element === "string") {

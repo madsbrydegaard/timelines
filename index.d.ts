@@ -34,7 +34,7 @@ declare module "timeline.io" {
         callback: (option: ITimeline) => void;
         labelContainer: HTMLDivElement;
         dividerContainer: HTMLDivElement;
-        constructor(element: HTMLElement | string, options: object, callback?: (option: ITimeline) => void);
+        constructor(element: HTMLElement | string, options: object, callback?: (timeline: ITimeline) => void);
         get timelineDuration(): number;
         get viewWidth(): number;
         get start(): number;
