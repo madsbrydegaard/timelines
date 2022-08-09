@@ -16,9 +16,9 @@ declare module "timeline.io" {
         element: HTMLElement;
         startDate: Date;
         endDate: Date;
+        duration: number;
         ratio: number;
         pivot: number;
-        getLeftRatio(milliseconds: number): number;
     }
     enum Direction {
         In = -1,
@@ -42,7 +42,6 @@ declare module "timeline.io" {
         get duration(): number;
         get startDate(): Date;
         get endDate(): Date;
-        getLeftRatio(milliseconds: number): number;
         setRatio(direction: Direction, deltaRatio: number): boolean;
         setPivot(deltaPivot: number): void;
         zoom(direction: Direction, mouseX: number): void;
@@ -58,6 +57,7 @@ declare module "timeline.io" {
             options: ITimelineOptions;
             startDate: Date;
             endDate: Date;
+            duration: number;
             ratio: number;
             pivot: number;
             getLeftRatio: (milliseconds: number) => number;

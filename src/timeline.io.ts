@@ -15,9 +15,9 @@ interface ITimeline {
 	element: HTMLElement;
 	startDate: Date;
 	endDate: Date;
+	duration: number;
 	ratio: number;
 	pivot: number;
-	getLeftRatio(milliseconds: number): number;
 }
 enum Direction {
 	In = -1,Out = 1
@@ -108,9 +108,6 @@ export class Timeline implements ITimeline {
 	}
 	get endDate(): Date {
 		return new Date(this.end);
-	}
-	getLeftRatio(milliseconds: number): number {
-		return (milliseconds - this.start) / this.duration;
 	}
 	setRatio(direction: Direction, deltaRatio: number): boolean {
 		let newRatio = this.ratio - deltaRatio;
@@ -309,11 +306,11 @@ export class Timeline implements ITimeline {
 			const dividerTime = labelTime + (currentTimestampDistanceByLevel / 2);
 
 			// Set label position
-			const labelViewRatio = this.getLeftRatio(labelTime);
+			const labelViewRatio = this.toJSON().getLeftRatio(labelTime);
 			const labelViewLeftPosition = labelViewRatio * 100;
 
 			// Set divider position
-			const dividerViewRatio = this.getLeftRatio(dividerTime);
+			const dividerViewRatio = this.toJSON().getLeftRatio(dividerTime);
 			const dividerViewLeftPosition = dividerViewRatio * 100;
 
 			const label = document.createElement("div");
@@ -427,9 +424,12 @@ export class Timeline implements ITimeline {
 			options: this.options,
 			startDate: this.startDate,
 			endDate: this.endDate,
+			duration: this.duration,
 			ratio: this.ratio,
 			pivot: this.pivot,
-			getLeftRatio: this.getLeftRatio,
+			getLeftRatio: (milliseconds: number): number => {
+				return (milliseconds - this.startDate.getTime()) / this.duration;
+			},
 		}
 	}
 };
