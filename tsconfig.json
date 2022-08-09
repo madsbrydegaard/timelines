@@ -6,6 +6,6 @@
     "target": "ES6",
     "esModuleInterop": true,
     "noImplicitAny": false,
-    "outFile": "dist/timeline.io.d.ts",
+    "outFile": "index.d.ts",
   }
 }
