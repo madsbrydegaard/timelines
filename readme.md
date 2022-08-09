@@ -1,11 +1,11 @@
 # Timeline.io
-Timeline engine for creating timelines with zoom and pan.  
+Timeline engine for creating robust and flexible timelines with zoom and pan.  
 
-The project is created as the main engine in web projects that visualize earth´s and human history.  
+The project is designed to act as the main engine in web projects that visualize earth´s and human history.  
 
-Engine code re-calculates points in time on every frame using milliseconds as timescale. It does not depent on expanding divs or any other HTML elements which makes it able to zoom past most browser limits.
+Code re-calculates points in time on every frame using milliseconds as timescale. It does not depent on expanding divs or any other HTML elements which makes it able to zoom past most browser limits.
 
-Timeline.io currently uses javascript Date object which is limited by ECMA-262 (that is, April 20, 271821 BCE ~ September 13, 275760 CE). Hence it can currently span ±8,640,000,000,000,000 milliseconds with zero (0) being unix time 0 (Jan 1 1970).
+Timeline.io currently uses javascript Date object underneath which is limited by ECMA-262 (that is, April 20, 271821 BCE ~ September 13, 275760 CE). Hence it can currently span ±8,640,000,000,000,000 milliseconds with zero (0) being unix time 0 (Jan 1 1970).
 
 ## How to use:
 Module supports both ESM and UMD - please check demos.
@@ -85,11 +85,15 @@ Default configuration looks like this:
     timelineEndDate: "1000y",       // When overall timeline boundary should end. (See below for valid input)
     minZoom: 1,                     // How far out zoom is allowed
     maxZoom: 1e11,                  // How far in zoom is allowed
-    position: "bottom",             // Where to vertically place the timeline in the container
+    position: "bottom",             // Where to vertically place the timeline in the container. 'bottom' | 'center' | 'top'
 }
 ```
 **Allowed values for dates**:  
 Timeline has its own Date string parser which supports the following specials:
+- 'YYYY-MM-DDTHH:mm:ss.sssZ' -> ISO 8601 string 
+- 'now' -> Translates to current time = new Date()
+- 'min' -> Translates to minimum possible time = new Date(-8640e12)
+- 'max' -> Translates to maximum possible time = new Date(8640e12)
 - 'XXXy' -> any positive or negative number with a trailing 'y'. Translates relative to now. Eg. '-1000y' = Minus 1000 years from now.
 - 'XXXbc' -> any positive or negative number with a trailing 'bc'. Translates into that specific year - BC. Eg. '100bc' = Year -100
 - 'XXXad' -> any positive or negative number with a trailing 'ad'. Translates into that specific year - AD. Eg. '100ad' = Year 100
@@ -98,10 +102,31 @@ Timeline has its own Date string parser which supports the following specials:
 It includes a 'state' object with current timeline details.
 ```
 {
-    options -> Options object
-    startDate -> Current startDate for timeline view
-    endDate -> Current endDate for timeline view
-    ratio -> Current ratio for timeline view. Ratio represents the level of zooming
-    pivot -> Current pivot for timeline view. Pivot represents level of panning
+    options: object -> Configuration object - see above
+    startDate: Date -> Current startDate for timeline view
+    endDate: Date -> Current endDate for timeline view
+    ratio: Number -> Current ratio for timeline view. Ratio represents the level of zooming
+    pivot: Number -> Current pivot for timeline view. Pivot represents level of panning
+}
+
+Eg.
+
+{
+  "options": {
+    "labelCount": 5,
+    "zoomSpeed": 0.025,
+    "dragSpeed": 0.003,
+    "startDate": "100bc",
+    "endDate": "100ad",
+    "timelineStartDate": "-1000y",
+    "timelineEndDate": "1000y",
+    "minZoom": 1,
+    "maxZoom": 100000000000,
+    "position": "bottom"
+  },
+  "startDate": "0235-01-01T02:25:14.517Z",
+  "endDate": "0342-11-17T17:48:17.787Z",
+  "ratio": 28.93640073102412,
+  "pivot": -3.0960720833611
 }
 ```

@@ -418,7 +418,7 @@ export class Timeline implements ITimeline {
 				if(!isNaN(yearsAD)){
 					return new Date(year0.getTime() + 31556926 * 1e3 * yearsAD); 
 				}
-				throw new Error(`'[${input}]' could not be parsed as a date`)
+				return new Date(input);
 		}
 	}
 	toJSON(){
