@@ -185,6 +185,7 @@ export class Timeline implements ITimeline {
 		// Add drag event handler
 		let dragStartX: number, dragStartY: number;
 		let inDrag = false;
+		let enableCall = true;
 		element.addEventListener(
 			"mousedown",
 			function (e) {
@@ -197,14 +198,16 @@ export class Timeline implements ITimeline {
 		element.addEventListener(
 			"mousemove",
 			function (e) {
-				if (!inDrag) {
+				if (!inDrag || !enableCall) {
 					return;
 				}
+				enableCall = false;
 				const deltaScrollLeft = (e.pageX - dragStartX) * vm.options.dragSpeed;
 				//const deltaScrollTop = (e.pageY - dragStartY) * vm.options.dragSpeed;
 				vm.move(deltaScrollLeft);
 				dragStartX = e.pageX;
 				dragStartY = e.pageY;
+				setTimeout(() => enableCall = true, 10); // Throttle mousemove for performance reasons
 			},
 			{ passive: false }
 		);
@@ -217,15 +220,36 @@ export class Timeline implements ITimeline {
 		);
 	}
 	setupHTML(): void{
-		// Empty parent container
-		this.element.innerHTML = '';
+
+		const events = this.element.querySelectorAll('.timelineEvent');
+		events.forEach((event) => {
+			const htmlEvent = event as HTMLElement;
+			const startAttr = htmlEvent.getAttribute('startdate');
+			if(startAttr) {
+				const startDate = this.parseDateString(startAttr);
+				this.element.addEventListener('update', (evt)=>{
+					const leftRatio = (evt as CustomEvent).detail.getLeftRatio(startDate.getTime());
+					const visible = leftRatio > 0 && leftRatio < 1;
+					htmlEvent.style.display = visible ? "block" : "none";
+					if(visible) htmlEvent.style.left = leftRatio * 100 + '%'
+				}
+			)}
+			htmlEvent.style.width = '5px';
+			htmlEvent.style.height = '5px';
+			htmlEvent.style.border = 'solid 1px black';
+			htmlEvent.style.borderRadius = '50%';
+			htmlEvent.style.position = 'absolute';
+			htmlEvent.style.bottom = '4rem';
+		});
+
 		// Register parent as position = "relative" for absolute positioning to work
 		this.element.style.position = "relative";
 		// Register parent overflow = "hidden" to hide overflow moments
 		this.element.style.overflow = "hidden";
 		this.element.style.minHeight = "3rem";
 
-		this.labelContainer = document.createElement("div");
+		const labelContainer = this.element.querySelector('.timelineLabelContainer') as HTMLDivElement;
+		this.labelContainer = labelContainer || document.createElement("div");
 		this.labelContainer.className = "timelineLabelContainer";
 		this.labelContainer.style.width = "100%";
 		this.labelContainer.style.height = "3rem";
@@ -243,15 +267,16 @@ export class Timeline implements ITimeline {
 			default:
 				this.labelContainer.style.bottom = "0";
 		}
-		this.element.appendChild(this.labelContainer);
+		if(!labelContainer) this.element.appendChild(this.labelContainer);
 
-		this.dividerContainer = document.createElement("div");
+		const dividerContainer = this.element.querySelector('.timelineDividerContainer') as HTMLDivElement;
+		this.dividerContainer = dividerContainer || document.createElement("div");
 		this.dividerContainer.className = "timelineDividerContainer";
 		this.dividerContainer.style.width = "100%";
 		this.dividerContainer.style.height = "100%";
 		this.dividerContainer.style.position = "absolute";
 		this.dividerContainer.style.zIndex = "-10";
-		this.element.appendChild(this.dividerContainer);
+		if(!dividerContainer) this.element.appendChild(this.dividerContainer);
 	}
 	format(milliseconds: number): string {
 		const moment = new Date(milliseconds);
