@@ -28,13 +28,15 @@ declare module "timeline.io" {
         ratio: number;
         pivot: number;
         options: ITimelineOptions;
+        events: any[];
         element: HTMLElement;
         timelineStart: Date;
         timelineEnd: Date;
         callback: (option: ITimeline) => void;
         labelContainer: HTMLDivElement;
         dividerContainer: HTMLDivElement;
-        constructor(element: HTMLElement | string, options: object, callback?: (timeline: ITimeline) => void);
+        eventsContainer: HTMLDivElement;
+        constructor(element: HTMLElement | string, events: any[], options: object, callback?: (timeline: ITimeline) => void);
         get timelineDuration(): number;
         get viewWidth(): number;
         get start(): number;
@@ -47,12 +49,16 @@ declare module "timeline.io" {
         zoom(direction: Direction, mouseX: number): void;
         move(deltaPivot: number): void;
         registerListeners(element: HTMLElement): void;
-        setupHTML(): void;
+        setupEventsHTML(sortedEvents: any[], level?: number): void;
+        setupContainerHTML(): void;
         format(milliseconds: number): string;
         update(): void;
         parseDate(input: number[] | string | number | Date): Date;
         parseDateArray(input: number[]): Date;
         parseDateString(input: string): Date;
+        parseEvents(events: any[]): any[];
+        parseTimelineHTML(input: HTMLElement): any[];
+        addCSS(css: string): void;
         toJSON(): {
             options: ITimelineOptions;
             startDate: Date;
