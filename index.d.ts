@@ -20,6 +20,13 @@ declare module "timeline.io" {
         ratio: number;
         pivot: number;
     }
+    export interface ITimelineEvent {
+        startdate: Date;
+        enddate?: Date;
+        duration?: number;
+        title: string;
+        events?: ITimelineEvent[];
+    }
     enum Direction {
         In = -1,
         Out = 1
@@ -28,7 +35,7 @@ declare module "timeline.io" {
         ratio: number;
         pivot: number;
         options: ITimelineOptions;
-        events: any[];
+        events: ITimelineEvent[];
         element: HTMLElement;
         timelineStart: Date;
         timelineEnd: Date;
@@ -36,7 +43,7 @@ declare module "timeline.io" {
         labelContainer: HTMLDivElement;
         dividerContainer: HTMLDivElement;
         eventsContainer: HTMLDivElement;
-        constructor(element: HTMLElement | string, events: any[], options: object, callback?: (timeline: ITimeline) => void);
+        constructor(element: HTMLElement | string, events: ITimelineEvent[], options: object, callback?: (timeline: ITimeline) => void);
         get timelineDuration(): number;
         get viewWidth(): number;
         get start(): number;
@@ -56,7 +63,7 @@ declare module "timeline.io" {
         parseDate(input: number[] | string | number | Date): Date;
         parseDateArray(input: number[]): Date;
         parseDateString(input: string): Date;
-        parseEvents(events: any[]): any[];
+        parseEvents(events: ITimelineEvent[]): ITimelineEvent[];
         parseTimelineHTML(input: HTMLElement): any[];
         addCSS(css: string): void;
         toJSON(): {

@@ -19,6 +19,13 @@ interface ITimeline {
 	ratio: number;
 	pivot: number;
 }
+export interface ITimelineEvent {
+	startdate: Date;
+	enddate?: Date;
+	duration?: number;
+	title: string;
+	events?: ITimelineEvent[];
+}
 enum Direction {
 	In = -1,Out = 1
 }
@@ -27,7 +34,7 @@ export class Timeline implements ITimeline {
 	ratio: number
 	pivot: number
 	options: ITimelineOptions
-	events: any[]
+	events: ITimelineEvent[]
 	element: HTMLElement
 	timelineStart: Date
 	timelineEnd: Date
@@ -35,7 +42,7 @@ export class Timeline implements ITimeline {
 	labelContainer: HTMLDivElement
 	dividerContainer: HTMLDivElement
 	eventsContainer: HTMLDivElement
-	constructor(element: HTMLElement | string, events: any[], options: object, callback?: (timeline: ITimeline) => void) {
+	constructor(element: HTMLElement | string, events: ITimelineEvent[], options: object, callback?: (timeline: ITimeline) => void) {
 		// Handle DOM Element
 		if(!element) throw new Error(`Events argument is empty. Please add Array of events | DOM element | selector as first arg`);
 		if (typeof element === "string") {
@@ -47,17 +54,11 @@ export class Timeline implements ITimeline {
 			this.element = element;
 		}
 		
-		// Parse HTML events
-		this.events = this.parseTimelineHTML(this.element);
-
-		// Merge Object events
-		if(Array.isArray(events)) {
-			// Merge with object events
-			this.events = [...events, ...this.events];
-		}
+		// Merge events param and HTML events
+		const mergedEvents = [...(Array.isArray(events) ? events : []), ...this.parseTimelineHTML(this.element)];
 
 		// Parse & sort all events
-		this.events = this.parseEvents(this.events);
+		this.events = [...this.parseEvents(mergedEvents)];
 
 		// Handle options
 		this.options = {
@@ -338,7 +339,7 @@ export class Timeline implements ITimeline {
 		this.eventsContainer.style.bottom = '4rem';
 		this.eventsContainer.style.height = `7rem`
 		this.eventsContainer.style.width = "100%";
-		this.eventsContainer.style.zIndex = "0";
+		this.eventsContainer.style.zIndex = "-1";
 	}
 	format(milliseconds: number): string {
 		const moment = new Date(milliseconds);
@@ -511,13 +512,13 @@ export class Timeline implements ITimeline {
 				return new Date(input);
 		}
 	}
-	parseEvents(events: any[]): any[] {
+	parseEvents(events: ITimelineEvent[]): ITimelineEvent[] {
 		if(!Array.isArray(events)){
 			console.warn('Events object is not an array', events); 
 			return [];
 		}
 		return events.reduce((result, timelineEvent) => {
-			const children = timelineEvent.events ? this.parseEvents(timelineEvent.events) : []
+			const children = timelineEvent.events ? [...this.parseEvents(timelineEvent.events)] : []
 			if(!timelineEvent.startdate && !children.length) { 
 				console.warn('Missing startdate on event', timelineEvent, events)
 				return result;
@@ -539,7 +540,6 @@ export class Timeline implements ITimeline {
 				duration: durationMinutes,
 				...timelineEvent,
 				startdate: startDate,
-				startTime: startTime,
 				enddate: endDate,
 				events: children,
 			});
