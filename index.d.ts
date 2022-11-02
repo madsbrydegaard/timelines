@@ -10,6 +10,7 @@ declare module "timeline.io" {
         minZoom: number | undefined;
         maxZoom: number | undefined;
         position: string | undefined;
+        expandRatio: number | undefined;
     }
     interface ITimeline {
         options: ITimelineOptions;
@@ -22,10 +23,13 @@ declare module "timeline.io" {
     }
     export interface ITimelineEvent {
         startdate: Date;
-        enddate?: Date;
-        duration?: number;
+        enddate: Date | undefined;
+        duration: number | undefined;
         title: string;
-        events?: ITimelineEvent[];
+        events: ITimelineEvent[] | undefined;
+        level: number;
+        nestingLevel: number;
+        maxLevel: number;
     }
     enum Direction {
         In = -1,
@@ -56,14 +60,14 @@ declare module "timeline.io" {
         zoom(direction: Direction, mouseX: number): void;
         move(deltaPivot: number): void;
         registerListeners(element: HTMLElement): void;
-        setupEventsHTML(sortedEvents: any[], level?: number): void;
+        setupEventsHTML(sortedEvents: ITimelineEvent[], container: HTMLElement, nestingLevel?: number): void;
         setupContainerHTML(): void;
         format(milliseconds: number): string;
         update(): void;
         parseDate(input: number[] | string | number | Date): Date;
         parseDateArray(input: number[]): Date;
         parseDateString(input: string): Date;
-        parseEvents(events: ITimelineEvent[]): ITimelineEvent[];
+        parseEvents(events: ITimelineEvent[], nestingLevel?: number): ITimelineEvent[];
         parseTimelineHTML(input: HTMLElement): any[];
         addCSS(css: string): void;
         toJSON(): {
