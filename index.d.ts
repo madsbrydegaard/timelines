@@ -11,6 +11,7 @@ declare module "timeline.io" {
         maxZoom: number | undefined;
         position: string | undefined;
         expandRatio: number | undefined;
+        eventHeight: number | undefined;
     }
     interface ITimeline {
         options: ITimelineOptions;
@@ -60,7 +61,7 @@ declare module "timeline.io" {
         zoom(direction: Direction, mouseX: number): void;
         move(deltaPivot: number): void;
         registerListeners(element: HTMLElement): void;
-        setupEventsHTML(sortedEvents: ITimelineEvent[], container: HTMLElement, nestingLevel?: number): void;
+        setupEventsHTML(sortedEvents: ITimelineEvent[], container: HTMLElement): void;
         setupContainerHTML(): void;
         format(milliseconds: number): string;
         update(): void;

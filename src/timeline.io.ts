@@ -10,6 +10,7 @@ interface ITimelineOptions {
 	maxZoom: number | undefined;
 	position: string | undefined;
 	expandRatio: number | undefined;
+	eventHeight: number | undefined;
 }
 interface ITimeline {
 	options: ITimelineOptions;
@@ -78,6 +79,7 @@ export class Timeline implements ITimeline {
 				maxZoom: 1e11,
 				position: "bottom",
 				expandRatio: 30,
+				eventHeight: 5,
 			},
 			...options,
 		};
@@ -241,45 +243,45 @@ export class Timeline implements ITimeline {
 			{ passive: false }
 		);
 	}
-	setupEventsHTML(sortedEvents: ITimelineEvent[], container: HTMLElement, nestingLevel: number = 0): void{
+	setupEventsHTML(sortedEvents: ITimelineEvent[], container: HTMLElement): void{
 		const eventsFragment = document.createDocumentFragment();
 		sortedEvents.forEach((timelineEvent, i) => {
 			try{
+				let heightFactor = this.options.eventHeight;
+				let bottomFactor = this.options.eventHeight;
 				const startTime = timelineEvent.startdate.getTime();
 				const endTime = timelineEvent.enddate.getTime();
 				const leftRatio = (startTime - this.startDate.getTime()) / this.duration;
-				const rightRatio = (endTime - this.startDate.getTime()) / this.duration;
-				const visible = rightRatio > 0 && leftRatio < 1;
-				if(!visible) return;
+				if(startTime > this.endDate.getTime()) return;
+				if(endTime < this.startDate.getTime()) return;
 				const eventHTML = document.createElement("div");
-				eventHTML.className = "timelineGeneratedEvent";
 				const eventDuration = Number(timelineEvent.duration) * 6e4;
 				const widthRatio = (eventDuration / this.duration) * 100
 				const expanded = widthRatio > this.options.expandRatio;
-				const greyScale = 240 - Math.pow(4,nestingLevel)
+				const greyScale = 240 - Math.pow(10,timelineEvent.nestingLevel)
 				if(expanded && timelineEvent.events.length){
-					this.setupEventsHTML(timelineEvent.events, container, timelineEvent.nestingLevel);
-					eventHTML.style.minHeight = `${(timelineEvent.maxLevel+1)}rem`;
-					eventHTML.style.bottom = `${timelineEvent.level-.2}rem`;
+					this.setupEventsHTML(timelineEvent.events, container);
+					heightFactor = (timelineEvent.maxLevel+1)+(.5*(timelineEvent.maxLevel+2));
+					bottomFactor = timelineEvent.level;
 					eventHTML.style.left = (leftRatio * 100) - 1 + '%'
 					eventHTML.style.width = widthRatio + 2 + '%'
 				} else {
-					eventHTML.style.minHeight = `${(timelineEvent.maxLevel+1)*.5}rem`;
-					eventHTML.style.bottom = `${timelineEvent.level}rem`;
+					heightFactor = timelineEvent.maxLevel+1;
+					bottomFactor = timelineEvent.level+(.5*(timelineEvent.level+1));
 					eventHTML.style.left = leftRatio * 100 + '%'
 					eventHTML.style.width = widthRatio + '%'
 				}
+				eventHTML.style.minHeight = `${heightFactor*this.options.eventHeight}px`;
+				eventHTML.style.bottom = `${bottomFactor*this.options.eventHeight}px`;
 				eventHTML.style.position = 'absolute';
-				
 				eventHTML.style.minWidth = '5px';
 				eventHTML.style.borderRadius = '5px'
 				eventHTML.style.border = 'solid 1px black';
 				eventHTML.style.backgroundColor = `rgb(${greyScale},${greyScale},${greyScale})`
-				//eventHTML.style.bottom = `${timelineEvent.level}rem`;
 				eventHTML.style.zIndex = timelineEvent.nestingLevel.toString();
 				eventHTML.title = timelineEvent.title;
-				//eventHTML.ariaLevel = timelineEvent.level.toString();
-				
+				eventHTML.className = "timelineEventGenerated";
+
 				eventsFragment.appendChild(eventHTML);
 			} catch(error){
 				console.error(error, 'timelineEvent', timelineEvent);
@@ -526,7 +528,7 @@ export class Timeline implements ITimeline {
 		}
 		
 		// Level Calculator for simultanious events
-		const eventLevelMatrix = {0:0}
+		const eventLevelMatrix = {0:Number.MIN_SAFE_INTEGER}
 		const calcEventLevel = (startTime: number, endTime: number): number => {
 			let maxLevel = 0;
 			for(const eventLevel in eventLevelMatrix){
