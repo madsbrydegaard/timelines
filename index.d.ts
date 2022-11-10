@@ -29,8 +29,8 @@ declare module "timeline.io" {
         title: string;
         events: ITimelineEvent[] | undefined;
         level: number;
-        nestingLevel: number;
-        maxLevel: number;
+        depth: number;
+        height: number;
     }
     enum Direction {
         In = -1,
@@ -56,21 +56,21 @@ declare module "timeline.io" {
         get duration(): number;
         get startDate(): Date;
         get endDate(): Date;
+        getLeftRatio(milliseconds: number): number;
         setRatio(direction: Direction, deltaRatio: number): boolean;
         setPivot(deltaPivot: number): void;
         zoom(direction: Direction, mouseX: number): void;
         move(deltaPivot: number): void;
         registerListeners(element: HTMLElement): void;
-        setupEventsHTML(sortedEvents: ITimelineEvent[], container: HTMLElement): void;
+        createEventsHTML(sortedEvents: ITimelineEvent[], parent?: ITimelineEvent): DocumentFragment;
         setupContainerHTML(): void;
         format(milliseconds: number): string;
         update(): void;
         parseDate(input: number[] | string | number | Date): Date;
         parseDateArray(input: number[]): Date;
         parseDateString(input: string): Date;
-        parseEvents(events: ITimelineEvent[], nestingLevel?: number): ITimelineEvent[];
+        parseEvents(events: ITimelineEvent[], parent?: ITimelineEvent): ITimelineEvent[];
         parseTimelineHTML(input: HTMLElement): any[];
-        addCSS(css: string): void;
         toJSON(): {
             options: ITimelineOptions;
             startDate: Date;
@@ -78,7 +78,6 @@ declare module "timeline.io" {
             duration: number;
             ratio: number;
             pivot: number;
-            getLeftRatio: (milliseconds: number) => number;
         };
     }
 }
