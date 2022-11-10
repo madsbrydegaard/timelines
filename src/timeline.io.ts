@@ -187,66 +187,67 @@ export class Timeline implements ITimeline {
 	}
 	registerListeners(element: HTMLElement): void {
 		const vm = this;
-		window.addEventListener(
-			"resize",
-			function () {
-				vm.update();
-			},
-			{ passive: true }
-		);
+
+		// Add resize handler
+		const resize = function () {
+			vm.update();
+		}
+		window.removeEventListener("resize", resize);
+		window.addEventListener("resize", resize, { passive: true });
+
 
 		// Add zoom event handler
-		element.addEventListener(
-			"wheel",
-			function (event) {
-				event.preventDefault();
-				// Decide whether zoom is IN (-) or OUT (+)
-				var direction = Math.sign(event.deltaY) as Direction;
-				// console.log('wheel', direction, event)
-				// Adjust width of timeline for zooming effect
-				vm.zoom(direction, event.offsetX);
-			},
-			{ passive: false }
-		);
+		const wheel = function (event) {
+			//event.preventDefault();
+			// Decide whether zoom is IN (-) or OUT (+)
+			var direction = Math.sign(event.deltaY) as Direction;
+			// console.log('wheel', direction, event)
+			// Adjust width of timeline for zooming effect
+			const leftRatio = event.target.attributes["starttime"]
+				? vm.getLeftRatio(event.target.attributes["starttime"])
+				: 0
+			const offsetX = leftRatio * vm.element.getBoundingClientRect().width + event.offsetX;
+			vm.zoom(direction, offsetX);
+		}
+		element.removeEventListener("wheel",wheel);
+		element.addEventListener("wheel", wheel, { passive: true });
 
 		// Add drag event handler
 		let dragStartX: number, dragStartY: number;
 		let inDrag = false;
 		let enableCall = true;
-		element.addEventListener(
-			"mousedown",
-			function (e) {
-				inDrag = true;
-				dragStartX = e.pageX;
-				dragStartY = e.pageY;
-			},
-			{ passive: false }
-		);
-		element.addEventListener(
-			"mousemove",
-			function (e) {
-				if (!inDrag || !enableCall) {
-					return;
-				}
-				enableCall = false;
-				const deltaScrollLeft = (e.pageX - dragStartX) * vm.options.dragSpeed;
-				//const deltaScrollTop = (e.pageY - dragStartY) * vm.options.dragSpeed;
-				vm.move(deltaScrollLeft);
-				dragStartX = e.pageX;
-				dragStartY = e.pageY;
-				setTimeout(() => enableCall = true, 10); // Throttle mousemove for performance reasons
-			},
-			{ passive: false }
-		);
-		document.addEventListener(
-			"mouseup",
-			function () {
-				inDrag = false;
-			},
-			{ passive: false }
-		);
+		const mousedown = function (e) {
+			inDrag = true;
+			dragStartX = e.pageX;
+			dragStartY = e.pageY;
+		}
+		element.removeEventListener("mousedown",mousedown);
+		element.addEventListener("mousedown", mousedown, { passive: true });
+
+		// Add move handler
+		const mousemove = function (e) {
+			if (!inDrag || !enableCall) {
+				return;
+			}
+			enableCall = false;
+			const deltaScrollLeft = (e.pageX - dragStartX) * vm.options.dragSpeed;
+			//const deltaScrollTop = (e.pageY - dragStartY) * vm.options.dragSpeed;
+			vm.move(deltaScrollLeft);
+			dragStartX = e.pageX;
+			dragStartY = e.pageY;
+			setTimeout(() => enableCall = true, 10); // Throttle mousemove for performance reasons
+		}
+		element.removeEventListener("mousemove",mousemove);
+		element.addEventListener("mousemove", mousemove, { passive: true });
+
+		// Add mouse up handler
+		const mouseup = function () {
+			inDrag = false;
+		}
+		element.removeEventListener("mouseup",mouseup);
+		document.addEventListener("mouseup", mouseup, { passive: true });
 	}
-	createEventsHTML(sortedEvents: ITimelineEvent[], parent: ITimelineEvent = null): DocumentFragment{
+	setupEventsHTML(sortedEvents: ITimelineEvent[], parent: ITimelineEvent = null): DocumentFragment{
 		const eventsFragment = document.createDocumentFragment();
 		sortedEvents.forEach((timelineEvent, i) => {
 			try{
@@ -263,7 +264,7 @@ export class Timeline implements ITimeline {
 				const expanded = widthRatio > this.options.expandRatio;
 				const greyScale = 240 - Math.pow(10,timelineEvent.depth)
 				if(expanded && timelineEvent.events.length){
-					eventsFragment.append(this.createEventsHTML(timelineEvent.events, timelineEvent));
+					eventsFragment.append(this.setupEventsHTML(timelineEvent.events, timelineEvent));
 					heightFactor = timelineEvent.height + ((timelineEvent.height - 1) * .5);
 					eventHTML.style.left = (leftRatio * 100) + '%'
 					eventHTML.style.width = widthRatio + '%'
@@ -281,6 +282,7 @@ export class Timeline implements ITimeline {
 				eventHTML.style.zIndex = timelineEvent.depth.toString();
 				eventHTML.title = timelineEvent.title;
 				eventHTML.className = "timelineEventGenerated";
+				eventHTML.attributes["starttime"] = startTime;
 
 				eventsFragment.appendChild(eventHTML);
 			} catch(error){
@@ -432,7 +434,7 @@ export class Timeline implements ITimeline {
 		this.dividerContainer.appendChild(dividers);
 
 		//
-		const eventsHtml = this.createEventsHTML(this.events);
+		const eventsHtml = this.setupEventsHTML(this.events);
 		this.eventsContainer.innerHTML = "";
 		this.eventsContainer.appendChild(eventsHtml);
 
