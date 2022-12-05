@@ -33,6 +33,8 @@ declare module "timeline.io" {
         depth: number;
         height: number;
         score: number;
+        type: string;
+        color: number[];
     }
     enum Direction {
         In = -1,
@@ -64,7 +66,7 @@ declare module "timeline.io" {
         zoom(direction: Direction, mouseX: number): void;
         move(deltaPivot: number): void;
         registerListeners(element: HTMLElement): void;
-        setupEventsHTML(sortedEvents: ITimelineEvent[], parent?: ITimelineEvent): DocumentFragment;
+        setupEventsHTML(events: ITimelineEvent[], parent?: ITimelineEvent): DocumentFragment;
         setupContainerHTML(): void;
         format(milliseconds: number): string;
         update(): void;

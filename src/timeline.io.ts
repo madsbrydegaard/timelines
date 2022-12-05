@@ -32,6 +32,8 @@ export interface ITimelineEvent {
 	depth: number;
 	height: number;
 	score: number;
+	type: string;
+	color: number[];
 }
 enum Direction {
 	In = -1,Out = 1
@@ -249,9 +251,13 @@ export class Timeline implements ITimeline {
 		element.removeEventListener("mouseup",mouseup);
 		document.addEventListener("mouseup", mouseup, { passive: true });
 	}
-	setupEventsHTML(sortedEvents: ITimelineEvent[], parent: ITimelineEvent = null): DocumentFragment {
+	setupEventsHTML(events: ITimelineEvent[], parent: ITimelineEvent = null): DocumentFragment {
 		const eventsFragment = document.createDocumentFragment();
-		sortedEvents.forEach((timelineEvent, i) => {
+
+		// Iterate timline events
+		events
+			.filter((rawEvent) => rawEvent.type === 'timeline')
+			.forEach((timelineEvent, i) => {
 			try{
 				const startTime = timelineEvent.startdate.getTime();
 				const endTime = timelineEvent.enddate.getTime();
@@ -264,22 +270,26 @@ export class Timeline implements ITimeline {
 				const eventDuration = Number(timelineEvent.duration) * 6e4;
 				const widthRatio = (eventDuration / this.duration) * 100
 				const expanded = widthRatio > this.options.expandRatio;
-				const greyScale = 240 - Math.pow(10,timelineEvent.depth)
+				const color = timelineEvent.color.map((color)=>(color - Math.pow(10,timelineEvent.depth)))
 				if(expanded && timelineEvent.events.length){
 					eventsFragment.append(this.setupEventsHTML(timelineEvent.events, timelineEvent));
-					eventHTML.style.left = (leftRatio * 100) + '%'
-					eventHTML.style.width = widthRatio + '%'
-				} else {
-					eventHTML.style.left = (leftRatio * 100) + '%'
-					eventHTML.style.width = widthRatio + '%'
 				}
-				eventHTML.style.minHeight = `${heightFactor*this.options.eventHeight}px`;
-				eventHTML.style.bottom = `${levelFactor*this.options.eventHeight}px`;
+				switch(this.options.position){
+					case "top":
+						eventHTML.style.minHeight = `${heightFactor*this.options.eventHeight}px`;
+						eventHTML.style.bottom = `${levelFactor*this.options.eventHeight}px`;
+						break;
+					default:
+						eventHTML.style.bottom = `${levelFactor*this.options.eventHeight+50}px`;
+						eventHTML.style.minHeight = `${heightFactor*this.options.eventHeight}px`;
+				}
+				eventHTML.style.left = (leftRatio * 100) + '%'
+				eventHTML.style.width = widthRatio + '%'
 				eventHTML.style.position = 'absolute';
 				eventHTML.style.minWidth = '5px';
 				eventHTML.style.borderRadius = '5px'
 				eventHTML.style.boxShadow = 'inset #666 0px 0px 1px 0.5px';
-				eventHTML.style.backgroundColor = `rgb(${greyScale},${greyScale},${greyScale})`
+				eventHTML.style.backgroundColor = `rgb(${color[0]},${color[1]},${color[2]})`
 				eventHTML.style.zIndex = timelineEvent.depth.toString();
 				eventHTML.title = timelineEvent.title;
 				eventHTML.className = "timelineEventGenerated";
@@ -291,16 +301,52 @@ export class Timeline implements ITimeline {
 			}
 		});
 
+		// Iterate background events
+		events
+			.filter((rawEvent) => rawEvent.type === 'background')
+			.forEach((backgroundEvent, i) => {
+			try{
+				const startTime = backgroundEvent.startdate.getTime();
+				const endTime = backgroundEvent.enddate.getTime();
+				const leftRatio = this.getLeftRatio(startTime);
+				if(startTime > this.endDate.getTime()) return;
+				if(endTime < this.startDate.getTime()) return;
+				const eventHTML = document.createElement("div");
+				const eventDuration = Number(backgroundEvent.duration) * 6e4;
+				const widthRatio = (eventDuration / this.duration) * 100
+				const color = backgroundEvent.color.map((color)=>(color - Math.pow(10,backgroundEvent.depth)))
+				eventHTML.style.left = (leftRatio * 100) + '%'
+				eventHTML.style.width = widthRatio + '%'
+				switch(this.options.position){
+					case "top":
+						eventHTML.style.bottom = `0px`;
+						break;
+					default:
+						eventHTML.style.bottom = `50px`;
+				}
+				eventHTML.style.minHeight = `calc(100% - 50px)`;
+				eventHTML.style.position = 'absolute';
+				eventHTML.style.minWidth = '5px';
+				eventHTML.style.backgroundColor = `rgba(${color[0]},${color[1]},${color[2]}, .05)`
+				eventHTML.style.zIndex = "-3";
+				eventHTML.title = backgroundEvent.title;
+				eventHTML.className = "timelineEventGenerated";
+				eventHTML.attributes["starttime"] = startTime;
+
+				eventsFragment.appendChild(eventHTML);
+			} catch(error){
+				console.error(error, 'backgroundEvent', backgroundEvent);
+			}
+		});
+
 		return eventsFragment;
 	}
 	setupContainerHTML(): void {
 		// Register parent as position = "relative" for absolute positioning to work
 		this.element.style.position = "relative";
-		// Register parent overflow = "hidden" to hide overflow moments
 		this.element.style.overflow = "hidden";
 		this.element.style.minHeight = "3rem";
-		this.element.style.zIndex = "0";
-
+		
 		// Initialize labels
 		const labelContainer = this.element.querySelector('.timelineLabelContainer') as HTMLDivElement;
 		this.labelContainer = labelContainer || document.createElement("div");
@@ -311,7 +357,6 @@ export class Timeline implements ITimeline {
 		this.labelContainer.style.height = "3rem";
 		this.labelContainer.style.textAlign = "center";
 		this.labelContainer.style.position = "absolute";
-		this.labelContainer.style.zIndex = "-9";
 		switch(this.options.position){
 			case "top":
 				this.labelContainer.style.top = "0";
@@ -333,7 +378,7 @@ export class Timeline implements ITimeline {
 		this.dividerContainer.style.width = "100%";
 		this.dividerContainer.style.height = "100%";
 		this.dividerContainer.style.position = "absolute";
-		this.dividerContainer.style.zIndex = "-10";
+		this.dividerContainer.style.zIndex = "-2";
 
 		// Initialize events container
 		const eventsContainer = this.element.querySelector('.timelineEventsContainer') as HTMLDivElement;
@@ -341,10 +386,9 @@ export class Timeline implements ITimeline {
 		if(!eventsContainer) this.element.appendChild(this.eventsContainer);
 		this.eventsContainer.className = "timelineEventsContainer";
 		this.eventsContainer.style.position = 'absolute';
-		this.eventsContainer.style.bottom = '4rem';
-		//this.eventsContainer.style.height = `7rem`
+		this.eventsContainer.style.bottom = '0';
+		this.eventsContainer.style.height = "100%";
 		this.eventsContainer.style.width = "100%";
-		this.eventsContainer.style.zIndex = "-1";
 	}
 	format(milliseconds: number): string {
 		const moment = new Date(milliseconds);
@@ -523,6 +567,12 @@ export class Timeline implements ITimeline {
 			console.warn('Events object is not an array', events); 
 			return [];
 		}
+
+		const isNumberArray = (array: any[]) => {
+			return array.every(element => {
+				return typeof element === 'number';
+			});
+		}
 		
 		// Enrich and Reduce result
 		const result = events.reduce<ITimelineEvent[]>((result, timelineEvent) => {
@@ -559,10 +609,18 @@ export class Timeline implements ITimeline {
 			const endTime = endDate.getTime()
 			const durationMinutes = (endTime - startTime) / 6e4;
 
+			const color = timelineEvent.color 
+				? isNumberArray(timelineEvent.color) 
+					? timelineEvent.color
+					: [240,240,240]
+				: [240,240,240]
+
 			// Add to result
 			result.push({
 				duration: durationMinutes,
+				type: "timeline",
 				...timelineEvent,
+				color: color,
 				startdate: startDate,
 				enddate: endDate,
 				events: children,
