@@ -28,8 +28,10 @@ export interface ITimelineEvent {
 	title: string;
 	events: ITimelineEvent[] | undefined;
 	level: number;
+	step: number;
 	depth: number;
 	height: number;
+	score: number;
 }
 enum Direction {
 	In = -1,Out = 1
@@ -58,12 +60,6 @@ export class Timeline implements ITimeline {
 		if(element instanceof HTMLElement) {
 			this.element = element;
 		}
-		
-		// Merge events param and HTML events
-		const mergedEvents = [...(Array.isArray(events) ? events : []), ...this.parseTimelineHTML(this.element)];
-
-		// Parse & sort all events
-		this.events = [...this.parseEvents(mergedEvents)];
 
 		// Handle options
 		this.options = {
@@ -78,12 +74,12 @@ export class Timeline implements ITimeline {
 				minZoom: 1,
 				maxZoom: 1e11,
 				position: "bottom",
-				expandRatio: 30,
+				expandRatio: 80,
 				eventHeight: 5,
 			},
 			...options,
 		};
-
+		
 		// Set timeline boundaries
 		this.timelineStart = this.parseDate(this.options.timelineStartDate);
 		this.timelineEnd = this.parseDate(this.options.timelineEndDate);
@@ -97,6 +93,12 @@ export class Timeline implements ITimeline {
 
 		this.ratio = this.timelineDuration / viewDuration;
 		this.pivot = (this.timelineStart.getTime() - start.getTime()) / viewDuration;
+
+		// Merge events param and HTML events
+		const mergedEvents = [...(Array.isArray(events) ? events : []), ...this.parseTimelineHTML(this.element)];
+
+		// Parse & sort all events
+		this.events = [...this.parseEvents(mergedEvents)];
 
 		console.log(this.events)
 		
@@ -247,7 +249,7 @@ export class Timeline implements ITimeline {
 		element.removeEventListener("mouseup",mouseup);
 		document.addEventListener("mouseup", mouseup, { passive: true });
 	}
-	setupEventsHTML(sortedEvents: ITimelineEvent[], parent: ITimelineEvent = null): DocumentFragment{
+	setupEventsHTML(sortedEvents: ITimelineEvent[], parent: ITimelineEvent = null): DocumentFragment {
 		const eventsFragment = document.createDocumentFragment();
 		sortedEvents.forEach((timelineEvent, i) => {
 			try{
@@ -256,7 +258,7 @@ export class Timeline implements ITimeline {
 				const leftRatio = this.getLeftRatio(startTime);
 				if(startTime > this.endDate.getTime()) return;
 				if(endTime < this.startDate.getTime()) return;
-				let heightFactor = 1;
+				let heightFactor = timelineEvent.height + ((timelineEvent.height - 1) * .5);
 				let levelFactor = (timelineEvent.level - 1 + (parent ? parent.level : 1) - 1) * 1.5;
 				const eventHTML = document.createElement("div");
 				const eventDuration = Number(timelineEvent.duration) * 6e4;
@@ -265,7 +267,6 @@ export class Timeline implements ITimeline {
 				const greyScale = 240 - Math.pow(10,timelineEvent.depth)
 				if(expanded && timelineEvent.events.length){
 					eventsFragment.append(this.setupEventsHTML(timelineEvent.events, timelineEvent));
-					heightFactor = timelineEvent.height + ((timelineEvent.height - 1) * .5);
 					eventHTML.style.left = (leftRatio * 100) + '%'
 					eventHTML.style.width = widthRatio + '%'
 				} else {
@@ -292,7 +293,7 @@ export class Timeline implements ITimeline {
 
 		return eventsFragment;
 	}
-	setupContainerHTML(): void{
+	setupContainerHTML(): void {
 		// Register parent as position = "relative" for absolute positioning to work
 		this.element.style.position = "relative";
 		// Register parent overflow = "hidden" to hide overflow moments
@@ -523,30 +524,6 @@ export class Timeline implements ITimeline {
 			return [];
 		}
 		
-		// Level Calculator for simultanious events
-		const eventLevelMatrix = {1:{height: 0, time: Number.MIN_SAFE_INTEGER}}
-		const calcEventLevel = (timelineEvent: ITimelineEvent): number => {
-			let nextLevel = 0; let level = 1
-			for(const eventLevel in eventLevelMatrix){
-				nextLevel = Number(eventLevel);
-				if(timelineEvent.startdate.getTime() > eventLevelMatrix[eventLevel].time){
-					for(let i = 0; i < timelineEvent.height; i++){
-						eventLevelMatrix[(nextLevel+i).toString()] = {
-							height: timelineEvent.height,
-							time: timelineEvent.enddate.getTime()
-						}
-					}
-					return nextLevel;
-				}
-			}
-			nextLevel++
-			eventLevelMatrix[nextLevel.toString()] = {
-				height: timelineEvent.height,
-				time: timelineEvent.enddate.getTime()
-			}
-			return nextLevel;
-		}
-		
 		// Enrich and Reduce result
 		const result = events.reduce<ITimelineEvent[]>((result, timelineEvent) => {
 			//set event depth before parsing children
@@ -596,18 +573,79 @@ export class Timeline implements ITimeline {
 			return result;
 		}, []);
 
-		// Sort result
+		// Sort result by start
 		const sortedResult = result.sort((a,b)=>a.startdate.getTime() - b.startdate.getTime());
 
-		//if(!depth) console.log(1, maxLevelResult)
+		// Level Calculator(s) for simultanious events
+		const levelMatrix = {1:{height: 0, time: Number.MIN_SAFE_INTEGER}}
+		const calcLevel = (timelineEvent: ITimelineEvent): number => {
+			let level = 0
+			for(const eventLevel in levelMatrix){
+				level = Number(eventLevel);
+				if(timelineEvent.startdate.getTime() > levelMatrix[eventLevel].time){
+					for(let i = 0; i < timelineEvent.height; i++){
+						levelMatrix[(level+i).toString()] = {
+							height: timelineEvent.height,
+							time: timelineEvent.enddate.getTime()
+						}
+					}
+					return level;
+				}
+			}
+			level++
+			for(let i = 0; i < timelineEvent.height; i++){
+				levelMatrix[(level+i).toString()] = {
+					height: timelineEvent.height,
+					time: timelineEvent.enddate.getTime()
+				}
+			}
+			return level;
+		}
+
+		// Flat does not count height as part of level
+		const stepMatrix = {1:{height: 0, time: Number.MIN_SAFE_INTEGER}}
+		const calcStep = (timelineEvent: ITimelineEvent): number => {
+			let step = 0
+			for(const eventLevel in stepMatrix){
+				step = Number(eventLevel);
+				if(timelineEvent.startdate.getTime() > stepMatrix[eventLevel].time){
+					stepMatrix[(step).toString()] = {
+						height: timelineEvent.height,
+						time: timelineEvent.enddate.getTime()
+					}
+					return step;
+				}
+			}
+			step++
+			stepMatrix[(step).toString()] = {
+				height: timelineEvent.height,
+				time: timelineEvent.enddate.getTime()
+			}
+			return step;
+		}
+
 		// Add level to sorted result in order to stack simultanous events
 		const levelResult = sortedResult.map<ITimelineEvent>((timelineEvent, i) => ({
 			...timelineEvent, 
-			level: calcEventLevel(timelineEvent)
+			level: calcLevel(timelineEvent),
+			step: calcStep(timelineEvent)
 		}));
 
-		// Calc max level for nested events
-		return levelResult;
+		const calcScore = (timelineEvent: ITimelineEvent): number => {
+			let score = 1
+			const durationRatio = timelineEvent.duration / this.timelineDuration;
+			score = durationRatio * timelineEvent.height
+			return score;
+		}
+
+		// Add score to result in order to sort by importance
+		const scoreResult = levelResult.map<ITimelineEvent>((timelineEvent, i) => ({
+			...timelineEvent, 
+			score: calcScore(timelineEvent)
+		}));
+
+		// Return
+		return scoreResult;
 	}
 	parseTimelineHTML(input: HTMLElement): any[] {
 		// Initialize events
@@ -628,7 +666,7 @@ export class Timeline implements ITimeline {
 		}
 		return result;
 	}
-	toJSON(){
+	toJSON() {
 		return {
 			options: this.options,
 			startDate: this.startDate,
