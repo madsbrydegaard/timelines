@@ -282,6 +282,8 @@ export class Timeline implements ITimeline {
 			eventHTML.innerText = timelineEvent.title;
 			eventHTML.className = "timelineEventGeneratedTitle";
 			eventHTML.style.whiteSpace = 'nowrap';
+			eventHTML.style.pointerEvents = 'none';
+			eventHTML.style.userSelect = 'none';
 			return eventHTML;
 		}
 
@@ -301,7 +303,7 @@ export class Timeline implements ITimeline {
 							eventHTML.style.bottom = `50px`;
 					}
 					eventHTML.style.minHeight = `calc(100% - 50px)`;
-					eventHTML.style.backgroundColor = `rgba(${color[0]},${color[1]},${color[2]}, .05)`
+					eventHTML.style.backgroundColor = `rgba(${color[0]},${color[1]},${color[2]}, .05)`;
 					eventHTML.append(createTimelineEventTitleHTML(backgroundEvent))
 
 					eventsFragment.appendChild(eventHTML);
@@ -336,7 +338,8 @@ export class Timeline implements ITimeline {
 							eventHTML.style.minHeight = `${heightFactor*this.options.eventHeight}px`;
 					}
 					eventHTML.style.borderRadius = '5px'
-					eventHTML.style.boxShadow = 'inset #666 0px 0px 1px 0.5px';
+					eventHTML.style.boxSizing = 'border-box'
+					eventHTML.style.border = '1px solid rgba(100,100,100,.5)'
 					eventHTML.style.backgroundColor = `rgb(${color[0]},${color[1]},${color[2]})`
 					eventHTML.style.zIndex = timelineEvent.depth.toString();
 					eventsFragment.appendChild(eventHTML);
@@ -361,9 +364,11 @@ export class Timeline implements ITimeline {
 
 		this.labelContainer.className = "timelineLabelContainer";
 		this.labelContainer.style.width = "100%";
-		this.labelContainer.style.height = "3rem";
+		this.labelContainer.style.height = "50px";
 		this.labelContainer.style.textAlign = "center";
 		this.labelContainer.style.position = "absolute";
+		this.labelContainer.style.pointerEvents = 'none';
+		this.labelContainer.style.userSelect = 'none';
 		switch(this.options.position){
 			case "top":
 				this.labelContainer.style.top = "0";
