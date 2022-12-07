@@ -254,88 +254,95 @@ export class Timeline implements ITimeline {
 	setupEventsHTML(events: ITimelineEvent[], parent: ITimelineEvent = null): DocumentFragment {
 		const eventsFragment = document.createDocumentFragment();
 
-		// Iterate timline events
-		events
-			.filter((rawEvent) => rawEvent.type === 'timeline')
-			.forEach((timelineEvent, i) => {
-			try{
-				const startTime = timelineEvent.startdate.getTime();
-				const endTime = timelineEvent.enddate.getTime();
-				const leftRatio = this.getLeftRatio(startTime);
-				if(startTime > this.endDate.getTime()) return;
-				if(endTime < this.startDate.getTime()) return;
-				let heightFactor = timelineEvent.height + ((timelineEvent.height - 1) * .5);
-				let levelFactor = (timelineEvent.level - 1 + (parent ? parent.level : 1) - 1) * 1.5;
-				const eventHTML = document.createElement("div");
-				const eventDuration = Number(timelineEvent.duration) * 6e4;
-				const widthRatio = (eventDuration / this.duration) * 100
-				const expanded = widthRatio > this.options.expandRatio;
-				const color = timelineEvent.color.map((color)=>(color - Math.pow(10,timelineEvent.depth)))
-				if(expanded && timelineEvent.events.length){
-					eventsFragment.append(this.setupEventsHTML(timelineEvent.events, timelineEvent));
-				}
-				switch(this.options.position){
-					case "top":
-						eventHTML.style.minHeight = `${heightFactor*this.options.eventHeight}px`;
-						eventHTML.style.bottom = `${levelFactor*this.options.eventHeight}px`;
-						break;
-					default:
-						eventHTML.style.bottom = `${levelFactor*this.options.eventHeight+50}px`;
-						eventHTML.style.minHeight = `${heightFactor*this.options.eventHeight}px`;
-				}
-				eventHTML.style.left = (leftRatio * 100) + '%'
-				eventHTML.style.width = widthRatio + '%'
-				eventHTML.style.position = 'absolute';
-				eventHTML.style.minWidth = '5px';
-				eventHTML.style.borderRadius = '5px'
-				eventHTML.style.boxShadow = 'inset #666 0px 0px 1px 0.5px';
-				eventHTML.style.backgroundColor = `rgb(${color[0]},${color[1]},${color[2]})`
-				eventHTML.style.zIndex = timelineEvent.depth.toString();
-				eventHTML.title = timelineEvent.title;
-				eventHTML.className = "timelineEventGenerated";
-				eventHTML.attributes["starttime"] = startTime;
+		const createTimelineEventHTML = (timelineEvent: ITimelineEvent) : HTMLDivElement => {
+			const startTime = timelineEvent.startdate.getTime();
+			const endTime = timelineEvent.enddate.getTime();
+			const leftRatio = this.getLeftRatio(startTime);
+			if(startTime > this.endDate.getTime()) return null;
+			if(endTime < this.startDate.getTime()) return null;
+			const eventHTML = document.createElement("div");
+			const eventDuration = Number(timelineEvent.duration) * 6e4;
+			const widthRatio = (eventDuration / this.duration) * 100;
 
-				eventsFragment.appendChild(eventHTML);
-			} catch(error){
-				console.error(error, 'timelineEvent', timelineEvent);
-			}
-		});
+			eventHTML.style.left = (leftRatio * 100) + '%'
+			eventHTML.style.width = widthRatio + '%'
+			eventHTML.style.position = 'absolute';
+			eventHTML.style.minWidth = '5px';
+			eventHTML.style.overflow = 'hidden';
+			eventHTML.title = timelineEvent.title;
+			eventHTML.className = "timelineEventGenerated";
+			eventHTML.attributes["starttime"] = startTime;
+			eventHTML.attributes["expanded"] = widthRatio > this.options.expandRatio;
+			return eventHTML;
+		}
+
+		const createTimelineEventTitleHTML = (timelineEvent: ITimelineEvent) : HTMLDivElement => {
+			const eventHTML = document.createElement("div");
+			eventHTML.title = timelineEvent.title;
+			eventHTML.innerText = timelineEvent.title;
+			eventHTML.className = "timelineEventGeneratedTitle";
+			eventHTML.style.whiteSpace = 'nowrap';
+			return eventHTML;
+		}
 
 		// Iterate background events
 		events
 			.filter((rawEvent) => rawEvent.type === 'background')
 			.forEach((backgroundEvent, i) => {
 			try{
-				const startTime = backgroundEvent.startdate.getTime();
-				const endTime = backgroundEvent.enddate.getTime();
-				const leftRatio = this.getLeftRatio(startTime);
-				if(startTime > this.endDate.getTime()) return;
-				if(endTime < this.startDate.getTime()) return;
-				const eventHTML = document.createElement("div");
-				const eventDuration = Number(backgroundEvent.duration) * 6e4;
-				const widthRatio = (eventDuration / this.duration) * 100
-				const color = backgroundEvent.color.map((color)=>(color - Math.pow(10,backgroundEvent.depth)))
-				eventHTML.style.left = (leftRatio * 100) + '%'
-				eventHTML.style.width = widthRatio + '%'
-				switch(this.options.position){
-					case "top":
-						eventHTML.style.bottom = `0px`;
-						break;
-					default:
-						eventHTML.style.bottom = `50px`;
-				}
-				eventHTML.style.minHeight = `calc(100% - 50px)`;
-				eventHTML.style.position = 'absolute';
-				eventHTML.style.minWidth = '5px';
-				eventHTML.style.backgroundColor = `rgba(${color[0]},${color[1]},${color[2]}, .05)`
-				eventHTML.style.zIndex = "-3";
-				eventHTML.title = backgroundEvent.title;
-				eventHTML.className = "timelineEventGenerated";
-				eventHTML.attributes["starttime"] = startTime;
+				const eventHTML = createTimelineEventHTML(backgroundEvent)
+				if(eventHTML){
+					const color = backgroundEvent.color.map((color)=>(color - Math.pow(10,backgroundEvent.depth)))
+					switch(this.options.position){
+						case "top":
+							eventHTML.style.bottom = `0px`;
+							break;
+						default:
+							eventHTML.style.bottom = `50px`;
+					}
+					eventHTML.style.minHeight = `calc(100% - 50px)`;
+					eventHTML.style.backgroundColor = `rgba(${color[0]},${color[1]},${color[2]}, .05)`
+					eventHTML.append(createTimelineEventTitleHTML(backgroundEvent))
 
-				eventsFragment.appendChild(eventHTML);
+					eventsFragment.appendChild(eventHTML);
+				}
 			} catch(error){
 				console.error(error, 'backgroundEvent', backgroundEvent);
+			}
+		});
+
+		// Iterate timline events
+		events
+			.filter((rawEvent) => rawEvent.type === 'timeline')
+			.forEach((timelineEvent, i) => {
+			try{
+				
+				const eventHTML = createTimelineEventHTML(timelineEvent)
+				if(eventHTML){
+					let heightFactor = timelineEvent.height + ((timelineEvent.height - 1) * .5);
+					let levelFactor = (timelineEvent.level - 1 + (parent ? parent.level : 1) - 1) * 1.5;
+					const expanded = !!eventHTML.attributes["expanded"];
+					const color = timelineEvent.color.map((color)=>(color - Math.pow(10,timelineEvent.depth)))
+					if(expanded && timelineEvent.events.length){
+						eventsFragment.append(this.setupEventsHTML(timelineEvent.events, timelineEvent));
+					}
+					switch(this.options.position){
+						case "top":
+							eventHTML.style.minHeight = `${heightFactor*this.options.eventHeight}px`;
+							eventHTML.style.bottom = `${levelFactor*this.options.eventHeight}px`;
+							break;
+						default:
+							eventHTML.style.bottom = `${levelFactor*this.options.eventHeight+50}px`;
+							eventHTML.style.minHeight = `${heightFactor*this.options.eventHeight}px`;
+					}
+					eventHTML.style.borderRadius = '5px'
+					eventHTML.style.boxShadow = 'inset #666 0px 0px 1px 0.5px';
+					eventHTML.style.backgroundColor = `rgb(${color[0]},${color[1]},${color[2]})`
+					eventHTML.style.zIndex = timelineEvent.depth.toString();
+					eventsFragment.appendChild(eventHTML);
+				}
+			} catch(error){
+				console.error(error, 'timelineEvent', timelineEvent);
 			}
 		});
 
@@ -361,10 +368,10 @@ export class Timeline implements ITimeline {
 			case "top":
 				this.labelContainer.style.top = "0";
 				break;
-			case "center":
-				this.labelContainer.style.top = "50%";
-				this.labelContainer.style.transform = "translate(0, calc(-50%))";
-				break;
+			// case "center":
+			// 	this.labelContainer.style.top = "50%";
+			// 	this.labelContainer.style.transform = "translate(0, calc(-50%))";
+			// 	break;
 			default:
 				this.labelContainer.style.bottom = "0";
 		}
@@ -683,10 +690,11 @@ export class Timeline implements ITimeline {
 		}
 
 		// Add level to sorted result in order to stack simultanous events
-		const levelResult = sortedResult.map<ITimelineEvent>((timelineEvent, i) => ({
+		const levelResult = sortedResult
+		.map<ITimelineEvent>((timelineEvent, i) => ({
 			...timelineEvent, 
-			level: calcLevel(timelineEvent),
-			step: calcStep(timelineEvent)
+			level: timelineEvent.type === 'timeline' ? calcLevel(timelineEvent) : 0,
+			step: timelineEvent.type === 'timeline' ? calcStep(timelineEvent) : 0
 		}));
 
 		const calcScore = (timelineEvent: ITimelineEvent): number => {
