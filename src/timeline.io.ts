@@ -1,32 +1,23 @@
 interface ITimelineOptions {
-	labelCount: number | undefined;
-	zoomSpeed: number | undefined;
-	dragSpeed: number | undefined;
-	startDate: number[] | string | number | Date | undefined;
-	endDate: number[] | string | number | Date | undefined;
-	timelineStartDate: number[] | string | number | Date | undefined;
-	timelineEndDate: number[] | string | number | Date | undefined;
-	minZoom: number | undefined;
-	maxZoom: number | undefined;
-	position: string | undefined;
-	expandRatio: number | undefined;
-	eventHeight: number | undefined;
+	labelCount: number;
+	zoomSpeed: number;
+	dragSpeed: number;
+	viewStart?: number[] | string | number | Date;
+	viewEnd?: number[] | string | number | Date;
+	timelineStart: number[] | string | number | Date;
+	timelineEnd: number[] | string | number | Date;
+	minZoom: number;
+	maxZoom: number;
+	position: string;
+	expandRatio: number;
+	eventHeight: number;
 }
 interface ITimeline {
-	options: ITimelineOptions;
-	element: HTMLElement;
-	startDate: Date;
-	endDate: Date;
+	start: number;
+	end: number;
 	duration: number;
-	ratio: number;
-	pivot: number;
-}
-export interface ITimelineEvent {
-	startdate: Date;
-	enddate: Date | undefined;
-	duration: number | undefined;
 	title: string;
-	events: ITimelineEvent[] | undefined;
+	children: ITimeline[];
 	level: number;
 	step: number;
 	depth: number;
@@ -34,235 +25,253 @@ export interface ITimelineEvent {
 	score: number;
 	type: string;
 	color: number[];
+	expanded: boolean;
+}
+export interface ITimelineEvent {
+	title: string;
+	start?: number[] | string | number | Date;
+	end?: number[] | string | number | Date;
+	duration?: number;
+	events?: ITimelineEvent[];
+	type?: string;
+	color?: number[];
 }
 enum Direction {
 	In = -1,Out = 1
 }
 
-export class Timeline implements ITimeline {
-	ratio: number
-	pivot: number
-	options: ITimelineOptions
-	events: ITimelineEvent[]
-	element: HTMLElement
-	timelineStart: Date
-	timelineEnd: Date
-	callback: (option: ITimeline) => void
-	labelContainer: HTMLDivElement
-	dividerContainer: HTMLDivElement
-	eventsContainer: HTMLDivElement
-	constructor(element: HTMLElement | string, events: ITimelineEvent[], options: object, callback?: (timeline: ITimeline) => void) {
+export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITimelineEvent, settings: object) => {
+	let ratio: number
+	let pivot: number
+	let timelineStart: number
+	let timelineEnd: number
+	let element: HTMLElement
+	let options: ITimelineOptions
+	let labelContainer: HTMLDivElement
+	let dividerContainer: HTMLDivElement
+	let eventsContainer: HTMLDivElement
+	let headerContainer: HTMLDivElement
+	let history: ITimeline[] = []
+
+	const init = (elementIdentifier: HTMLElement | string, timelineEvent: ITimelineEvent, settings: object) => {
 		// Handle DOM Element
-		if(!element) throw new Error(`Events argument is empty. Please add Array of events | DOM element | selector as first arg`);
-		if (typeof element === "string") {
-			const elem = document.querySelector(element) as HTMLElement;
+		if(!elementIdentifier) throw new Error(`Element argument is empty. DOM element | selector as first arg`);
+		if (typeof elementIdentifier === "string") {
+			const elem = document.querySelector(elementIdentifier) as HTMLElement;
 			if (!elem) throw new Error(`Selector could not be found [${element}]`);
-			this.element = elem;
+			element = elem;
 		} 
-		if(element instanceof HTMLElement) {
-			this.element = element;
+		if(elementIdentifier instanceof HTMLElement) {
+			element = elementIdentifier;
 		}
 
 		// Handle options
-		this.options = {
+		options = {
 			...{
 				labelCount: 5,
 				zoomSpeed: 0.025,
 				dragSpeed: 0.001,
-				startDate: "-100y",
-				endDate: "10y",
-				timelineStartDate: "-1000y",
-				timelineEndDate: "1000y",
+				timelineStart: "-1000y",
+				timelineEnd: "100y",
 				minZoom: 1,
 				maxZoom: 1e11,
 				position: "bottom",
 				expandRatio: 80,
 				eventHeight: 5,
 			},
-			...options,
+			...settings,
 		};
-		
-		// Set timeline boundaries
-		this.timelineStart = this.parseDate(this.options.timelineStartDate);
-		this.timelineEnd = this.parseDate(this.options.timelineEndDate);
-
-		//Calculate view position on timeline
-		const start = this.parseDate(this.options.startDate);
-		const end = this.parseDate(this.options.endDate);
-		if(start.getTime() < this.timelineStart.getTime()) this.timelineStart = start
-		if(end.getTime() > this.timelineEnd.getTime()) this.timelineEnd = end
-		const viewDuration = end.getTime() - start.getTime();
-
-		this.ratio = this.timelineDuration / viewDuration;
-		this.pivot = (this.timelineStart.getTime() - start.getTime()) / viewDuration;
-
-		// Merge events param and HTML events
-		const mergedEvents = [...(Array.isArray(events) ? events : []), ...this.parseTimelineHTML(this.element)];
 
 		// Parse & sort all events
-		this.events = [...this.parseEvents(mergedEvents)];
+		console.log(history)
+		history.push(parseTimelineEvent(timelineEvent));
+		const timeline = currentTimeline();
+		
+		// Set timeline boundaries
+		timelineStart = parseToMinutes(options.timelineStart);
+		timelineEnd = parseToMinutes(options.timelineEnd);
 
-		console.log(this.events)
+		//Calculate view position on timeline
+		const viewStart = options.viewStart ? parseToMinutes(options.viewStart) : (timeline.start - (timeline.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
+		const viewEnd = options.viewEnd ? parseToMinutes(options.viewEnd) : (timeline.end + (timeline.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
+		if(viewStart < timelineStart) timelineStart = viewStart
+		if(viewEnd > timelineEnd) timelineEnd = viewEnd
+		let viewDuration = (viewEnd - viewStart);
+		
+		ratio = timelineDuration() / viewDuration;
+		pivot = (timelineStart - viewStart) / viewDuration; 
+
+		console.log(timeline, new Date(timeline.start * 6e4), new Date(timeline.end * 6e4))
 		
 		// Handle DOM elements setup
-		this.setupContainerHTML();
+		setupContainerHTML();
 
 		// Register Mouse and Resize event handlers
-		this.registerListeners(this.element);
-
-		// Register callback
-		this.callback = callback;
+		registerListeners(element);
 
 		// Draw
-		this.update();
+		update();
 	}
-	get timelineDuration(): number {
-		return this.timelineEnd.getTime() - this.timelineStart.getTime();
+	const currentTimeline = (): ITimeline => {
+		const [currentTimeline] = history.slice(-1);
+		return currentTimeline;
 	}
-	get viewWidth(): number {
-		return this.element?.offsetWidth || 0;
+	const timelineDuration = (): number => {
+		return timelineEnd - timelineStart;
 	}
-	get start(): number {
-		return this.timelineStart.getTime() - this.duration * this.pivot;
+	const viewWidth = (): number => {
+		return element.offsetWidth || 0;
 	}
-	get end(): number {
-		return this.start + this.duration;
+	const viewStart = (): number => {
+		return timelineStart - viewDuration() * pivot;
 	}
-	get duration(): number {
-		return this.timelineDuration / this.ratio;
+	const viewEnd = (): number => {
+		return viewStart() + viewDuration();
 	}
-	get startDate(): Date {
-		return new Date(this.start);
+	const viewDuration = (): number => {
+		return timelineDuration() / ratio;
 	}
-	get endDate(): Date {
-		return new Date(this.end);
+	const getLeftRatio = (minutes: number): number => {
+		return (minutes - viewStart()) / viewDuration();
 	}
-	getLeftRatio(milliseconds: number): number {
-		return (milliseconds - this.startDate.getTime()) / this.duration;
-	}
-	setRatio(direction: Direction, deltaRatio: number): boolean {
-		let newRatio = this.ratio - deltaRatio;
+	const setRatio = (direction: Direction, deltaRatio: number): boolean => {
+		let newRatio = ratio - deltaRatio;
 
 		// If zoom OUT - test if zoom is allowed
-		if (direction === Direction.Out && newRatio <= this.options.minZoom) {
+		if (direction === Direction.Out && newRatio <= options.minZoom) {
 			return false;
 		}
 
 		// If zoom IN - test if zoom is allowed
-		if (direction === Direction.In && newRatio >= this.options.maxZoom) {
+		if (direction === Direction.In && newRatio >= options.maxZoom) {
 			return false;
 		}
 
-		this.ratio = newRatio;
+		ratio = newRatio;
 		return true;
 	}
-	setPivot(deltaPivot: number): void {
-		let newPivot = this.pivot + deltaPivot;
+	const setPivot = (deltaPivot: number): void => {
+		let newPivot = pivot + deltaPivot;
 
 		if (newPivot >= 0) {
 			// pivot larger than allowed (too much to the right)
 			newPivot = 0;
 		}
 
-		if (newPivot + this.ratio <= 1) {
+		if (newPivot + ratio <= 1) {
 			// pivot smaller than allowed (too much to the left)
-			newPivot = 1 - this.ratio;
+			newPivot = 1 - ratio;
 		}
 
-		this.pivot = newPivot;
+		pivot = newPivot;
 	}
-	zoom(direction: Direction, mouseX: number): void {
+	const zoom = (direction: Direction, mouseX: number): void => {
 		// Make zoomSpeed relative to zoomLevel
-		const zoomSpeedScale = this.options.zoomSpeed * this.ratio;
+		const zoomSpeedScale = options.zoomSpeed * ratio;
 		const deltaRatio = direction * zoomSpeedScale;
 
-		const mouseX2view = (mouseX || 0) / this.viewWidth;
-		const mouseX2timeline = (mouseX2view - this.pivot) / this.ratio;
+		const mouseX2view = (mouseX || 0) / viewWidth();
+		const mouseX2timeline = (mouseX2view - pivot) / ratio;
 		const deltaPivot = mouseX2timeline * deltaRatio;
 
-		if(this.setRatio(direction, deltaRatio))
-			this.setPivot(deltaPivot);
+		if(setRatio(direction, deltaRatio))
+			setPivot(deltaPivot);
 
-		this.update();
+		update();
 	}
-	move(deltaPivot: number): void {
-		this.setPivot(deltaPivot);
-		this.update();
+	const move = (deltaPivot: number): void => {
+		setPivot(deltaPivot);
+		update();
 	}
-	registerListeners(element: HTMLElement): void {
-		const vm = this;
-
-		// Add resize handler
-		const resize = function () {
-			vm.update();
+	const focus = (timelineEvent: ITimeline, back?: boolean) : void => {
+		if(!timelineEvent) return;
+		const maxSteps = 400;
+		const targetDurationEnhanced = timelineEvent.duration * 1.1; // Add 10% spacing
+		const targetPivotEnhanced = (timelineStart - timelineEvent.start) / targetDurationEnhanced;
+		const targetCenterMinutes = timelineEvent.start + (timelineEvent.duration / 2);
+		const targetCenterLeftRatio = getLeftRatio(targetCenterMinutes);
+		const mouseXMinutesDelta = targetCenterLeftRatio * timelineEvent.duration;
+		const mouseXMinutes = timelineEvent.start + mouseXMinutesDelta * 0.95; // Make spacing 5% on each side
+		const targetCenter = getLeftRatio(mouseXMinutes) * viewWidth();
+		let counter = 0;
+		const direction = Math.sign(targetPivotEnhanced-pivot);
+		const focusTimeline = () => {
+			clearInterval(timer);
+			if(!back&&timelineEvent.children.length>0){
+				history.push(timelineEvent);
+			}
+			if(back){
+				history.pop();
+			}
+			update();
 		}
-		window.removeEventListener("resize", resize);
-		window.addEventListener("resize", resize, { passive: true });
+		const timer = setInterval(()=>{
+			if(counter++>maxSteps) focusTimeline();
+			if(direction<0 && pivot<targetPivotEnhanced) focusTimeline();
+			if(direction>0 && pivot>targetPivotEnhanced) focusTimeline();
+			zoom(direction, targetCenter);
+		}, 1);
+	}
+	const registerListeners = (element: HTMLElement): void => {
+		// Add resize handler
+		window.addEventListener("resize", () => {
+			update();
+		}, { passive: true });
 
 
 		// Add zoom event handler
-		const wheel = function (event) {
+		element.addEventListener("wheel", (event) => {
 			//event.preventDefault();
 			// Decide whether zoom is IN (-) or OUT (+)
 			var direction = Math.sign(event.deltaY) as Direction;
 			// console.log('wheel', direction, event)
 			// Adjust width of timeline for zooming effect
-			const leftRatio = event.target.attributes["starttime"]
-				? vm.getLeftRatio(event.target.attributes["starttime"])
+			const leftRatio = (event.target as HTMLElement).attributes["starttime"]
+				? getLeftRatio((event.target as HTMLElement).attributes["starttime"])
 				: 0
-			const offsetX = leftRatio * vm.element.getBoundingClientRect().width + event.offsetX;
-			vm.zoom(direction, offsetX);
-		}
-		element.removeEventListener("wheel",wheel);
-		element.addEventListener("wheel", wheel, { passive: true });
+			const offsetX = leftRatio * element.getBoundingClientRect().width + event.offsetX;
+			zoom(direction, offsetX);
+		}, { passive: true });
 
 		// Add drag event handler
 		let dragStartX: number, dragStartY: number;
 		let inDrag = false;
 		let enableCall = true;
-		const mousedown = function (e) {
+		element.addEventListener("mousedown", (e) => {
 			inDrag = true;
 			dragStartX = e.pageX;
 			dragStartY = e.pageY;
-		}
-		element.removeEventListener("mousedown",mousedown);
-		element.addEventListener("mousedown", mousedown, { passive: true });
+		}, { passive: true });
 
 		// Add move handler
-		const mousemove = function (e) {
+		element.addEventListener("mousemove", (e) => {
 			if (!inDrag || !enableCall) {
 				return;
 			}
 			enableCall = false;
-			const deltaScrollLeft = (e.pageX - dragStartX) * vm.options.dragSpeed;
-			//const deltaScrollTop = (e.pageY - dragStartY) * vm.options.dragSpeed;
-			vm.move(deltaScrollLeft);
+			const deltaScrollLeft = (e.pageX - dragStartX) * options.dragSpeed;
+			//const deltaScrollTop = (e.pageY - dragStartY) * options.dragSpeed;
+			if(deltaScrollLeft) move(deltaScrollLeft);
 			dragStartX = e.pageX;
 			dragStartY = e.pageY;
 			setTimeout(() => enableCall = true, 10); // Throttle mousemove for performance reasons
-		}
-		element.removeEventListener("mousemove",mousemove);
-		element.addEventListener("mousemove", mousemove, { passive: true });
+		}, { passive: true });
 
 		// Add mouse up handler
-		const mouseup = function () {
+		element.addEventListener("mouseup", () => {
 			inDrag = false;
-		}
-		element.removeEventListener("mouseup",mouseup);
-		document.addEventListener("mouseup", mouseup, { passive: true });
+		}, { passive: true });
 	}
-	setupEventsHTML(events: ITimelineEvent[], parent: ITimelineEvent = null): DocumentFragment {
+	const setupEventsHTML = (timelineEvent: ITimeline): DocumentFragment => {
 		const eventsFragment = document.createDocumentFragment();
 
-		const createTimelineEventHTML = (timelineEvent: ITimelineEvent) : HTMLDivElement => {
-			const startTime = timelineEvent.startdate.getTime();
-			const endTime = timelineEvent.enddate.getTime();
-			const leftRatio = this.getLeftRatio(startTime);
-			if(startTime > this.endDate.getTime()) return null;
-			if(endTime < this.startDate.getTime()) return null;
+		const createTimelineEventHTML = (timelineEvent: ITimeline) : HTMLDivElement | undefined => {
+			if(timelineEvent.start >= viewEnd()) return undefined;
+			if(timelineEvent.end <= viewStart()) return undefined;
+
+			const leftRatio = getLeftRatio(timelineEvent.start);
 			const eventHTML = document.createElement("div");
-			const eventDuration = Number(timelineEvent.duration) * 6e4;
-			const widthRatio = (eventDuration / this.duration) * 100;
+			const widthRatio = (timelineEvent.duration / viewDuration()) * 100;
 
 			eventHTML.style.left = (leftRatio * 100) + '%'
 			eventHTML.style.width = widthRatio + '%'
@@ -271,12 +280,12 @@ export class Timeline implements ITimeline {
 			eventHTML.style.overflow = 'hidden';
 			eventHTML.title = timelineEvent.title;
 			eventHTML.className = "timelineEventGenerated";
-			eventHTML.attributes["starttime"] = startTime;
-			eventHTML.attributes["expanded"] = widthRatio > this.options.expandRatio;
+			eventHTML.attributes["starttime"] = timelineEvent.start;
+			eventHTML.attributes["expanded"] = widthRatio > options.expandRatio;
 			return eventHTML;
 		}
 
-		const createTimelineEventTitleHTML = (timelineEvent: ITimelineEvent) : HTMLDivElement => {
+		const createTimelineEventTitleHTML = (timelineEvent: ITimeline) : HTMLDivElement => {
 			const eventHTML = document.createElement("div");
 			eventHTML.title = timelineEvent.title;
 			eventHTML.innerText = timelineEvent.title;
@@ -288,22 +297,22 @@ export class Timeline implements ITimeline {
 		}
 
 		// Iterate background events
-		events
+		timelineEvent.children
 			.filter((rawEvent) => rawEvent.type === 'background')
 			.forEach((backgroundEvent, i) => {
 			try{
 				const eventHTML = createTimelineEventHTML(backgroundEvent)
 				if(eventHTML){
 					const color = backgroundEvent.color.map((color)=>(color - Math.pow(10,backgroundEvent.depth)))
-					switch(this.options.position){
-						case "top":
-							eventHTML.style.bottom = `0px`;
-							break;
-						default:
-							eventHTML.style.bottom = `50px`;
-					}
-					eventHTML.style.minHeight = `calc(100% - 50px)`;
+					eventHTML.style.bottom = `0px`;
+					eventHTML.style.minHeight = `100%`;
 					eventHTML.style.backgroundColor = `rgba(${color[0]},${color[1]},${color[2]}, .05)`;
+					eventHTML.addEventListener("click", (e) => {
+						eventHTML.dispatchEvent(new CustomEvent("background-event-click", {
+							detail: backgroundEvent,
+							bubbles: true
+						}));
+					});
 					eventHTML.append(createTimelineEventTitleHTML(backgroundEvent))
 
 					eventsFragment.appendChild(eventHTML);
@@ -314,97 +323,113 @@ export class Timeline implements ITimeline {
 		});
 
 		// Iterate timline events
-		events
+		timelineEvent.children
 			.filter((rawEvent) => rawEvent.type === 'timeline')
-			.forEach((timelineEvent, i) => {
+			.forEach((childEvent, i) => {
 			try{
 				
-				const eventHTML = createTimelineEventHTML(timelineEvent)
+				const eventHTML = createTimelineEventHTML(childEvent)
 				if(eventHTML){
-					let heightFactor = timelineEvent.height + ((timelineEvent.height - 1) * .5);
-					let levelFactor = (timelineEvent.level - 1 + (parent ? parent.level : 1) - 1) * 1.5;
-					const expanded = !!eventHTML.attributes["expanded"];
-					const color = timelineEvent.color.map((color)=>(color - Math.pow(10,timelineEvent.depth)))
-					if(expanded && timelineEvent.events.length){
-						eventsFragment.append(this.setupEventsHTML(timelineEvent.events, timelineEvent));
-					}
-					switch(this.options.position){
-						case "top":
-							eventHTML.style.minHeight = `${heightFactor*this.options.eventHeight}px`;
-							eventHTML.style.bottom = `${levelFactor*this.options.eventHeight}px`;
-							break;
-						default:
-							eventHTML.style.bottom = `${levelFactor*this.options.eventHeight+50}px`;
-							eventHTML.style.minHeight = `${heightFactor*this.options.eventHeight}px`;
-					}
+					let heightFactor = childEvent.height + ((childEvent.height - 1) * .5);
+					let levelFactor = (childEvent.level + timelineEvent.level - 1) * 1.5;
+					//const expanded = !!eventHTML.attributes["expanded"] || timelineEvent.expanded;
+					const color = childEvent.color.map((color)=>(color - Math.pow(10,childEvent.depth)))
+					// if(expanded && timelineEvent.children.length){
+					// 	eventsFragment.append(setupEventsHTML(timelineEvent.children, timelineEvent));
+					// }
+					eventHTML.style.bottom = `${levelFactor*options.eventHeight}px`;
+					eventHTML.style.minHeight = `${heightFactor*options.eventHeight}px`;
 					eventHTML.style.borderRadius = '5px'
 					eventHTML.style.boxSizing = 'border-box'
 					eventHTML.style.border = '1px solid rgba(100,100,100,.5)'
 					eventHTML.style.backgroundColor = `rgb(${color[0]},${color[1]},${color[2]})`
-					eventHTML.style.zIndex = timelineEvent.depth.toString();
+					eventHTML.style.zIndex = childEvent.depth.toString();
+					eventHTML.addEventListener("click", (e) => {
+						eventHTML.dispatchEvent(new CustomEvent("event-click", {
+							detail: childEvent,
+							bubbles: true
+						}));
+					});
 					eventsFragment.appendChild(eventHTML);
 				}
 			} catch(error){
-				console.error(error, 'timelineEvent', timelineEvent);
+				console.error(error, 'timelineEvent', childEvent);
 			}
 		});
 
 		return eventsFragment;
 	}
-	setupContainerHTML(): void {
+	const setupContainerHTML = (): void => {
 		// Register parent as position = "relative" for absolute positioning to work
-		this.element.style.position = "relative";
-		this.element.style.overflow = "hidden";
-		this.element.style.minHeight = "3rem";
+		element.style.position = "relative";
+		element.style.overflow = "hidden";
+		element.style.minHeight = "3rem";
+
+		// Initialize header
+		const existingHeaderContainer = element.querySelector('.timelineHeaderContainer') as HTMLDivElement;
+		headerContainer = existingHeaderContainer || document.createElement("div");
+		if(!existingHeaderContainer) element.appendChild(headerContainer);
+
+		headerContainer.className = "timelineHeaderContainer";
+		headerContainer.style.width = "100%";
+		headerContainer.style.height = "20px";
+		// headerContainer.style.textAlign = "left";
+		// headerContainer.style.position = "absolute";
+		// headerContainer.style.pointerEvents = 'none';
+		// headerContainer.style.userSelect = 'none';
+		// headerContainer.style.top = "0";
+		// headerContainer.style.zIndex = "2";
+		headerContainer.style.backgroundColor = 'white';
 		
 		// Initialize labels
-		const labelContainer = this.element.querySelector('.timelineLabelContainer') as HTMLDivElement;
-		this.labelContainer = labelContainer || document.createElement("div");
-		if(!labelContainer) this.element.appendChild(this.labelContainer);
+		const existingLabelContainer = element.querySelector('.timelineLabelContainer') as HTMLDivElement;
+		labelContainer = existingLabelContainer || document.createElement("div");
+		if(!existingLabelContainer) element.appendChild(labelContainer);
 
-		this.labelContainer.className = "timelineLabelContainer";
-		this.labelContainer.style.width = "100%";
-		this.labelContainer.style.height = "50px";
-		this.labelContainer.style.textAlign = "center";
-		this.labelContainer.style.position = "absolute";
-		this.labelContainer.style.pointerEvents = 'none';
-		this.labelContainer.style.userSelect = 'none';
-		switch(this.options.position){
+		labelContainer.className = "timelineLabelContainer";
+		labelContainer.style.width = "100%";
+		labelContainer.style.height = "50px";
+		labelContainer.style.textAlign = "center";
+		labelContainer.style.position = "absolute";
+		labelContainer.style.pointerEvents = 'none';
+		labelContainer.style.userSelect = 'none';
+		switch(options.position){
 			case "top":
-				this.labelContainer.style.top = "0";
+				labelContainer.style.top = "20px";
 				break;
 			// case "center":
 			// 	this.labelContainer.style.top = "50%";
 			// 	this.labelContainer.style.transform = "translate(0, calc(-50%))";
 			// 	break;
 			default:
-				this.labelContainer.style.bottom = "0";
+				labelContainer.style.bottom = "0";
 		}
 
 		// Initialize dividers
-		const dividerContainer = this.element.querySelector('.timelineDividerContainer') as HTMLDivElement;
-		this.dividerContainer = dividerContainer || document.createElement("div");
-		if(!dividerContainer) this.element.appendChild(this.dividerContainer);
+		const existingDividerContainer = element.querySelector('.timelineDividerContainer') as HTMLDivElement;
+		dividerContainer = existingDividerContainer || document.createElement("div");
+		if(!existingDividerContainer) element.appendChild(dividerContainer);
 
-		this.dividerContainer.className = "timelineDividerContainer";
-		this.dividerContainer.style.width = "100%";
-		this.dividerContainer.style.height = "100%";
-		this.dividerContainer.style.position = "absolute";
-		this.dividerContainer.style.zIndex = "-2";
+		dividerContainer.className = "timelineDividerContainer";
+		dividerContainer.style.width = "100%";
+		dividerContainer.style.height = "calc(100% - 20px)";
+		dividerContainer.style.position = "absolute";
+		dividerContainer.style.zIndex = "-2";
+		dividerContainer.style.bottom = '0';
 
 		// Initialize events container
-		const eventsContainer = this.element.querySelector('.timelineEventsContainer') as HTMLDivElement;
-		this.eventsContainer = eventsContainer || document.createElement("div");
-		if(!eventsContainer) this.element.appendChild(this.eventsContainer);
-		this.eventsContainer.className = "timelineEventsContainer";
-		this.eventsContainer.style.position = 'absolute';
-		this.eventsContainer.style.bottom = '0';
-		this.eventsContainer.style.height = "100%";
-		this.eventsContainer.style.width = "100%";
+		const existingEventsContainer = element.querySelector('.timelineEventsContainer') as HTMLDivElement;
+		eventsContainer = existingEventsContainer || document.createElement("div");
+		if(!existingEventsContainer) element.appendChild(eventsContainer);
+		eventsContainer.className = "timelineEventsContainer";
+		eventsContainer.style.position = 'absolute';
+		eventsContainer.style.bottom = '50px';
+		eventsContainer.style.height = "calc(100% - 70px)";
+		eventsContainer.style.width = "100%";
 	}
-	format(milliseconds: number): string {
-		const moment = new Date(milliseconds);
-		if (this.duration < 1440 * 6e5 * 4) {
+	const format = (minutes: number): string => {
+		const moment = new Date(minutes * 6e4);
+		if (viewDuration() < 1440 * 4) {
 			// minutes in an day = 1440
 			return Intl.DateTimeFormat(undefined, {
 				year: "numeric",
@@ -414,7 +439,7 @@ export class Timeline implements ITimeline {
 				minute: "numeric",
 			}).format(moment);
 		}
-		if (this.duration < 10080 * 6e5 * 6) {
+		if (viewDuration() < 10080 * 6) {
 			// minutes in a week = 10080
 			return Intl.DateTimeFormat(undefined, {
 				year: "numeric",
@@ -422,7 +447,7 @@ export class Timeline implements ITimeline {
 				day: "numeric",
 			}).format(moment);
 		}
-		if (this.duration < 43829.0639 * 6e5 * 18) {
+		if (viewDuration() < 43829.0639 * 18) {
 			// minutes in a month = 43829.0639
 			return Intl.DateTimeFormat(undefined, {
 				year: "numeric",
@@ -432,14 +457,14 @@ export class Timeline implements ITimeline {
 		// minutes in a year = 525948.766
 		return moment.getFullYear().toString();
 	}
-	update(): void {
-		if (!this.element) return;
-		const currentLevel = Math.floor(this.ratio);
+	const update = (): void => {
+		if (!element) return;
+		const currentLevel = Math.floor(ratio);
 		// https://math.stackexchange.com/questions/3381728/find-closest-power-of-2-to-a-specific-number
 		const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
-		const granularity = 1 / (this.options.labelCount + 1);
-		const timelineViewDifference = this.start - this.timelineStart.getTime();
-		const timestampDistance = this.timelineDuration * granularity;
+		const granularity = 1 / (options.labelCount + 1);
+		const timelineViewDifference = viewStart() - timelineStart;
+		const timestampDistance = timelineDuration() * granularity;
 
 		const currentTimestampDistanceByLevel = timestampDistance / iterator;
 
@@ -449,17 +474,17 @@ export class Timeline implements ITimeline {
 
 		const labels = document.createDocumentFragment();
 		const dividers = document.createDocumentFragment();
-		for (let i = 0; i < this.options.labelCount + 2; i++) {
+		for (let i = 0; i < options.labelCount + 2; i++) {
 			const labelTime =
-				(i + 1) * currentTimestampDistanceByLevel + this.timelineStart.getTime() + currentDif - currentTimestampDistanceByLevel;
+				(i + 1) * currentTimestampDistanceByLevel + timelineStart + currentDif - currentTimestampDistanceByLevel;
 			const dividerTime = labelTime + (currentTimestampDistanceByLevel / 2);
 
 			// Set label position
-			const labelViewRatio = this.getLeftRatio(labelTime);
+			const labelViewRatio = getLeftRatio(labelTime);
 			const labelViewLeftPosition = labelViewRatio * 100;
 
 			// Set divider position
-			const dividerViewRatio = this.getLeftRatio(dividerTime);
+			const dividerViewRatio = getLeftRatio(dividerTime);
 			const dividerViewLeftPosition = dividerViewRatio * 100;
 
 			const label = document.createElement("div");
@@ -471,7 +496,7 @@ export class Timeline implements ITimeline {
 			label.style.position = "absolute";
 			label.style.zIndex = "-1";
 			label.style.width = granularity * 100 + "%";
-			label.innerHTML = this.format(labelTime);
+			label.innerHTML = format(labelTime);
 			labels.appendChild(label);
 
 			const divider = document.createElement("div");
@@ -484,31 +509,111 @@ export class Timeline implements ITimeline {
 			divider.innerHTML = "";
 			dividers.appendChild(divider);
 		}
-		this.labelContainer.innerHTML = "";
-		this.labelContainer.appendChild(labels);
+		labelContainer.innerHTML = "";
+		labelContainer.appendChild(labels);
 
-		this.dividerContainer.innerHTML = "";
-		this.dividerContainer.appendChild(dividers);
+		dividerContainer.innerHTML = "";
+		dividerContainer.appendChild(dividers);
 
 		//
-		const eventsHtml = this.setupEventsHTML(this.events);
-		this.eventsContainer.innerHTML = "";
-		this.eventsContainer.appendChild(eventsHtml);
+		const [currentTimeline] = history.slice(-1);
+		const eventsHtml = setupEventsHTML(currentTimeline);
+		eventsContainer.innerHTML = "";
+		eventsContainer.appendChild(eventsHtml);
+
+		const headers = document.createDocumentFragment();
+		const header = document.createElement("div");
+		header.className = "timelineHeader";
+		header.style.textAlign = "center";
+		//header.style.position = "absolute";
+		header.innerHTML = currentTimeline.title;
+		headers.appendChild(header);
+
+		if(history.length > 1){
+			const back = document.createElement("div");
+			back.className = "timelineBack";
+			back.style.position = "absolute";
+			back.style.top = "0px";
+			back.style.left = "5px";
+			//back.style.zIndex = "1000";
+			back.style.cursor = "pointer";
+			back.innerHTML = "<";
+			back.addEventListener("click", (e) => {
+				back.dispatchEvent(new CustomEvent("back-click", {
+					bubbles: true
+				}));
+				const [previousTimeline] = history.slice(-2);
+				focus(previousTimeline, true);
+			});
+			headers.appendChild(back);
+		}
+
+		headerContainer.innerHTML = "";
+		headerContainer.appendChild(headers);
 
 		// Dispatch DOM event
-		const update = new CustomEvent("update", {
-			detail: this.toJSON(),
+		element.dispatchEvent(new CustomEvent("update", {
+			detail: toJSON(),
 			bubbles: true,
 			cancelable: true,
 			composed: false,
-		});
-		this.element.dispatchEvent(update);
-
-		// Dispatch callback
-		if(this.callback) this.callback(this);
+		}));
 	}
-	parseDate(input: number[] | string | number | Date): Date {
-		if(input === undefined) return new Date();
+	const parseToMinutes = (input: number[] | string | number | Date | undefined): number => {
+		if(input === undefined) return undefined;
+
+		// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
+		// It should be noted that the maximum Date is not of the same value as the maximum safe integer (Number.MAX_SAFE_INTEGER is 9,007,199,254,740,991).
+		// Instead, it is defined in ECMA-262 that a maximum of ±100,000,000 (one hundred million) days relative
+		// to January 1, 1970 UTC (that is, April 20, 271821 BCE ~ September 13, 275760 CE)
+		// can be represented by the standard Date object (equivalent to ±8,640,000,000,000,000 milliseconds).
+
+		const parseDateArray = (input: number[]): number => {
+			const date = new Date();
+			date.setDate(input[2] ? input[2] : 1);
+			date.setMonth(input[1] ? (input[1] - 1) : 0);
+			date.setHours(input[3] ? input[3] : 0);
+			date.setMinutes(input[4] ? input[4] : 0);
+			date.setSeconds(0);
+
+			if(!input[0]){
+				return date.getTime() / 6e4;
+			}
+			
+			if(input[0]&&input[0]>-270000&&input[0]<270000){
+				date.setFullYear(input[0]);
+				return date.getTime() / 6e4;
+			}
+
+			// 525948.766 = minutes in a year
+			const yearRelativeTo1970InMinutes = 525948.766 * input[0];
+			date.setFullYear(0);
+			return yearRelativeTo1970InMinutes + (date.getTime() / 6e4);
+		}
+
+		const parseDateString = (input: string): Date => {
+			switch (input) {
+				case "now":
+					return new Date(); 
+				default:
+					// 31556926 = Seconds in a year
+					// 525948.766 = minutes in a year
+					const years = Number(input.replace(/y$/, ''))
+					if(!isNaN(years)){
+						return new Date(Date.now() + (31556926 * 1e3 * years)); 
+					}
+					// const year0 = new Date('0001-01-01');
+					// const yearsBC = Number(input.replace(/bc$/, ''))
+					// if(!isNaN(yearsBC)){
+					// 	return new Date(year0.getTime() - 31556926 * 1e3 * yearsBC); 
+					// }
+					// const yearsAD = Number(input.replace(/ad$/, ''))
+					// if(!isNaN(yearsAD)){
+					// 	return new Date(year0.getTime() + 31556926 * 1e3 * yearsAD); 
+					// }
+					return new Date(input);
+			}
+		}
 
 		if(Array.isArray(input)){
 			let inputArray = input as number[];
@@ -518,66 +623,27 @@ export class Timeline implements ITimeline {
 				return typeof value === 'number';
 			});
 			if (!isNumberArray) throw new Error("input Array must contain only numbers");
-			return this.parseDateArray(inputArray);
+			return parseDateArray(inputArray);
 		}
 
 		if(typeof input === "object" && input.constructor.name === "Date"){
-			return input;
+			return input.getTime() / 6e4;
 		}
 
 		if(typeof input === "string"){
-			return this.parseDateString(input);
+			return parseDateString(input).getTime() / 6e4;
 		}
 
 		if(typeof input === "number"){
-			return new Date(input);
+			return new Date(input).getTime() / 6e4;
 		}
+
+		return undefined;
 	}
-	parseDateArray(input: number[]): Date {
-		const date = new Date();
-		date.setFullYear(input[0] || date.getFullYear());
-		date.setDate(input[2] ? input[2] : 1);
-		date.setMonth(input[1] ? (input[1] - 1) : 0);
-		date.setHours(input[3] ? input[3] : 0);
-		date.setMinutes(input[4] ? input[4] : 0);
-		date.setSeconds(0);
-		return date;
-	}
-	parseDateString(input: string): Date {
-		// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
-		// It should be noted that the maximum Date is not of the same value as the maximum safe integer (Number.MAX_SAFE_INTEGER is 9,007,199,254,740,991).
-		// Instead, it is defined in ECMA-262 that a maximum of ±100,000,000 (one hundred million) days relative
-		// to January 1, 1970 UTC (that is, April 20, 271821 BCE ~ September 13, 275760 CE)
-		// can be represented by the standard Date object (equivalent to ±8,640,000,000,000,000 milliseconds).
-		switch (input) {
-			case "now":
-				return new Date(); 
-			case "max":
-				return new Date(8640e12); 
-			case "min":
-				return new Date(-8640e12); 
-			default:
-				// 31556926 = Seconds in a year
-				const years = Number(input.replace(/y$/, ''))
-				if(!isNaN(years)){
-					return new Date(Date.now() + (31556926 * 1e3 * years)); 
-				}
-				const year0 = new Date('0001-01-01');
-				const yearsBC = Number(input.replace(/bc$/, ''))
-				if(!isNaN(yearsBC)){
-					return new Date(year0.getTime() - 31556926 * 1e3 * yearsBC); 
-				}
-				const yearsAD = Number(input.replace(/ad$/, ''))
-				if(!isNaN(yearsAD)){
-					return new Date(year0.getTime() + 31556926 * 1e3 * yearsAD); 
-				}
-				return new Date(input);
-		}
-	}
-	parseEvents(events: ITimelineEvent[], parent: ITimelineEvent = null): ITimelineEvent[] {
-		if(!Array.isArray(events)){
-			console.warn('Events object is not an array', events); 
-			return [];
+	const parseTimelineEvent = (timelineEvent: ITimelineEvent, parent?: ITimeline): ITimeline => {
+		if(!timelineEvent){
+			console.warn('Event object is empty'); 
+			return undefined;
 		}
 
 		const isNumberArray = (array: any[]) => {
@@ -585,78 +651,67 @@ export class Timeline implements ITimeline {
 				return typeof element === 'number';
 			});
 		}
-		
-		// Enrich and Reduce result
-		const result = events.reduce<ITimelineEvent[]>((result, timelineEvent) => {
-			//set event depth before parsing children
-			timelineEvent.depth = parent ? parent.depth + 1 : 0
 
-			// Parse children events
-			const children = timelineEvent.events ? [...this.parseEvents(timelineEvent.events, timelineEvent)] : []
+		const parsedTimelineEvent: ITimeline = {
+			type: "timeline",
+			duration: 0,
+			color: [240,240,240],
+			expanded: false,
+			level: 0, step: 0, score: 0, height: 0, children: [],
+			depth: parent ? parent.depth + 1 : 0,
+			...timelineEvent,
+			start: parseToMinutes(timelineEvent.start),
+			end: parseToMinutes(timelineEvent.end),
+		}
 
-			// Filter missing requirements
-			if(!timelineEvent.startdate && !children.length) { 
-				console.warn('Missing startdate on event', timelineEvent, events)
-				return result;
-			}
-
-			// Calculate start date - if children exists take lowest date
-			const startDate = timelineEvent.startdate 
-				? children.length 
-					? this.parseDate(Math.min(this.parseDate(timelineEvent.startdate).getTime(), this.parseDate(children[0].startdate).getTime()))
-					: this.parseDate(timelineEvent.startdate)
-				: children[0].startdate;
-
-			// Calculate end date
-			const endDate = timelineEvent.enddate 
-				? this.parseDate(timelineEvent.enddate) 
-				: timelineEvent.duration && !isNaN(Number(timelineEvent.duration)) 
-					? new Date(startDate.getTime() + Number(timelineEvent.duration)*6e4) 
-					: children.length 
-						? children[children.length-1].enddate 
-						: startDate
-
-			// Calculate duration
-			const startTime = startDate.getTime()
-			const endTime = endDate.getTime()
-			const durationMinutes = (endTime - startTime) / 6e4;
-
-			const color = timelineEvent.color 
-				? isNumberArray(timelineEvent.color) 
-					? timelineEvent.color
-					: [240,240,240]
-				: [240,240,240]
-
-			// Add to result
-			result.push({
-				duration: durationMinutes,
-				type: "timeline",
-				...timelineEvent,
-				color: color,
-				startdate: startDate,
-				enddate: endDate,
-				events: children,
-				height: children.length
-					? Math.max.apply(1, children.map((child) => child.level))
-					: 1
-			});
+		const children = !timelineEvent.events ? [] : timelineEvent.events.reduce<ITimeline[]>((result, timelineEvent) => {
+			const timeline = parseTimelineEvent(timelineEvent, parsedTimelineEvent);
+			if(timeline) result.push(timeline)
 			return result;
 		}, []);
 
-		// Sort result by start
-		const sortedResult = result.sort((a,b)=>a.startdate.getTime() - b.startdate.getTime());
+		// Sort children by start
+		parsedTimelineEvent.children = children.sort((a,b)=>a.start - b.start);
+
+		// Calculate start date - if children exists take lowest date
+		const start = parsedTimelineEvent.start 
+			? parsedTimelineEvent.children.length 
+				? Math.min(parsedTimelineEvent.start, parsedTimelineEvent.children[0].start)
+				: parsedTimelineEvent.start
+			: parsedTimelineEvent.children.length ? parsedTimelineEvent.children[0].start : undefined;
+
+		// Filter missing requirements
+		if(!start) { 
+			console.warn('Missing start property on event - skipping', timelineEvent)
+			return undefined;
+		}
+
+		// Calculate end date
+		const end = parsedTimelineEvent.end 
+			? parsedTimelineEvent.end
+			: parsedTimelineEvent.duration && !isNaN(Number(parsedTimelineEvent.duration)) 
+				? start + Number(parsedTimelineEvent.duration) 
+				: parsedTimelineEvent.children.length 
+					? parsedTimelineEvent.children[parsedTimelineEvent.children.length-1].end || start + 1
+					: start + 1;
+
+		const color = timelineEvent.color 
+			? isNumberArray(timelineEvent.color) 
+				? timelineEvent.color
+				: [240,240,240]
+			: [240,240,240];
 
 		// Level Calculator(s) for simultanious events
 		const levelMatrix = {1:{height: 0, time: Number.MIN_SAFE_INTEGER}}
-		const calcLevel = (timelineEvent: ITimelineEvent): number => {
+		const calcLevel = (timelineEvent: ITimeline): number => {
 			let level = 0
 			for(const eventLevel in levelMatrix){
 				level = Number(eventLevel);
-				if(timelineEvent.startdate.getTime() > levelMatrix[eventLevel].time){
+				if(timelineEvent.start > levelMatrix[eventLevel].time){
 					for(let i = 0; i < timelineEvent.height; i++){
 						levelMatrix[(level+i).toString()] = {
 							height: timelineEvent.height,
-							time: timelineEvent.enddate.getTime()
+							time: timelineEvent.end
 						}
 					}
 					return level;
@@ -666,7 +721,7 @@ export class Timeline implements ITimeline {
 			for(let i = 0; i < timelineEvent.height; i++){
 				levelMatrix[(level+i).toString()] = {
 					height: timelineEvent.height,
-					time: timelineEvent.enddate.getTime()
+					time: timelineEvent.end
 				}
 			}
 			return level;
@@ -674,14 +729,14 @@ export class Timeline implements ITimeline {
 
 		// Flat does not count height as part of level
 		const stepMatrix = {1:{height: 0, time: Number.MIN_SAFE_INTEGER}}
-		const calcStep = (timelineEvent: ITimelineEvent): number => {
+		const calcStep = (timelineEvent: ITimeline): number => {
 			let step = 0
 			for(const eventLevel in stepMatrix){
 				step = Number(eventLevel);
-				if(timelineEvent.startdate.getTime() > stepMatrix[eventLevel].time){
+				if(timelineEvent.start > stepMatrix[eventLevel].time){
 					stepMatrix[(step).toString()] = {
 						height: timelineEvent.height,
-						time: timelineEvent.enddate.getTime()
+						time: timelineEvent.end
 					}
 					return step;
 				}
@@ -689,36 +744,38 @@ export class Timeline implements ITimeline {
 			step++
 			stepMatrix[(step).toString()] = {
 				height: timelineEvent.height,
-				time: timelineEvent.enddate.getTime()
+				time: timelineEvent.end
 			}
 			return step;
 		}
 
-		// Add level to sorted result in order to stack simultanous events
-		const levelResult = sortedResult
-		.map<ITimelineEvent>((timelineEvent, i) => ({
-			...timelineEvent, 
-			level: timelineEvent.type === 'timeline' ? calcLevel(timelineEvent) : 0,
-			step: timelineEvent.type === 'timeline' ? calcStep(timelineEvent) : 0
-		}));
-
-		const calcScore = (timelineEvent: ITimelineEvent): number => {
+		const calcScore = (timelineEvent: ITimeline): number => {
 			let score = 1
-			const durationRatio = timelineEvent.duration / this.timelineDuration;
-			score = durationRatio * timelineEvent.height
+			const durationRatio = (timelineEvent.duration || 1) / timelineDuration();
+			score = durationRatio * parsedTimelineEvent.children.length
 			return score;
 		}
 
 		// Add score to result in order to sort by importance
-		const scoreResult = levelResult.map<ITimelineEvent>((timelineEvent, i) => ({
-			...timelineEvent, 
-			score: calcScore(timelineEvent)
-		}));
+		parsedTimelineEvent.children.forEach((timelineEvent, i) => {
+			timelineEvent.score = calcScore(timelineEvent)
+			timelineEvent.level = timelineEvent.type === 'timeline' ? calcLevel(timelineEvent) : 0,
+			timelineEvent.step = timelineEvent.type === 'timeline' ? calcStep(timelineEvent) : 0
+		});
 
+		parsedTimelineEvent.type = timelineEvent.type || "timeline";
+		parsedTimelineEvent.duration = (end - start);
+		parsedTimelineEvent.color = color;
+		parsedTimelineEvent.start = start;
+		parsedTimelineEvent.end = end;
+		parsedTimelineEvent.height = children.length
+			? Math.max.apply(1, children.map((child) => child.level))
+			: 1;
+		
 		// Return
-		return scoreResult;
+		return parsedTimelineEvent;
 	}
-	parseTimelineHTML(input: HTMLElement): any[] {
+	const parseTimelineHTML = (input: HTMLElement): any[] => {
 		// Initialize events
 		let result = []
 		const timelineEvents = input.querySelectorAll<HTMLElement>('.timelineEvent');
@@ -728,7 +785,7 @@ export class Timeline implements ITimeline {
 					try{
 						result.push({
 							...timelineEvent.attributes,
-							events: this.parseTimelineHTML(timelineEvent)
+							events: parseTimelineHTML(timelineEvent)
 						})
 					} catch(error){
 						console.error(error, 'timelineEvent');
@@ -737,14 +794,20 @@ export class Timeline implements ITimeline {
 		}
 		return result;
 	}
-	toJSON() {
+	const toJSON = () => {
 		return {
-			options: this.options,
-			startDate: this.startDate,
-			endDate: this.endDate,
-			duration: this.duration,
-			ratio: this.ratio,
-			pivot: this.pivot,
+			options,
+			viewStartDate: viewStart(),
+			viewEndDate: viewEnd(),
+			viewDuration: viewDuration(),
+			ratio,
+			pivot,
 		}
+	}
+
+	init(elementIdentifier, timeline, settings);
+
+	return {
+		focus
 	}
 };
