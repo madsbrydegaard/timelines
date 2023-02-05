@@ -43,6 +43,7 @@ enum Direction {
 export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITimelineEvent, settings: object) => {
 	let ratio: number
 	let pivot: number
+	let zoomX: number;
 	let timelineStart: number
 	let timelineEnd: number
 	let element: HTMLElement
@@ -83,7 +84,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		};
 
 		// Parse & sort all events
-		console.log(history)
 		history.push(parseTimelineEvent(timelineEvent));
 		const timeline = currentTimeline();
 		
@@ -92,16 +92,21 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		timelineEnd = parseToMinutes(options.timelineEnd);
 
 		//Calculate view position on timeline
-		const viewStart = options.viewStart ? parseToMinutes(options.viewStart) : (timeline.start - (timeline.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
-		const viewEnd = options.viewEnd ? parseToMinutes(options.viewEnd) : (timeline.end + (timeline.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
+		const viewStart = options.viewStart 
+			? parseToMinutes(options.viewStart) 
+			: (timeline.start - (timeline.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
+		const viewEnd = options.viewEnd 
+			? parseToMinutes(options.viewEnd) 
+			: (timeline.end + (timeline.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
+
 		if(viewStart < timelineStart) timelineStart = viewStart
 		if(viewEnd > timelineEnd) timelineEnd = viewEnd
-		let viewDuration = (viewEnd - viewStart);
+		const viewDuration = (viewEnd - viewStart);
 		
 		ratio = timelineDuration() / viewDuration;
 		pivot = (timelineStart - viewStart) / viewDuration; 
 
-		console.log(timeline, new Date(timeline.start * 6e4), new Date(timeline.end * 6e4))
+		//console.log(timeline, new Date(timeline.start * 6e4), new Date(timeline.end * 6e4))
 		
 		// Handle DOM elements setup
 		setupContainerHTML();
@@ -185,31 +190,79 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 	}
 	const focus = (timelineEvent: ITimeline, back?: boolean) : void => {
 		if(!timelineEvent) return;
-		const maxSteps = 400;
-		const targetDurationEnhanced = timelineEvent.duration * 1.1; // Add 10% spacing
-		const targetPivotEnhanced = (timelineStart - timelineEvent.start) / targetDurationEnhanced;
-		const targetCenterMinutes = timelineEvent.start + (timelineEvent.duration / 2);
-		const targetCenterLeftRatio = getLeftRatio(targetCenterMinutes);
-		const mouseXMinutesDelta = targetCenterLeftRatio * timelineEvent.duration;
-		const mouseXMinutes = timelineEvent.start + mouseXMinutesDelta * 0.95; // Make spacing 5% on each side
-		const targetCenter = getLeftRatio(mouseXMinutes) * viewWidth();
+		const steps = 400;
+		// const targetDurationEnhanced = timelineEvent.duration * 1.1; // Add 10% spacing
+		// const targetPivotEnhanced = (timelineStart - timelineEvent.start) / targetDurationEnhanced;
+		// const targetCenterMinutes = timelineEvent.start + (timelineEvent.duration / 2);
+		// const targetCenterLeftRatio = getLeftRatio(targetCenterMinutes);
+		// const mouseXMinutesDelta = targetCenterLeftRatio * timelineEvent.duration;
+		// const mouseXMinutes = timelineEvent.start + mouseXMinutesDelta * 0.95; // Make spacing 5% on each side
+		// const targetCenter = getLeftRatio(mouseXMinutes) * viewWidth();
 		let counter = 0;
-		const direction = Math.sign(targetPivotEnhanced-pivot);
-		const focusTimeline = () => {
+		
+		const targetStart = (timelineEvent.start - (timelineEvent.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
+		const targetEnd = (timelineEvent.end + (timelineEvent.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
+		const targetDuration = (targetEnd - targetStart);
+
+		const targetRatio = timelineDuration() / targetDuration;
+		//const targetPivot = (timelineStart - targetStart) / targetDuration;
+
+		// const deltaRatio = targetRatio - ratio;
+		// const deltaPivot = targetPivot - pivot;
+
+		if(!back){
+			const targetCenterMinutes = targetStart + (targetDuration / 2);
+			const targetCenterLeftRatio = getLeftRatio(targetCenterMinutes);
+			const mouseXMinutesDelta = targetCenterLeftRatio * targetDuration;
+			const mouseXMinutes = targetStart + mouseXMinutesDelta;
+			zoomX = getLeftRatio(mouseXMinutes) * viewWidth();
+		}
+		
+		// const stepRatio = deltaRatio / steps
+		// const stepPivot = deltaPivot / steps
+
+		const direction = Math.sign(ratio-targetRatio);
+
+		// console.log(timelineEvent, new Date(targetStart * 6e4), new Date(targetEnd * 6e4))
+		// console.log(ratio, targetRatio)
+		// console.log(pivot, targetPivot)
+		// console.log(stepRatio, stepPivot)
+		if(back){
+			history.pop();
+		}
+
+		const focusTimeline = (source) => {
+			//console.log(source, ratio, pivot)
 			clearInterval(timer);
+			// ratio=targetRatio;
+			// pivot=targetPivot;
 			if(!back&&timelineEvent.children.length>0){
 				history.push(timelineEvent);
 			}
-			if(back){
-				history.pop();
-			}
 			update();
 		}
+
+		// const skipRatio = targetRatio + stepRatio;
+		// const speed = 
+		//console.log(direction, targetRatio, ratio, targetPivot, pivot, zoomX)
 		const timer = setInterval(()=>{
-			if(counter++>maxSteps) focusTimeline();
-			if(direction<0 && pivot<targetPivotEnhanced) focusTimeline();
-			if(direction>0 && pivot>targetPivotEnhanced) focusTimeline();
-			zoom(direction, targetCenter);
+			// const zoomSpeedScale = options.zoomSpeed * ratio;
+			// const deltaRatio = direction * zoomSpeedScale;
+			// setRatio(direction, deltaRatio)
+			// setPivot(stepPivot)
+			zoom(direction, zoomX);
+			if(direction<0 && ratio>targetRatio) {focusTimeline(1); return;}
+			if(direction>0 && ratio<targetRatio) {focusTimeline(2); return;}
+			// const exponent = (1 / (steps-counter));
+			// const newRatio = Math.pow(targetRatio, exponent) + ratio;
+			// console.log(newRatio)
+			// ratio=newRatio;
+			//pivot+=stepPivot;
+			//update();
+			// if(direction<0 && ratio>skipRatio) focusTimeline(1);
+			// if(direction>0 && ratio<skipRatio) focusTimeline(2);
+			//if(exponent >= 1) focusTimeline(1);
+			if(counter++>steps) focusTimeline(3);
 		}, 1);
 	}
 	const registerListeners = (element: HTMLElement): void => {
@@ -428,7 +481,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		eventsContainer.style.width = "100%";
 	}
 	const format = (minutes: number): string => {
+		//console.log(2, minutes)
 		const moment = new Date(minutes * 6e4);
+		//console.log(3, moment)
 		if (viewDuration() < 1440 * 4) {
 			// minutes in an day = 1440
 			return Intl.DateTimeFormat(undefined, {
@@ -465,7 +520,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		const granularity = 1 / (options.labelCount + 1);
 		const timelineViewDifference = viewStart() - timelineStart;
 		const timestampDistance = timelineDuration() * granularity;
-
+		//console.log(currentLevel, ratio)
 		const currentTimestampDistanceByLevel = timestampDistance / iterator;
 
 		// Find integer value of timestamp difference
