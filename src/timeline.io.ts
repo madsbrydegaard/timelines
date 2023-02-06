@@ -43,7 +43,6 @@ enum Direction {
 export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITimelineEvent, settings: object) => {
 	let ratio: number
 	let pivot: number
-	let zoomX: number;
 	let timelineStart: number
 	let timelineEnd: number
 	let element: HTMLElement
@@ -53,6 +52,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 	let eventsContainer: HTMLDivElement
 	let headerContainer: HTMLDivElement
 	let history: ITimeline[] = []
+	let currentTimeline: ITimeline
 
 	const init = (elementIdentifier: HTMLElement | string, timelineEvent: ITimelineEvent, settings: object) => {
 		// Handle DOM Element
@@ -84,8 +84,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		};
 
 		// Parse & sort all events
-		history.push(parseTimelineEvent(timelineEvent));
-		const timeline = currentTimeline();
+		currentTimeline = parseTimelineEvent(timelineEvent);
+		history.push(currentTimeline);
 		
 		// Set timeline boundaries
 		timelineStart = parseToMinutes(options.timelineStart);
@@ -94,10 +94,10 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		//Calculate view position on timeline
 		const viewStart = options.viewStart 
 			? parseToMinutes(options.viewStart) 
-			: (timeline.start - (timeline.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
+			: (currentTimeline.start - (currentTimeline.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
 		const viewEnd = options.viewEnd 
 			? parseToMinutes(options.viewEnd) 
-			: (timeline.end + (timeline.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
+			: (currentTimeline.end + (currentTimeline.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
 
 		if(viewStart < timelineStart) timelineStart = viewStart
 		if(viewEnd > timelineEnd) timelineEnd = viewEnd
@@ -117,9 +117,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		// Draw
 		update();
 	}
-	const currentTimeline = (): ITimeline => {
-		const [currentTimeline] = history.slice(-1);
-		return currentTimeline;
+	const focusedTimeline = (): ITimeline => {
+		const [focusedTimeline] = history.slice(-1);
+		return focusedTimeline;
 	}
 	const timelineDuration = (): number => {
 		return timelineEnd - timelineStart;
@@ -190,79 +190,51 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 	}
 	const focus = (timelineEvent: ITimeline, back?: boolean) : void => {
 		if(!timelineEvent) return;
-		const steps = 400;
-		// const targetDurationEnhanced = timelineEvent.duration * 1.1; // Add 10% spacing
-		// const targetPivotEnhanced = (timelineStart - timelineEvent.start) / targetDurationEnhanced;
-		// const targetCenterMinutes = timelineEvent.start + (timelineEvent.duration / 2);
-		// const targetCenterLeftRatio = getLeftRatio(targetCenterMinutes);
-		// const mouseXMinutesDelta = targetCenterLeftRatio * timelineEvent.duration;
-		// const mouseXMinutes = timelineEvent.start + mouseXMinutesDelta * 0.95; // Make spacing 5% on each side
-		// const targetCenter = getLeftRatio(mouseXMinutes) * viewWidth();
-		let counter = 0;
+		let targetCenter = 0;
 		
 		const targetStart = (timelineEvent.start - (timelineEvent.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
 		const targetEnd = (timelineEvent.end + (timelineEvent.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
 		const targetDuration = (targetEnd - targetStart);
-
 		const targetRatio = timelineDuration() / targetDuration;
-		//const targetPivot = (timelineStart - targetStart) / targetDuration;
+		
+		if(back){
+			const targetCenterMinutes = viewStart() + (viewDuration() / 2);
+			const targetCenterLeftRatio = (targetCenterMinutes - targetStart) / targetDuration;
+			const mouseXMinutesDelta = targetCenterLeftRatio * viewDuration();
+			const mouseXMinutes = viewStart() + mouseXMinutesDelta;
+			targetCenter = getLeftRatio(mouseXMinutes) * viewWidth();
 
-		// const deltaRatio = targetRatio - ratio;
-		// const deltaPivot = targetPivot - pivot;
-
-		if(!back){
+			if(timelineEvent.depth<focusedTimeline().depth){
+				history.pop();
+				currentTimeline = timelineEvent;
+			}
+		} else {
 			const targetCenterMinutes = targetStart + (targetDuration / 2);
 			const targetCenterLeftRatio = getLeftRatio(targetCenterMinutes);
 			const mouseXMinutesDelta = targetCenterLeftRatio * targetDuration;
 			const mouseXMinutes = targetStart + mouseXMinutesDelta;
-			zoomX = getLeftRatio(mouseXMinutes) * viewWidth();
+			targetCenter = getLeftRatio(mouseXMinutes) * viewWidth();
 		}
 		
-		// const stepRatio = deltaRatio / steps
-		// const stepPivot = deltaPivot / steps
-
 		const direction = Math.sign(ratio-targetRatio);
 
-		// console.log(timelineEvent, new Date(targetStart * 6e4), new Date(targetEnd * 6e4))
-		// console.log(ratio, targetRatio)
-		// console.log(pivot, targetPivot)
-		// console.log(stepRatio, stepPivot)
-		if(back){
-			history.pop();
-		}
-
-		const focusTimeline = (source) => {
-			//console.log(source, ratio, pivot)
+		const focusTimeline = () => {
 			clearInterval(timer);
-			// ratio=targetRatio;
-			// pivot=targetPivot;
-			if(!back&&timelineEvent.children.length>0){
+			if(timelineEvent.depth>focusedTimeline().depth){
+				history.push(timelineEvent);
+			}
+			if(timelineEvent.depth==focusedTimeline().depth && timelineEvent!=focusedTimeline()){
+				history.pop();
 				history.push(timelineEvent);
 			}
 			update();
+			console.log(history)
 		}
 
-		// const skipRatio = targetRatio + stepRatio;
-		// const speed = 
-		//console.log(direction, targetRatio, ratio, targetPivot, pivot, zoomX)
 		const timer = setInterval(()=>{
-			// const zoomSpeedScale = options.zoomSpeed * ratio;
-			// const deltaRatio = direction * zoomSpeedScale;
-			// setRatio(direction, deltaRatio)
-			// setPivot(stepPivot)
-			zoom(direction, zoomX);
-			if(direction<0 && ratio>targetRatio) {focusTimeline(1); return;}
-			if(direction>0 && ratio<targetRatio) {focusTimeline(2); return;}
-			// const exponent = (1 / (steps-counter));
-			// const newRatio = Math.pow(targetRatio, exponent) + ratio;
-			// console.log(newRatio)
-			// ratio=newRatio;
-			//pivot+=stepPivot;
-			//update();
-			// if(direction<0 && ratio>skipRatio) focusTimeline(1);
-			// if(direction>0 && ratio<skipRatio) focusTimeline(2);
-			//if(exponent >= 1) focusTimeline(1);
-			if(counter++>steps) focusTimeline(3);
+			zoom(direction, targetCenter);
+			if(direction<0 && ratio>targetRatio) focusTimeline() // In
+			if(direction>0 && ratio<targetRatio) focusTimeline() // Out
 		}, 1);
 	}
 	const registerListeners = (element: HTMLElement): void => {
@@ -330,7 +302,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 			eventHTML.style.width = widthRatio + '%'
 			eventHTML.style.position = 'absolute';
 			eventHTML.style.minWidth = '5px';
-			eventHTML.style.overflow = 'hidden';
+			//eventHTML.style.overflow = 'hidden';
 			eventHTML.title = timelineEvent.title;
 			eventHTML.className = "timelineEventGenerated";
 			eventHTML.attributes["starttime"] = timelineEvent.start;
@@ -347,6 +319,60 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 			eventHTML.style.pointerEvents = 'none';
 			eventHTML.style.userSelect = 'none';
 			return eventHTML;
+		}
+
+		const createTimelineEventExpand = (timelineEvent: ITimeline) : HTMLDivElement | undefined => {
+			if(!timelineEvent.children.length) return undefined;
+			
+			const expandHTML = document.createElement("div");
+
+			expandHTML.style.position = 'absolute';
+			expandHTML.style.padding = '2px';
+			expandHTML.style.top = '-23px';
+			expandHTML.style.fontSize = '.8rem';
+			expandHTML.style.border = '1px solid rgba(100, 100, 100, 0.5)';
+			expandHTML.style.backgroundColor = 'white';
+			expandHTML.style.zIndex = (timelineEvent.depth+1).toString();
+			expandHTML.title = 'Expand timeline';
+			expandHTML.innerHTML = 'Expand timeline &gt;';
+			expandHTML.className = "timelineEventExplode";
+			expandHTML.addEventListener("click", (e) => {
+				e.stopImmediatePropagation()
+				e.preventDefault()
+				currentTimeline = timelineEvent;
+				update();
+				console.log(currentTimeline)
+			});
+			return expandHTML;
+		}
+
+		if(!timelineEvent.children.length){
+			try{
+				const eventHTML = createTimelineEventHTML(timelineEvent)
+				if(eventHTML){
+					let heightFactor = timelineEvent.height + ((timelineEvent.height - 1) * .5);
+					let levelFactor = (timelineEvent.level) * 1.5;
+					const color = timelineEvent.color.map((color)=>(color - Math.pow(10,timelineEvent.depth)))
+					eventHTML.style.bottom = `${levelFactor*options.eventHeight}px`;
+					eventHTML.style.minHeight = `${heightFactor*options.eventHeight}px`;
+					eventHTML.style.borderRadius = '5px'
+					eventHTML.style.boxSizing = 'border-box'
+					eventHTML.style.border = '1px solid rgba(100,100,100,.5)'
+					eventHTML.style.backgroundColor = `rgb(${color[0]},${color[1]},${color[2]})`
+					eventHTML.style.zIndex = timelineEvent.depth.toString();
+					if(timelineEvent==focusedTimeline()){
+						if(timelineEvent.children.length){
+							eventHTML.append(createTimelineEventExpand(timelineEvent));
+						}
+						eventHTML.style.opacity = '1';
+					} else if (focusedTimeline().depth == timelineEvent.depth) {
+						eventHTML.style.opacity = '.2';
+					}
+					eventsFragment.appendChild(eventHTML);
+				}
+			} catch(error){
+				console.error(error, 'timelineEvent', timelineEvent);
+			}
 		}
 
 		// Iterate background events
@@ -375,34 +401,39 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 			}
 		});
 
-		// Iterate timline events
+		// Iterate timeline events
 		timelineEvent.children
 			.filter((rawEvent) => rawEvent.type === 'timeline')
 			.forEach((childEvent, i) => {
 			try{
-				
 				const eventHTML = createTimelineEventHTML(childEvent)
 				if(eventHTML){
 					let heightFactor = childEvent.height + ((childEvent.height - 1) * .5);
 					let levelFactor = (childEvent.level + timelineEvent.level - 1) * 1.5;
-					//const expanded = !!eventHTML.attributes["expanded"] || timelineEvent.expanded;
 					const color = childEvent.color.map((color)=>(color - Math.pow(10,childEvent.depth)))
-					// if(expanded && timelineEvent.children.length){
-					// 	eventsFragment.append(setupEventsHTML(timelineEvent.children, timelineEvent));
-					// }
 					eventHTML.style.bottom = `${levelFactor*options.eventHeight}px`;
 					eventHTML.style.minHeight = `${heightFactor*options.eventHeight}px`;
 					eventHTML.style.borderRadius = '5px'
 					eventHTML.style.boxSizing = 'border-box'
+					eventHTML.style.cursor = 'pointer'
 					eventHTML.style.border = '1px solid rgba(100,100,100,.5)'
 					eventHTML.style.backgroundColor = `rgb(${color[0]},${color[1]},${color[2]})`
 					eventHTML.style.zIndex = childEvent.depth.toString();
 					eventHTML.addEventListener("click", (e) => {
 						eventHTML.dispatchEvent(new CustomEvent("event-click", {
 							detail: childEvent,
-							bubbles: true
+							bubbles: true,
+							cancelable: true,
 						}));
 					});
+					if(childEvent==focusedTimeline()){
+						if(childEvent.children.length){
+							eventHTML.append(createTimelineEventExpand(childEvent));
+						}
+						eventHTML.style.opacity = '1';
+					} else if (focusedTimeline().depth == childEvent.depth) {
+						eventHTML.style.opacity = '.2';
+					}
 					eventsFragment.appendChild(eventHTML);
 				}
 			} catch(error){
@@ -571,7 +602,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		dividerContainer.appendChild(dividers);
 
 		//
-		const [currentTimeline] = history.slice(-1);
 		const eventsHtml = setupEventsHTML(currentTimeline);
 		eventsContainer.innerHTML = "";
 		eventsContainer.appendChild(eventsHtml);
@@ -581,7 +611,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		header.className = "timelineHeader";
 		header.style.textAlign = "center";
 		//header.style.position = "absolute";
-		header.innerHTML = currentTimeline.title;
+		header.innerHTML = focusedTimeline().title;
 		headers.appendChild(header);
 
 		if(history.length > 1){
