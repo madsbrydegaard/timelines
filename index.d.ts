@@ -13,6 +13,9 @@ declare module "timeline.io" {
         type: string;
         color: number[];
         expanded: boolean;
+        wikipedia?: string;
+        description?: string;
+        parent?: ITimeline;
     }
     export interface ITimelineEvent {
         title: string;
@@ -22,8 +25,10 @@ declare module "timeline.io" {
         events?: ITimelineEvent[];
         type?: string;
         color?: number[];
+        wikipedia?: string;
+        description?: string;
     }
     export const Timeline: (elementIdentifier: HTMLElement | string, timeline: ITimelineEvent, settings: object) => {
-        focus: (timelineEvent: ITimeline, back?: boolean) => void;
+        focus: (timelineEvent: ITimeline) => void;
     };
 }

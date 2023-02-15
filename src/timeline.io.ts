@@ -26,6 +26,9 @@ interface ITimeline {
 	type: string;
 	color: number[];
 	expanded: boolean;
+	wikipedia?: string;
+	description?: string;
+	parent?: ITimeline;
 }
 export interface ITimelineEvent {
 	title: string;
@@ -35,6 +38,8 @@ export interface ITimelineEvent {
 	events?: ITimelineEvent[];
 	type?: string;
 	color?: number[];
+	wikipedia?: string;
+	description?: string;
 }
 enum Direction {
 	In = -1,Out = 1
@@ -136,8 +141,14 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 	const viewDuration = (): number => {
 		return timelineDuration() / ratio;
 	}
-	const getLeftRatio = (minutes: number): number => {
+	const scaledZoomSpeed = (): number => {
+		return options.zoomSpeed * ratio;
+	}
+	const getViewRatio = (minutes: number): number => {
 		return (minutes - viewStart()) / viewDuration();
+	}
+	const getTimelineRatio = (minutes: number): number => {
+		return (minutes - timelineStart) / timelineDuration();
 	}
 	const setRatio = (direction: Direction, deltaRatio: number): boolean => {
 		let newRatio = ratio - deltaRatio;
@@ -170,13 +181,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 
 		pivot = newPivot;
 	}
-	const zoom = (direction: Direction, mouseX: number): void => {
+	const zoom = (direction: Direction, mouseX2timeline: number): void => {
 		// Make zoomSpeed relative to zoomLevel
-		const zoomSpeedScale = options.zoomSpeed * ratio;
-		const deltaRatio = direction * zoomSpeedScale;
-
-		const mouseX2view = (mouseX || 0) / viewWidth();
-		const mouseX2timeline = (mouseX2view - pivot) / ratio;
+		const deltaRatio = direction * scaledZoomSpeed();
 		const deltaPivot = mouseX2timeline * deltaRatio;
 
 		if(setRatio(direction, deltaRatio))
@@ -188,54 +195,61 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		setPivot(deltaPivot);
 		update();
 	}
-	const focus = (timelineEvent: ITimeline, back?: boolean) : void => {
+	const focus = (timelineEvent: ITimeline) : void => {
 		if(!timelineEvent) return;
-		let targetCenter = 0;
+		let mouseX2Timeline = 0;
+		//let targetPivot = 0;
 		
 		const targetStart = (timelineEvent.start - (timelineEvent.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
 		const targetEnd = (timelineEvent.end + (timelineEvent.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
 		const targetDuration = (targetEnd - targetStart);
 		const targetRatio = timelineDuration() / targetDuration;
+		const zDirection = Math.sign(ratio-targetRatio);
+		let back = zDirection>0;
 		
 		if(back){
-			const targetCenterMinutes = viewStart() + (viewDuration() / 2);
-			const targetCenterLeftRatio = (targetCenterMinutes - targetStart) / targetDuration;
-			const mouseXMinutesDelta = targetCenterLeftRatio * viewDuration();
-			const mouseXMinutes = viewStart() + mouseXMinutesDelta;
-			targetCenter = getLeftRatio(mouseXMinutes) * viewWidth();
-
-			if(timelineEvent.depth<focusedTimeline().depth){
-				history.pop();
-				currentTimeline = timelineEvent;
-			}
+			const offsetCenter = viewStart() + (viewDuration() / 2);
+			const offsetCenter2Target = (offsetCenter - targetStart) / targetDuration;
+			const offsetCenterCorrected = viewStart() + (viewDuration()*offsetCenter2Target);
+			const offsetCenter2Timeline = getTimelineRatio(offsetCenterCorrected);
+			mouseX2Timeline = offsetCenter2Timeline
 		} else {
-			const targetCenterMinutes = targetStart + (targetDuration / 2);
-			const targetCenterLeftRatio = getLeftRatio(targetCenterMinutes);
-			const mouseXMinutesDelta = targetCenterLeftRatio * targetDuration;
-			const mouseXMinutes = targetStart + mouseXMinutesDelta;
-			targetCenter = getLeftRatio(mouseXMinutes) * viewWidth();
+			const targetCenter = targetStart + (targetDuration / 2);
+			const targetCenter2View = getViewRatio(targetCenter);
+			const targetCenterCorrected = targetStart + (targetDuration*targetCenter2View);
+			const targetCenter2Timeline = getTimelineRatio(targetCenterCorrected);
+			mouseX2Timeline = targetCenter2Timeline
 		}
 		
-		const direction = Math.sign(ratio-targetRatio);
-
-		const focusTimeline = () => {
-			clearInterval(timer);
-			if(timelineEvent.depth>focusedTimeline().depth){
-				history.push(timelineEvent);
-			}
-			if(timelineEvent.depth==focusedTimeline().depth && timelineEvent!=focusedTimeline()){
-				history.pop();
-				history.push(timelineEvent);
-			}
-			update();
-			console.log(history)
+		if(timelineEvent != focusedTimeline()){
+			history.push(timelineEvent);
 		}
 
-		const timer = setInterval(()=>{
-			zoom(direction, targetCenter);
-			if(direction<0 && ratio>targetRatio) focusTimeline() // In
-			if(direction>0 && ratio<targetRatio) focusTimeline() // Out
+		const stopZoom = () => {
+			clearInterval(ratioTimer);
+			currentTimeline = timelineEvent.parent || currentTimeline;
+			update();
+		}
+
+		const stopMove = () => {
+			update();
+		}
+
+		const ratioTimer = setInterval(()=>{
+			zoom(zDirection, mouseX2Timeline);
+			if(zDirection<0 && ratio>targetRatio) stopZoom() // In
+			if(zDirection>0 && ratio<targetRatio) stopZoom() // Out
 		}, 1);
+
+		// const pivotTimer = setInterval(()=>{
+		// 	const deltaRatio = zDirection * scaledZoomSpeed();
+		// 	const deltaPivot = deltaRatio * options.dragSpeed;
+		// 	setPivot(deltaPivot);
+		// 	update();
+		// 	console.log(xDirection, pivot, targetPivot)
+		// 	if(xDirection<0 && pivot>targetPivot) stopMove() // Left
+		// 	if(xDirection>0 && pivot<targetPivot) stopMove() // Right
+		// }, 1);
 	}
 	const registerListeners = (element: HTMLElement): void => {
 		// Add resize handler
@@ -252,10 +266,12 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 			// console.log('wheel', direction, event)
 			// Adjust width of timeline for zooming effect
 			const leftRatio = (event.target as HTMLElement).attributes["starttime"]
-				? getLeftRatio((event.target as HTMLElement).attributes["starttime"])
+				? getViewRatio((event.target as HTMLElement).attributes["starttime"])
 				: 0
 			const offsetX = leftRatio * element.getBoundingClientRect().width + event.offsetX;
-			zoom(direction, offsetX);
+			const mouseX2view = offsetX / viewWidth();
+			const mouseX2timeline = (mouseX2view - pivot) / ratio;
+			zoom(direction, mouseX2timeline);
 		}, { passive: true });
 
 		// Add drag event handler
@@ -286,6 +302,167 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		element.addEventListener("mouseup", () => {
 			inDrag = false;
 		}, { passive: true });
+
+		// const x: CSSStyleDeclaration = {
+		// 	zIndex: '5',
+		// 	position: 'absolute',
+		// 	right: '0',
+		// 	top: '0',
+		// 	height: '100%',
+		// 	width: '50%',
+		// 	backgroundColor: 'white',
+		// }
+
+		const detailsLoader = (detail: ITimeline, callback: (details: DocumentFragment) => void): void => {
+			const detailsContainer = document.createDocumentFragment();
+			if(detail.description){
+				const headline = document.createElement("H1");
+				headline.innerHTML = detail.title;
+				detailsContainer.appendChild(headline);
+				const body = document.createElement("p");
+				body.innerHTML = detail.description;
+				detailsContainer.appendChild(body);
+				callback(detailsContainer);
+				return;
+			}
+			if(detail.wikipedia){
+				fetch(detail.wikipedia)
+					.then((response)=>response.json())
+					.then(result => {
+						const headline = document.createElement("H1");
+						headline.innerHTML = detail.title;
+						detailsContainer.appendChild(headline);
+						const body = document.createElement("p");
+						body.innerHTML = detail.description;
+						detailsContainer.appendChild(body);
+						callback(detailsContainer);
+					});
+				
+				return;
+			}
+
+			const headline = document.createElement("H3");
+			headline.innerHTML = "No detail information found...";
+			detailsContainer.appendChild(headline);
+			callback(detailsContainer);
+		}
+
+		const navigateLoader = (callback: (details: DocumentFragment) => void): void => {
+			const container = document.createDocumentFragment();
+			const scrollable = document.createElement("div");
+			scrollable.style.overflow = 'auto';
+			[...history].reverse().forEach((timeline) => {
+				const historyItem = document.createElement("a");
+				historyItem.innerHTML = timeline.title;
+				historyItem.href = '#';
+				historyItem.style.cursor = 'pointer';
+				historyItem.addEventListener("click", (e) => {
+					e.preventDefault();
+					historyItem.dispatchEvent(new CustomEvent("event-click", {
+						detail: timeline,
+						bubbles: true,
+						cancelable: true,
+					}));
+				});
+				scrollable.appendChild(historyItem);
+				scrollable.appendChild(document.createElement("br"));
+			})
+			container.appendChild(scrollable)
+			callback(container);
+		}
+
+		// Initialize details container
+		element.addEventListener('detail-click', (e: CustomEvent<ITimeline>) => {
+			const detailsContainer = document.createElement("div");
+			detailsContainer.className = "timelineDetailsContainer";
+			detailsContainer.style.zIndex = '5';
+			detailsContainer.style.position = 'absolute';
+			detailsContainer.style.right = '0';
+			detailsContainer.style.top = '0';
+			detailsContainer.style.height = "100%";
+			detailsContainer.style.width = "50%";
+			detailsContainer.style.padding = "10px";
+			detailsContainer.style.backgroundColor = 'white';
+			
+			const detailsCloseContainer = document.createElement("div");
+			detailsCloseContainer.className = "timelineDetailsCloseContainer";
+			detailsCloseContainer.style.position = 'absolute';
+			detailsCloseContainer.style.right = '10px';
+			detailsCloseContainer.style.top = '10px';
+			detailsCloseContainer.style.padding = '3px';
+			detailsCloseContainer.style.cursor = 'pointer';
+			//detailsCloseContainer.style.border = 'solid 1px black';
+			detailsCloseContainer.style.borderRadius = '5px';
+			detailsCloseContainer.innerHTML = ">";
+			detailsCloseContainer.addEventListener("click", (e) => {
+				detailsCloseContainer.dispatchEvent(new CustomEvent("detail-close-click", {
+					bubbles: true
+				}));
+				element.removeChild(detailsContainer);
+			});
+			detailsContainer.append(detailsCloseContainer)
+
+			const detailsBodyContainer = document.createElement("div");
+			detailsBodyContainer.className = "timelineDetailsBodyContainer";
+			detailsBodyContainer.innerHTML = "<h3>Loading...</h3>";
+			detailsContainer.append(detailsBodyContainer);
+
+			element.append(detailsContainer);
+
+			detailsLoader(e.detail, (detailFragment) => {
+				detailsBodyContainer.innerHTML = '';
+				detailsBodyContainer.appendChild(detailFragment);
+			})
+		});	
+
+		// Initialize navigate container
+		element.addEventListener('navigate-click', () => {
+			const navigateContainer = document.createElement("div");
+			navigateContainer.className = "timelineNavigateContainer";
+			navigateContainer.style.zIndex = '5';
+			navigateContainer.style.position = 'absolute';
+			navigateContainer.style.left = '0';
+			navigateContainer.style.top = '0';
+			navigateContainer.style.height = "100%";
+			navigateContainer.style.width = "30%";
+			navigateContainer.style.padding = "10px";
+			navigateContainer.style.backgroundColor = 'white';
+			element.append(navigateContainer);
+			
+			const navigateCloseContainer = document.createElement("div");
+			navigateCloseContainer.className = "timelineNavigateCloseContainer";
+			navigateCloseContainer.style.position = 'absolute';
+			navigateCloseContainer.style.right = '10px';
+			navigateCloseContainer.style.top = '10px';
+			navigateCloseContainer.style.padding = '3px';
+			navigateCloseContainer.style.cursor = 'pointer';
+			navigateCloseContainer.style.border = 'solid 1px black';
+			navigateCloseContainer.style.borderRadius = '5px';
+			navigateCloseContainer.innerHTML = "<";
+			navigateCloseContainer.addEventListener("click", (e) => {
+				navigateCloseContainer.dispatchEvent(new CustomEvent("navigate-close-click", {
+					bubbles: true
+				}));
+				element.removeChild(navigateContainer);
+			});
+			navigateContainer.append(navigateCloseContainer)
+
+			const navigateBodyHeadlineContainer = document.createElement("div");
+			navigateBodyHeadlineContainer.className = "timelineNavigateBodyHeadlineContainer";
+			navigateBodyHeadlineContainer.innerHTML = "History";
+			navigateContainer.append(navigateBodyHeadlineContainer);
+
+			const navigateBodyContainer = document.createElement("div");
+			navigateBodyContainer.className = "timelineNavigateBodyContainer";
+			navigateBodyContainer.addEventListener("event-click", (e) => {
+				element.removeChild(navigateContainer);
+			});
+			navigateContainer.append(navigateBodyContainer);
+			
+			navigateLoader((detailFragment) => {
+				navigateBodyContainer.appendChild(detailFragment);
+			})
+		});	
 	}
 	const setupEventsHTML = (timelineEvent: ITimeline): DocumentFragment => {
 		const eventsFragment = document.createDocumentFragment();
@@ -294,7 +471,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 			if(timelineEvent.start >= viewEnd()) return undefined;
 			if(timelineEvent.end <= viewStart()) return undefined;
 
-			const leftRatio = getLeftRatio(timelineEvent.start);
+			const leftRatio = getViewRatio(timelineEvent.start);
 			const eventHTML = document.createElement("div");
 			const widthRatio = (timelineEvent.duration / viewDuration()) * 100;
 
@@ -302,7 +479,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 			eventHTML.style.width = widthRatio + '%'
 			eventHTML.style.position = 'absolute';
 			eventHTML.style.minWidth = '5px';
-			//eventHTML.style.overflow = 'hidden';
 			eventHTML.title = timelineEvent.title;
 			eventHTML.className = "timelineEventGenerated";
 			eventHTML.attributes["starttime"] = timelineEvent.start;
@@ -321,31 +497,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 			return eventHTML;
 		}
 
-		const createTimelineEventExpand = (timelineEvent: ITimeline) : HTMLDivElement | undefined => {
-			if(!timelineEvent.children.length) return undefined;
-			
-			const expandHTML = document.createElement("div");
-
-			expandHTML.style.position = 'absolute';
-			expandHTML.style.padding = '2px';
-			expandHTML.style.top = '-23px';
-			expandHTML.style.fontSize = '.8rem';
-			expandHTML.style.border = '1px solid rgba(100, 100, 100, 0.5)';
-			expandHTML.style.backgroundColor = 'white';
-			expandHTML.style.zIndex = (timelineEvent.depth+1).toString();
-			expandHTML.title = 'Expand timeline';
-			expandHTML.innerHTML = 'Expand timeline &gt;';
-			expandHTML.className = "timelineEventExplode";
-			expandHTML.addEventListener("click", (e) => {
-				e.stopImmediatePropagation()
-				e.preventDefault()
-				currentTimeline = timelineEvent;
-				update();
-				console.log(currentTimeline)
-			});
-			return expandHTML;
-		}
-
 		if(!timelineEvent.children.length){
 			try{
 				const eventHTML = createTimelineEventHTML(timelineEvent)
@@ -360,12 +511,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 					eventHTML.style.border = '1px solid rgba(100,100,100,.5)'
 					eventHTML.style.backgroundColor = `rgb(${color[0]},${color[1]},${color[2]})`
 					eventHTML.style.zIndex = timelineEvent.depth.toString();
-					if(timelineEvent==focusedTimeline()){
-						if(timelineEvent.children.length){
-							eventHTML.append(createTimelineEventExpand(timelineEvent));
-						}
-						eventHTML.style.opacity = '1';
-					} else if (focusedTimeline().depth == timelineEvent.depth) {
+					if (focusedTimeline().depth == timelineEvent.depth && timelineEvent!=focusedTimeline()) {
 						eventHTML.style.opacity = '.2';
 					}
 					eventsFragment.appendChild(eventHTML);
@@ -426,12 +572,11 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 							cancelable: true,
 						}));
 					});
-					if(childEvent==focusedTimeline()){
-						if(childEvent.children.length){
-							eventHTML.append(createTimelineEventExpand(childEvent));
-						}
-						eventHTML.style.opacity = '1';
-					} else if (focusedTimeline().depth == childEvent.depth) {
+					// Automatically open timelines when zooming in
+					if(childEvent.start < viewStart() && childEvent.end > viewEnd() && childEvent.children.length){
+						currentTimeline = childEvent;
+					}
+					if (focusedTimeline().depth == childEvent.depth && childEvent!=focusedTimeline()) {
 						eventHTML.style.opacity = '.2';
 					}
 					eventsFragment.appendChild(eventHTML);
@@ -554,6 +699,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		//console.log(currentLevel, ratio)
 		const currentTimestampDistanceByLevel = timestampDistance / iterator;
 
+		//console.log(ratio, pivot)
+
 		// Find integer value of timestamp difference
 		const integerDifFraction = Math.floor(timelineViewDifference / currentTimestampDistanceByLevel);
 		const currentDif = integerDifFraction * currentTimestampDistanceByLevel;
@@ -566,11 +713,11 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 			const dividerTime = labelTime + (currentTimestampDistanceByLevel / 2);
 
 			// Set label position
-			const labelViewRatio = getLeftRatio(labelTime);
+			const labelViewRatio = getViewRatio(labelTime);
 			const labelViewLeftPosition = labelViewRatio * 100;
 
 			// Set divider position
-			const dividerViewRatio = getLeftRatio(dividerTime);
+			const dividerViewRatio = getViewRatio(dividerTime);
 			const dividerViewLeftPosition = dividerViewRatio * 100;
 
 			const label = document.createElement("div");
@@ -601,6 +748,11 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		dividerContainer.innerHTML = "";
 		dividerContainer.appendChild(dividers);
 
+		// Automatically close timelines when zooming out
+		if(currentTimeline.start > viewStart() && currentTimeline.end < viewEnd() && currentTimeline.parent){
+			currentTimeline = currentTimeline.parent;
+		}
+
 		//
 		const eventsHtml = setupEventsHTML(currentTimeline);
 		eventsContainer.innerHTML = "";
@@ -610,27 +762,57 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 		const header = document.createElement("div");
 		header.className = "timelineHeader";
 		header.style.textAlign = "center";
-		//header.style.position = "absolute";
 		header.innerHTML = focusedTimeline().title;
 		headers.appendChild(header);
 
-		if(history.length > 1){
-			const back = document.createElement("div");
-			back.className = "timelineBack";
-			back.style.position = "absolute";
-			back.style.top = "0px";
-			back.style.left = "5px";
-			//back.style.zIndex = "1000";
-			back.style.cursor = "pointer";
-			back.innerHTML = "<";
-			back.addEventListener("click", (e) => {
-				back.dispatchEvent(new CustomEvent("back-click", {
+		// if(history.length > 1){
+		// 	const back = document.createElement("div");
+		// 	back.className = "timelineBack";
+		// 	back.style.position = "absolute";
+		// 	back.style.top = "0px";
+		// 	back.style.left = "5px";
+		// 	back.style.cursor = "pointer";
+		// 	back.innerHTML = "< Back";
+		// 	back.addEventListener("click", (e) => {
+		// 		back.dispatchEvent(new CustomEvent("back-click", {
+		// 			bubbles: true
+		// 		}));
+		// 		const [previousTimeline] = history.slice(-2);
+		// 		focus(previousTimeline, true);
+		// 	});
+		// 	headers.appendChild(back);
+		// }
+
+		const navigate = document.createElement("div");
+		navigate.className = "timelineNavigate";
+		navigate.style.position = "absolute";
+		navigate.style.top = "0px";
+		navigate.style.left = "5px";
+		navigate.style.cursor = "pointer";
+		navigate.innerHTML = "< Navigate";
+		navigate.addEventListener("click", (e) => {
+			navigate.dispatchEvent(new CustomEvent("navigate-click", {
+				bubbles: true
+			}));
+		});
+		headers.appendChild(navigate);
+
+		if(currentTimeline){
+			const timelineDetail = document.createElement("div");
+			timelineDetail.className = "timelineBack";
+			timelineDetail.style.position = "absolute";
+			timelineDetail.style.top = "0px";
+			timelineDetail.style.right = "5px";
+			timelineDetail.style.cursor = "pointer";
+			timelineDetail.innerHTML = "Read more >";
+			timelineDetail.title = "Read more on " + currentTimeline.title;
+			timelineDetail.addEventListener("click", (e) => {
+				timelineDetail.dispatchEvent(new CustomEvent("detail-click", {
+					detail: currentTimeline,
 					bubbles: true
 				}));
-				const [previousTimeline] = history.slice(-2);
-				focus(previousTimeline, true);
 			});
-			headers.appendChild(back);
+			headers.appendChild(timelineDetail);
 		}
 
 		headerContainer.innerHTML = "";
@@ -743,6 +925,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, timeline: ITim
 			color: [240,240,240],
 			expanded: false,
 			level: 0, step: 0, score: 0, height: 0, children: [],
+			parent,
 			depth: parent ? parent.depth + 1 : 0,
 			...timelineEvent,
 			start: parseToMinutes(timelineEvent.start),
