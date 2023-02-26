@@ -1,4 +1,10 @@
 declare module "timeline.io" {
+    interface IMatrix {
+        [key: number]: {
+            height: number;
+            time: number;
+        };
+    }
     interface ITimeline {
         start: number;
         end: number;
@@ -12,10 +18,9 @@ declare module "timeline.io" {
         score: number;
         type: string;
         color: number[];
-        expanded: boolean;
         wikipedia?: string;
         description?: string;
-        parent?: ITimeline;
+        levelMatrix?: IMatrix;
     }
     export interface ITimelineEvent {
         title: string;
@@ -28,7 +33,10 @@ declare module "timeline.io" {
         wikipedia?: string;
         description?: string;
     }
-    export const Timeline: (elementIdentifier: HTMLElement | string, timeline: ITimelineEvent, settings: object) => {
+    export const Timeline: (elementIdentifier: HTMLElement | string, settings: object | undefined) => {
         focus: (timelineEvent: ITimeline) => void;
+        load: (timelineEvent: ITimelineEvent) => void;
+        current: ITimeline;
+        element: HTMLElement;
     };
 }
