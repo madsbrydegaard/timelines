@@ -541,16 +541,19 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 
 		const appendChildrenEventsHTML = () => {
 			eventsFragment.append(...timelineEvent.children.reduce((result, evt)=>{
-				const child = setupEventsHTML(evt);
+				const child = setupEventsHTML({
+					...evt,
+					level: timelineEvent.level + (evt.level - 1)
+				});
 				if(child)result.push(child);
 				return result;
 			}, new Array<DocumentFragment>()));
 		}
 
-		const appendTimelineEventHTML = () => {
+		const appendTimelineEventHTML = (fullWidth: boolean) => {
 			const levelFactor = timelineEvent.level * 1.5;
-			const leftRatio = getViewRatio(timelineEvent.start);
-			const widthRatio = (timelineEvent.duration / viewDuration()) * 100;
+			const leftRatio = fullWidth ? 0 : getViewRatio(timelineEvent.start);
+			const widthRatio = fullWidth ? 100 : (timelineEvent.duration / viewDuration()) * 100;
 
 			const eventHTML = document.createElement("div");
 			const borderColor = timelineEvent.color.map((color)=>(color - Math.pow(10,1)))
@@ -596,8 +599,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			eventHTML.style.backgroundColor = `rgb(${timelineEvent.color.join(',')})`
 			eventHTML.title = timelineEvent.title;
 			eventHTML.className = "timelineEventGenerated";
-			if(!fullWidth)
-				eventHTML.attributes["starttime"] = timelineEvent.start;
+			// if(!fullWidth)
+			// 	eventHTML.attributes["starttime"] = timelineEvent.start;
 			eventsFragment.appendChild(eventHTML);
 
 			const titleHTML = document.createElement("div");
@@ -610,24 +613,24 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			eventHTML.appendChild(titleHTML);
 		}
 
+		const isViewInsideEvent = timelineEvent.start < viewStart() && timelineEvent.end > viewEnd();
 		switch(timelineEvent.type){
 			case 'container':
 				appendChildrenEventsHTML();
 				break;
 			case 'timeline': {
-				if(timelineEvent.start < viewStart() && timelineEvent.end > viewEnd() && timelineEvent.children.length){
+				const isLargerThanView = timelineEvent.duration > viewDuration();
+				const isInView = timelineEvent.start < viewEnd() && timelineEvent.end > viewStart()
+				const hasChildren = !!timelineEvent.children.length;
+				if(isLargerThanView && isInView && hasChildren){
 					appendChildrenEventsHTML();
 				} else {
-					appendTimelineEventHTML();
+					appendTimelineEventHTML(isViewInsideEvent);
 				}
 				break;
 			}
 			case 'background': {
-				if(timelineEvent.start < viewStart() && timelineEvent.end > viewEnd()){
-					appendBackgroundEventHTML(true);
-				} else {
-					appendBackgroundEventHTML(false);
-				}
+				appendBackgroundEventHTML(isViewInsideEvent)
 				break;
 			}
 		}
@@ -906,25 +909,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 				? tl.children[tl.children.length-1].end || tl.start + 1
 				: tl.start + 1;
 	}
-	const calcLevel = (timelineEvent: ITimeline, levelMatrix: IMatrix): number => {
-		let level = 0;
-		for(const eventLevel in levelMatrix){
-			level = Number(eventLevel);
-			if(timelineEvent.start > levelMatrix[eventLevel].time){
-				levelMatrix[eventLevel] = {
-					height: timelineEvent.height,
-					time: timelineEvent.end
-				}
-				return Number(eventLevel);
-			}
-		}
-		levelMatrix[(++level).toString()] = {
-			height: timelineEvent.height,
-			time: timelineEvent.end
-		}
-		return level;
-	}
-	const calcLevelWithHeight = (timelineEvent: ITimeline, parent: ITimeline): number => {
+	const calcLevel = (timelineEvent: ITimeline, parent: ITimeline): number => {
 		let level = 0
 		for(const eventLevel in parent.levelMatrix){
 			level = Number(eventLevel);
@@ -967,7 +952,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			parent.children.forEach((timelineEvent, i) => {
 				// Add score to result in order to sort by importance
 				//timelineEvent.score = timelineEvent.type === 'timeline' ? calcScore(timelineEvent, parent) : 0
-				timelineEvent.level = ['container', 'timeline'].includes(timelineEvent.type) ? calcLevelWithHeight(timelineEvent, parent) : 0
+				timelineEvent.level = ['container', 'timeline'].includes(timelineEvent.type) 
+					? calcLevel(timelineEvent, parent) 
+					: 0
 			});
 		}
 
@@ -983,7 +970,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 
 		const parsedTimelineEvent: ITimeline = {
 			type: "timeline",
-			duration: 0, level: 0, step: 0, score: 0, height: 1, children: [],
+			duration: 0, level: 1, step: 0, score: 0, height: 1, children: [],
 			depth: parent ? parent.depth + 1 : 0,
 			...timelineEvent,
 			color: timelineEvent.color 
