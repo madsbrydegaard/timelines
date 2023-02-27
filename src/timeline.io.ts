@@ -63,8 +63,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 	let currentTimeline: ITimeline
 	let rootTimeline: ITimeline
 
-	const on = (eventName: string, action: (e: Event) => void) => {
-		element.addEventListener(eventName, action);
+	const on = (type: string, action: (e: Event) => void) => {
+		element.addEventListener(type, action, true);
 	}
 	const load = async (loader: () => Promise<ITimelineEvent>) => {
 		if(!loader) throw new Error(`Argument is empty. Please provide a loader function as first arg`);

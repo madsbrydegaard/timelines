@@ -37,6 +37,6 @@ declare module "timeline.io" {
         focus: (timelineEvent: ITimeline) => void;
         load: (loader: () => Promise<ITimelineEvent>) => Promise<void>;
         add: (timelineEvent: ITimelineEvent) => void;
-        on: (eventName: string, action: (e: Event) => void) => void;
+        on: (type: string, action: (e: Event) => void) => void;
     };
 }
