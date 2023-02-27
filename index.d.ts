@@ -37,8 +37,6 @@ declare module "timeline.io" {
         focus: (timelineEvent: ITimeline) => void;
         load: (loader: () => Promise<ITimelineEvent>) => Promise<void>;
         add: (timelineEvent: ITimelineEvent) => void;
-        current: ITimeline;
-        element: HTMLElement;
         on: (eventName: string, action: (e: Event) => void) => void;
     };
 }

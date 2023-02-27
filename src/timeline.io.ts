@@ -60,8 +60,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 	let labelContainer: HTMLDivElement
 	let dividerContainer: HTMLDivElement
 	let eventsContainer: HTMLDivElement
-	let headerContainer: HTMLDivElement
-	let history: ITimeline[] = []
 	let currentTimeline: ITimeline
 	let rootTimeline: ITimeline
 
@@ -164,13 +162,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 
 		// Draw
 		update();
-	}
-	const focusedTimeline = (): ITimeline | undefined => {
-		if(history.length){
-			const [focusedTimeline] = history.slice(-1);
-			return focusedTimeline;
-		}
-		return undefined;
 	}
 	const timelineDuration = (): number => {
 		return timelineEnd - timelineStart;
@@ -302,7 +293,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			var direction = Math.sign(event.deltaY) as Direction;
 			// console.log('wheel', direction, event)
 			// Adjust width of timeline for zooming effect
-			const leftRatio = getViewRatio((event.target as HTMLElement).attributes["starttime"])
+			const leftRatio = (event.target as HTMLElement).attributes["starttime"] 
+				? getViewRatio((event.target as HTMLElement).attributes["starttime"]) 
+				: 0
 
 			const offsetX = leftRatio * element.getBoundingClientRect().width + event.offsetX;
 			const mouseX2view = offsetX / viewWidth();
@@ -443,16 +436,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		element.style.overflow = "hidden";
 		element.style.minHeight = "3rem";
 
-		// Initialize header
-		const existingHeaderContainer = element.querySelector('.timelineHeaderContainer') as HTMLDivElement;
-		headerContainer = existingHeaderContainer || document.createElement("div");
-		if(!existingHeaderContainer) element.appendChild(headerContainer);
-
-		headerContainer.className = "timelineHeaderContainer";
-		headerContainer.style.width = "100%";
-		headerContainer.style.height = "20px";
-		headerContainer.style.backgroundColor = 'white';
-		
 		// Initialize labels
 		const existingLabelContainer = element.querySelector('.timelineLabelContainer') as HTMLDivElement;
 		labelContainer = existingLabelContainer || document.createElement("div");
@@ -467,7 +450,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		labelContainer.style.userSelect = 'none';
 		switch(options.position){
 			case "top":
-				labelContainer.style.top = "20px";
+				labelContainer.style.top = "0";
 				break;
 			// case "center":
 			// 	this.labelContainer.style.top = "50%";
@@ -484,7 +467,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 
 		dividerContainer.className = "timelineDividerContainer";
 		dividerContainer.style.width = "100%";
-		dividerContainer.style.height = "calc(100% - 20px)";
+		dividerContainer.style.height = "100%";
 		dividerContainer.style.position = "absolute";
 		dividerContainer.style.zIndex = "-2";
 		dividerContainer.style.bottom = '0';
@@ -496,7 +479,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		eventsContainer.className = "timelineEventsContainer";
 		eventsContainer.style.position = 'absolute';
 		eventsContainer.style.bottom = '50px';
-		eventsContainer.style.height = "calc(100% - 70px)";
+		eventsContainer.style.height = "calc(100% - 50px)";
 		eventsContainer.style.width = "100%";
 	}
 	const format = (minutes: number): string => {
@@ -839,8 +822,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		focus,
 		load,
 		add,
-		current: currentTimeline,
-		element,
 		on,
 	}
 };
