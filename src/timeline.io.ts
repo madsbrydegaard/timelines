@@ -74,6 +74,18 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		// Draw
 		update();
 	}
+	const isInView = (timelineEvent: ITimelineEvent) => {
+		return timelineEvent.start < viewEnd() && timelineEvent.end > viewStart();
+	}
+	const isInsideView = (timelineEvent: ITimelineEvent) => {
+		return timelineEvent.start > viewStart() && timelineEvent.end < viewEnd();
+	}
+	const isViewInside = (timelineEvent: ITimelineEvent) => {
+		return timelineEvent.start < viewStart() && timelineEvent.end > viewEnd();
+	}
+	const isLargerThanView = (timelineEvent: ITimelineEvent) => {
+		return timelineEvent.duration > viewDuration();
+	}
 	const init = (elementIdentifier: HTMLElement | string, settings: object | undefined) => {
 		// Handle DOM Element
 		if(!elementIdentifier) throw new Error(`Element argument is empty. DOM element | selector as first arg`);
@@ -219,13 +231,12 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		update();
 	}
 	const move = (deltaPivot: number): void => {
-		setPivot(deltaPivot);
+		setPivot(deltaPivot * options.dragSpeed);
 		update();
 	}
 	const focus = (timelineEvent: ITimeline) : void => {
 		if(!timelineEvent) return;
 		let mouseX2Timeline = 0;
-		//let targetPivot = 0;
 		
 		const targetStart = (timelineEvent.start - (timelineEvent.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
 		const targetEnd = (timelineEvent.end + (timelineEvent.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
@@ -254,12 +265,18 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 
 		const stopZoom = () => {
 			clearInterval(ratioTimer);
-			//currentTimeline = timelineEvent.parent || currentTimeline;
-			update();
-		}
-
-		const stopMove = () => {
-			update();
+			
+			const pivotTimer = setInterval(()=>{
+				if(timelineEvent.start < viewStart()){
+					move(10)
+					return;
+				}
+				if(timelineEvent.end > viewEnd()){
+					move(-10)
+					return;
+				}
+				clearInterval(pivotTimer);
+			}, 1);
 		}
 
 		const ratioTimer = setInterval(()=>{
@@ -267,16 +284,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			if(zDirection<0 && ratio>targetRatio) stopZoom() // In
 			if(zDirection>0 && ratio<targetRatio) stopZoom() // Out
 		}, 1);
-
-		// const pivotTimer = setInterval(()=>{
-		// 	const deltaRatio = zDirection * scaledZoomSpeed();
-		// 	const deltaPivot = deltaRatio * options.dragSpeed;
-		// 	setPivot(deltaPivot);
-		// 	update();
-		// 	console.log(xDirection, pivot, targetPivot)
-		// 	if(xDirection<0 && pivot>targetPivot) stopMove() // Left
-		// 	if(xDirection>0 && pivot<targetPivot) stopMove() // Right
-		// }, 1);
 	}
 	const registerListeners = (element: HTMLElement): void => {
 		// Add resize handler
@@ -318,7 +325,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 				return;
 			}
 			enableCall = false;
-			const deltaScrollLeft = (event.pageX - dragStartX) * options.dragSpeed;
+			const deltaScrollLeft = (event.pageX - dragStartX);
 			//const deltaScrollTop = (e.pageY - dragStartY) * options.dragSpeed;
 			if(deltaScrollLeft) move(deltaScrollLeft);
 			dragStartX = event.pageX;
@@ -532,10 +539,10 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		// 	})
 		// });	
 	}
-	const setupEventsHTML = (timelineEvent: ITimeline): DocumentFragment => {
-		if(!timelineEvent) return;
-		if(timelineEvent.start >= viewEnd()) return;
-		if(timelineEvent.end <= viewStart()) return;
+	const setupEventsHTML = (timelineEvent: ITimeline): DocumentFragment | undefined => {
+		if(!timelineEvent) return undefined;
+		if(timelineEvent.start >= viewEnd()) return undefined;
+		if(timelineEvent.end <= viewStart()) return undefined;
 		
 		const eventsFragment = document.createDocumentFragment();
 
@@ -613,20 +620,16 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			eventHTML.appendChild(titleHTML);
 		}
 
-		const isViewInside = timelineEvent.start < viewStart() && timelineEvent.end > viewEnd();
-		const isLargerThanView = timelineEvent.duration > viewDuration();
-		const isInView = timelineEvent.start < viewEnd() && timelineEvent.end > viewStart()
-		const hasChildren = !!timelineEvent.children.length;
 		switch(timelineEvent.type){
 			case 'container':
 				appendChildrenEventsHTML();
 				break;
 			case 'timeline': {
-				appendTimelineEventHTML(isViewInside);
+				appendTimelineEventHTML(isViewInside(timelineEvent));
 				break;
 			}
 			case 'background': {
-				appendBackgroundEventHTML(isViewInside)
+				appendBackgroundEventHTML(isViewInside(timelineEvent))
 				break;
 			}
 		}
