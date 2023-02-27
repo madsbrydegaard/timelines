@@ -35,8 +35,10 @@ declare module "timeline.io" {
     }
     export const Timeline: (elementIdentifier: HTMLElement | string, settings: object | undefined) => {
         focus: (timelineEvent: ITimeline) => void;
-        load: (timelineEvent: ITimelineEvent) => void;
+        load: (loader: () => Promise<ITimelineEvent>) => Promise<void>;
+        add: (timelineEvent: ITimelineEvent) => void;
         current: ITimeline;
         element: HTMLElement;
+        on: (eventName: string, action: (e: Event) => void) => void;
     };
 }

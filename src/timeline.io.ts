@@ -65,7 +65,14 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 	let currentTimeline: ITimeline
 	let rootTimeline: ITimeline
 
-	const load = (timelineEvent: ITimelineEvent) => {
+	const on = (eventName: string, action: (e: Event) => void) => {
+		element.addEventListener(eventName, action);
+	}
+	const load = async (loader: () => Promise<ITimelineEvent>) => {
+		if(!loader) throw new Error(`Argument is empty. Please provide a loader function as first arg`);
+		add(await loader());
+	}
+	const add = (timelineEvent: ITimelineEvent) => {
 		if(!timelineEvent) throw new Error(`Event argument is empty. Please provide Timeline event as first arg`);
 
 		// Parse & sort all events
@@ -259,10 +266,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			mouseX2Timeline = targetCenter2Timeline
 		}
 		
-		if(timelineEvent != focusedTimeline()){
-			history.push(timelineEvent);
-		}
-
 		const stopZoom = () => {
 			clearInterval(ratioTimer);
 			
@@ -299,9 +302,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			var direction = Math.sign(event.deltaY) as Direction;
 			// console.log('wheel', direction, event)
 			// Adjust width of timeline for zooming effect
-			const leftRatio = (event.target as HTMLElement).attributes["starttime"]
-				? getViewRatio((event.target as HTMLElement).attributes["starttime"])
-				: 0
+			const leftRatio = getViewRatio((event.target as HTMLElement).attributes["starttime"])
 
 			const offsetX = leftRatio * element.getBoundingClientRect().width + event.offsetX;
 			const mouseX2view = offsetX / viewWidth();
@@ -337,207 +338,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		element.addEventListener("mouseup", () => {
 			inDrag = false;
 		}, { passive: true });
-
-		// const x: CSSStyleDeclaration = {
-		// 	zIndex: '5',
-		// 	position: 'absolute',
-		// 	right: '0',
-		// 	top: '0',
-		// 	height: '100%',
-		// 	width: '50%',
-		// 	backgroundColor: 'white',
-		// }
-
-		const detailsLoader = (detail: ITimeline, callback: (details: DocumentFragment) => void): void => {
-			const detailsContainer = document.createDocumentFragment();
-			const detailsScrollableContainer = document.createElement("div");
-			detailsScrollableContainer.className = 'detailsScrollableContainer'
-			detailsScrollableContainer.style.overflow = "auto";
-			detailsScrollableContainer.style.height = "100%";
-			detailsScrollableContainer.style.position = "absolute";
-			
-			const detailsBody = document.createElement("div");
-			detailsBody.style.padding = "10px";
-			detailsScrollableContainer.appendChild(detailsBody);
-			detailsContainer.appendChild(detailsScrollableContainer)
-
-			console.log(detail)
-
-			// if(detail.description){
-			// 	const headline = document.createElement("H1");
-			// 	headline.innerHTML = detail.title;
-			// 	detailsContainer.appendChild(headline);
-			// 	const body = document.createElement("p");
-			// 	body.innerHTML = detail.description;
-			// 	detailsContainer.appendChild(body);
-			// 	callback(detailsContainer);
-			// 	return;
-			// }
-			if(detail.wikipedia){
-				fetch(detail.wikipedia)
-					.then((response)=>response.json())
-					.then(result => {
-						const headline = document.createElement("H1");
-						headline.innerHTML = result.query.pages[0].title;
-						detailsBody.appendChild(headline);
-						
-						if(result.query.pages[0].thumbnail){
-							const thumbnail = document.createElement("p");
-							const thumbnailImg = document.createElement("img");
-							thumbnailImg.src = result.query.pages[0].thumbnail.source;
-							thumbnailImg.style.width = "100%";
-							thumbnail.appendChild(thumbnailImg);
-							detailsBody.appendChild(thumbnail);
-						} else if(result.query.pages[0].images && result.query.pages[0].images.length){
-							// const thumbnail = document.createElement("p");
-							// const thumbnailImg = document.createElement("img");
-							// thumbnailImg.src = result.query.pages[0].images[0].source;
-							// thumbnailImg.style.width = "100%";
-							// thumbnail.appendChild(thumbnailImg);
-							// detailsBody.appendChild(thumbnail);
-						}
-
-						const extract = document.createElement("p");
-						extract.innerHTML = result.query.pages[0].extract;
-						detailsBody.appendChild(extract);
-
-						callback(detailsContainer);
-					});
-				
-				return;
-			}
-
-			const headline = document.createElement("H3");
-			headline.innerHTML = "No detail information found...";
-			detailsContainer.appendChild(headline);
-			callback(detailsContainer);
-		}
-
-		const navigateLoader = (callback: (details: DocumentFragment) => void): void => {
-			const container = document.createDocumentFragment();
-			const scrollable = document.createElement("div");
-			scrollable.style.overflow = 'auto';
-			[...history].reverse().forEach((timeline) => {
-				const historyItem = document.createElement("a");
-				historyItem.innerHTML = timeline.title;
-				historyItem.href = '#';
-				historyItem.style.cursor = 'pointer';
-				historyItem.addEventListener("click", (e) => {
-					e.preventDefault();
-					historyItem.dispatchEvent(new CustomEvent("event-click", {
-						detail: timeline,
-						bubbles: true,
-						cancelable: true,
-					}));
-				});
-				scrollable.appendChild(historyItem);
-				scrollable.appendChild(document.createElement("br"));
-			})
-			container.appendChild(scrollable)
-			callback(container);
-		}
-
-		// Initialize details container
-		// element.addEventListener('detail-click', (e: CustomEvent<ITimeline>) => {
-		// 	const detailsContainer = document.createElement("div");
-		// 	detailsContainer.className = "timelineDetailsContainer";
-		// 	detailsContainer.style.zIndex = '5';
-		// 	detailsContainer.style.position = 'absolute';
-		// 	detailsContainer.style.right = '0';
-		// 	detailsContainer.style.top = '0';
-		// 	detailsContainer.style.height = "100%";
-		// 	detailsContainer.style.width = "50%";
-		// 	//detailsContainer.style.padding = "10px";
-		// 	detailsContainer.style.backgroundColor = 'white';
-		// 	detailsContainer.addEventListener("wheel", (e) => {
-		// 		e.stopImmediatePropagation();
-		// 	})
-		// 	detailsContainer.addEventListener("mousedown", (e) => {
-		// 		e.stopImmediatePropagation();
-		// 	})
-		// 	element.append(detailsContainer);
-			
-		// 	const detailsCloseContainer = document.createElement("div");
-		// 	detailsCloseContainer.className = "timelineDetailsClose";
-		// 	detailsCloseContainer.style.position = 'absolute';
-		// 	detailsCloseContainer.style.right = '20px';
-		// 	detailsCloseContainer.style.top = '10px';
-		// 	detailsCloseContainer.style.padding = '3px';
-		// 	detailsCloseContainer.style.cursor = 'pointer';
-		// 	//detailsCloseContainer.style.border = 'solid 1px black';
-		// 	detailsCloseContainer.style.borderRadius = '5px';
-		// 	detailsCloseContainer.style.zIndex = '1';
-		// 	detailsCloseContainer.innerHTML = ">";
-		// 	detailsCloseContainer.addEventListener("click", (e) => {
-		// 		detailsCloseContainer.dispatchEvent(new CustomEvent("detail-close-click", {
-		// 			bubbles: true
-		// 		}));
-		// 		element.removeChild(detailsContainer);
-		// 	});
-		// 	detailsContainer.append(detailsCloseContainer)
-
-		// 	const detailsBodyContainer = document.createElement("div");
-		// 	detailsBodyContainer.className = "timelineDetailsBody";
-		// 	detailsBodyContainer.innerHTML = "<h3>Loading...</h3>";
-		// 	detailsContainer.append(detailsBodyContainer);
-
-		// 	detailsLoader(e.detail, (detailFragment) => {
-		// 		detailsBodyContainer.innerHTML = '';
-		// 		detailsBodyContainer.appendChild(detailFragment);
-		// 	})
-		// });	
-
-		// Initialize navigate container
-		// element.addEventListener('navigate-click', () => {
-		// 	const navigateContainer = document.createElement("div");
-		// 	navigateContainer.className = "timelineNavigateContainer";
-		// 	navigateContainer.style.zIndex = '5';
-		// 	navigateContainer.style.position = 'absolute';
-		// 	navigateContainer.style.left = '0';
-		// 	navigateContainer.style.top = '0';
-		// 	navigateContainer.style.height = "100%";
-		// 	navigateContainer.style.width = "30%";
-		// 	navigateContainer.style.padding = "10px";
-		// 	navigateContainer.style.backgroundColor = 'white';
-		// 	navigateContainer.addEventListener("wheel", (e) => {
-		// 		e.preventDefault();
-		// 	})
-		// 	element.append(navigateContainer);
-			
-		// 	const navigateCloseContainer = document.createElement("div");
-		// 	navigateCloseContainer.className = "timelineNavigateCloseContainer";
-		// 	navigateCloseContainer.style.position = 'absolute';
-		// 	navigateCloseContainer.style.right = '10px';
-		// 	navigateCloseContainer.style.top = '10px';
-		// 	navigateCloseContainer.style.padding = '3px';
-		// 	navigateCloseContainer.style.cursor = 'pointer';
-		// 	navigateCloseContainer.style.border = 'solid 1px black';
-		// 	navigateCloseContainer.style.borderRadius = '5px';
-		// 	navigateCloseContainer.innerHTML = "<";
-		// 	navigateCloseContainer.addEventListener("click", (e) => {
-		// 		navigateCloseContainer.dispatchEvent(new CustomEvent("navigate-close-click", {
-		// 			bubbles: true
-		// 		}));
-		// 		element.removeChild(navigateContainer);
-		// 	});
-		// 	navigateContainer.append(navigateCloseContainer)
-
-		// 	const navigateBodyHeadlineContainer = document.createElement("div");
-		// 	navigateBodyHeadlineContainer.className = "timelineNavigateBodyHeadlineContainer";
-		// 	navigateBodyHeadlineContainer.innerHTML = "History";
-		// 	navigateContainer.append(navigateBodyHeadlineContainer);
-
-		// 	const navigateBodyContainer = document.createElement("div");
-		// 	navigateBodyContainer.className = "timelineNavigateBodyContainer";
-		// 	navigateBodyContainer.addEventListener("event-click", (e) => {
-		// 		element.removeChild(navigateContainer);
-		// 	});
-		// 	navigateContainer.append(navigateBodyContainer);
-			
-		// 	navigateLoader((detailFragment) => {
-		// 		navigateBodyContainer.appendChild(detailFragment);
-		// 	})
-		// });	
 	}
 	const setupEventsHTML = (timelineEvent: ITimeline): DocumentFragment | undefined => {
 		if(!timelineEvent) return undefined;
@@ -585,8 +385,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			eventHTML.style.minWidth = '5px';
 			eventHTML.title = timelineEvent.title;
 			eventHTML.className = "timelineEventGenerated";
-			eventHTML.attributes["starttime"] = timelineEvent.start;
-			eventHTML.attributes["expanded"] = widthRatio > options.expandRatio;
+
+			eventHTML.attributes["starttime"] = fullWidth ? viewStart() : timelineEvent.start;
+
 			eventsFragment.appendChild(eventHTML);
 		}
 
@@ -595,7 +396,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			const widthRatio = fullWidth ? 100 : (timelineEvent.duration / viewDuration()) * 100;
 
 			const eventHTML = document.createElement("div");
-
 			eventHTML.style.left = (leftRatio * 100) + '%'
 			eventHTML.style.width = widthRatio + '%'
 			eventHTML.style.position = 'absolute';
@@ -606,8 +406,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			eventHTML.style.backgroundColor = `rgb(${timelineEvent.color.join(',')})`
 			eventHTML.title = timelineEvent.title;
 			eventHTML.className = "timelineEventGenerated";
-			// if(!fullWidth)
-			// 	eventHTML.attributes["starttime"] = timelineEvent.start;
+			
+			eventHTML.attributes["starttime"] = fullWidth ? viewStart() : timelineEvent.start;
+
 			eventsFragment.appendChild(eventHTML);
 
 			const titleHTML = document.createElement("div");
@@ -1037,7 +838,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 	return {
 		focus,
 		load,
+		add,
 		current: currentTimeline,
 		element,
+		on,
 	}
 };
