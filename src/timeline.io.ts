@@ -613,24 +613,20 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			eventHTML.appendChild(titleHTML);
 		}
 
-		const isViewInsideEvent = timelineEvent.start < viewStart() && timelineEvent.end > viewEnd();
+		const isViewInside = timelineEvent.start < viewStart() && timelineEvent.end > viewEnd();
+		const isLargerThanView = timelineEvent.duration > viewDuration();
+		const isInView = timelineEvent.start < viewEnd() && timelineEvent.end > viewStart()
+		const hasChildren = !!timelineEvent.children.length;
 		switch(timelineEvent.type){
 			case 'container':
 				appendChildrenEventsHTML();
 				break;
 			case 'timeline': {
-				const isLargerThanView = timelineEvent.duration > viewDuration();
-				const isInView = timelineEvent.start < viewEnd() && timelineEvent.end > viewStart()
-				const hasChildren = !!timelineEvent.children.length;
-				if(isLargerThanView && isInView && hasChildren){
-					appendChildrenEventsHTML();
-				} else {
-					appendTimelineEventHTML(isViewInsideEvent);
-				}
+				appendTimelineEventHTML(isViewInside);
 				break;
 			}
 			case 'background': {
-				appendBackgroundEventHTML(isViewInsideEvent)
+				appendBackgroundEventHTML(isViewInside)
 				break;
 			}
 		}
@@ -934,9 +930,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 	}
 	const addEvents = (parent: ITimeline, ...children: ITimelineEvent[]): void => {
 		const calcScore = (timelineEvent: ITimeline, parent: ITimeline): number => {
-			let score = 1
-			const durationRatio = (timelineEvent.duration || 1) / parent.duration;
-			score = durationRatio * parent.children.length;
+			const durationRatio = timelineEvent.duration / parent.duration;
+			const score = durationRatio * timelineEvent.children.length || 1;
 			return score;
 		}
 
@@ -951,7 +946,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			parent.levelMatrix = {1:{height: 0, time: Number.MIN_SAFE_INTEGER}}
 			parent.children.forEach((timelineEvent, i) => {
 				// Add score to result in order to sort by importance
-				//timelineEvent.score = timelineEvent.type === 'timeline' ? calcScore(timelineEvent, parent) : 0
+				timelineEvent.score = ['container', 'timeline'].includes(timelineEvent.type) 
+					? calcScore(timelineEvent, parent) 
+					: 0
 				timelineEvent.level = ['container', 'timeline'].includes(timelineEvent.type) 
 					? calcLevel(timelineEvent, parent) 
 					: 0
