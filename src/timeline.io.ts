@@ -382,6 +382,10 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 					bubbles: true,
 					cancelable: true,
 				}));
+
+				if(options.autoFocus){
+					focus(timelineEvent);
+				}
 			});
 			eventHTML.style.left = (leftRatio * 100) + '%'
 			eventHTML.style.width = widthRatio + '%'
