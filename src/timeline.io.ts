@@ -133,14 +133,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		timelineStart = parseToMinutes(options.timelineStart);
 		timelineEnd = parseToMinutes(options.timelineEnd);
 
-		//Calculate view position on timeline
-		// const viewStart = options.viewStart 
-		// 	? parseToMinutes(options.viewStart) 
-		// 	: (currentTimeline.start - (currentTimeline.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
-		// const viewEnd = options.viewEnd 
-		// 	? parseToMinutes(options.viewEnd) 
-		// 	: (currentTimeline.end + (currentTimeline.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
-
 		const viewStart = rootTimeline.start;
 		const viewEnd = rootTimeline.end;
 
@@ -149,7 +141,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		const viewDuration = (viewEnd - viewStart);
 		
 		ratio = timelineDuration() / viewDuration;
-		pivot = (timelineStart - viewStart) / viewDuration; 
+		pivot = (timelineStart - viewStart) / viewDuration;
 
 		// Set initial timeline
 		currentTimeline = rootTimeline;
@@ -236,8 +228,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		if(!timelineEvent) return;
 		let mouseX2Timeline = 0;
 		
-		const targetStart = (timelineEvent.start - (timelineEvent.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
-		const targetEnd = (timelineEvent.end + (timelineEvent.duration * .05)); // Create 10% spacing - 5% on each side of the timeline
+		const targetDurationExtension = timelineEvent.duration * .05;
+		const targetStart = (timelineEvent.start - targetDurationExtension); // Create 10% spacing - 5% on each side of the timeline
+		const targetEnd = (timelineEvent.end + targetDurationExtension); // Create 10% spacing - 5% on each side of the timeline
 		const targetDuration = (targetEnd - targetStart);
 		const targetRatio = timelineDuration() / targetDuration;
 		const zDirection = Math.sign(ratio-targetRatio);
@@ -256,20 +249,27 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			const targetCenter2Timeline = getTimelineRatio(targetCenterCorrected);
 			mouseX2Timeline = targetCenter2Timeline
 		}
-		
+
 		const stopZoom = () => {
 			clearInterval(ratioTimer);
-			
-			const pivotTimer = setInterval(()=>{
-				if(timelineEvent.start < viewStart()){
-					move(10)
-					return;
-				}
-				if(timelineEvent.end > viewEnd()){
-					move(-10)
-					return;
-				}
+
+			const targetPivot = pivot - (targetStart - viewStart()) / viewDuration();
+			const xDirection = Math.sign(targetPivot-pivot);
+
+			const stopFocus = () => {
 				clearInterval(pivotTimer);
+
+				element.dispatchEvent(new CustomEvent("event-focus", {
+					detail: timelineEvent,
+					bubbles: true,
+					cancelable: true,
+				}));
+			}
+
+			const pivotTimer = setInterval(()=>{
+				move(xDirection*10);
+				if(xDirection<0 && pivot<targetPivot) stopFocus(); // Right (Forward in time)
+				if(xDirection>0 && pivot>targetPivot) stopFocus(); // Left (Back in time)
 			}, 1);
 		}
 
@@ -320,7 +320,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			}
 			enableCall = false;
 			const deltaScrollLeft = (event.pageX - dragStartX);
-			//const deltaScrollTop = (e.pageY - dragStartY) * options.dragSpeed;
+			//const deltaScrollTop = (e.pageY - dragStartY);
 			if(deltaScrollLeft) move(deltaScrollLeft);
 			dragStartX = event.pageX;
 			dragStartY = event.pageY;
