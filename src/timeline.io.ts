@@ -63,14 +63,14 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 	let currentTimeline: ITimeline
 	let rootTimeline: ITimeline
 
-	const on = (type: string, action: (e: Event) => void) => {
+	const on = (type: string, action: (e: Event) => void) : void => {
 		element.addEventListener(type, action, true);
 	}
-	const load = async (loader: () => Promise<ITimelineEvent>) => {
+	const load = async (loader: () => Promise<ITimelineEvent>) : Promise<void> => {
 		if(!loader) throw new Error(`Argument is empty. Please provide a loader function as first arg`);
 		add(await loader());
 	}
-	const add = (timelineEvent: ITimelineEvent) => {
+	const add = (timelineEvent: ITimelineEvent) : void => {
 		if(!timelineEvent) throw new Error(`Event argument is empty. Please provide Timeline event as first arg`);
 
 		// Parse & sort all events
@@ -79,19 +79,10 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		// Draw
 		update();
 	}
-	const isInView = (timelineEvent: ITimelineEvent) => {
-		return timelineEvent.start < viewEnd() && timelineEvent.end > viewStart();
-	}
-	const isInsideView = (timelineEvent: ITimelineEvent) => {
-		return timelineEvent.start > viewStart() && timelineEvent.end < viewEnd();
-	}
-	const isViewInside = (timelineEvent: ITimelineEvent) => {
+	const isViewInside = (timelineEvent: ITimelineEvent) : boolean => {
 		return timelineEvent.start < viewStart() && timelineEvent.end > viewEnd();
 	}
-	const isLargerThanView = (timelineEvent: ITimelineEvent) => {
-		return timelineEvent.duration > viewDuration();
-	}
-	const init = (elementIdentifier: HTMLElement | string, settings: object | undefined) => {
+	const init = (elementIdentifier: HTMLElement | string, settings: object | undefined) : void => {
 		// Handle DOM Element
 		if(!elementIdentifier) throw new Error(`Element argument is empty. DOM element | selector as first arg`);
 		if (typeof elementIdentifier === "string") {
@@ -155,31 +146,31 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		// Draw
 		update();
 	}
-	const timelineDuration = (): number => {
+	const timelineDuration = () : number => {
 		return timelineEnd - timelineStart;
 	}
-	const viewWidth = (): number => {
+	const viewWidth = () : number => {
 		return element.offsetWidth || 0;
 	}
-	const viewStart = (): number => {
+	const viewStart = () : number => {
 		return timelineStart - viewDuration() * pivot;
 	}
-	const viewEnd = (): number => {
+	const viewEnd = () : number => {
 		return viewStart() + viewDuration();
 	}
-	const viewDuration = (): number => {
+	const viewDuration = () : number => {
 		return timelineDuration() / ratio;
 	}
-	const scaledZoomSpeed = (): number => {
+	const scaledZoomSpeed = () : number => {
 		return options.zoomSpeed * ratio;
 	}
-	const getViewRatio = (minutes: number): number => {
+	const getViewRatio = (minutes: number) : number => {
 		return (minutes - viewStart()) / viewDuration();
 	}
-	const getTimelineRatio = (minutes: number): number => {
+	const getTimelineRatio = (minutes: number) : number => {
 		return (minutes - timelineStart) / timelineDuration();
 	}
-	const setRatio = (direction: Direction, deltaRatio: number): boolean => {
+	const setRatio = (direction: Direction, deltaRatio: number) : boolean => {
 		let newRatio = ratio - deltaRatio;
 
 		// If zoom OUT - test if zoom is allowed
@@ -195,7 +186,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		ratio = newRatio;
 		return true;
 	}
-	const setPivot = (deltaPivot: number): void => {
+	const setPivot = (deltaPivot: number) : void => {
 		let newPivot = pivot + deltaPivot;
 
 		if (newPivot >= 0) {
@@ -210,7 +201,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 
 		pivot = newPivot;
 	}
-	const zoom = (direction: Direction, mouseX2timeline: number): void => {
+	const zoom = (direction: Direction, mouseX2timeline: number) : void => {
 		// Make zoomSpeed relative to zoomLevel
 		const deltaRatio = direction * scaledZoomSpeed();
 		const deltaPivot = mouseX2timeline * deltaRatio;
@@ -220,7 +211,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 
 		update();
 	}
-	const move = (deltaPivot: number): void => {
+	const move = (deltaPivot: number) : void => {
 		setPivot(deltaPivot * options.dragSpeed);
 		update();
 	}
@@ -259,7 +250,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			const stopFocus = () => {
 				clearInterval(pivotTimer);
 
-				element.dispatchEvent(new CustomEvent("event-focus", {
+				element.dispatchEvent(new CustomEvent("focus.tl.event", {
 					detail: timelineEvent,
 					bubbles: true,
 					cancelable: true,
@@ -366,7 +357,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			eventHTML.style.backgroundColor = `rgb(${timelineEvent.color.join(',')})`
 			eventHTML.style.zIndex = timelineEvent.depth.toString();
 			eventHTML.addEventListener("click", (e) => {
-				eventHTML.dispatchEvent(new CustomEvent("event-click", {
+				element.dispatchEvent(new CustomEvent("click.tl.event", {
 					detail: timelineEvent,
 					bubbles: true,
 					cancelable: true,
@@ -430,7 +421,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 
 		return eventsFragment
 	}
-	const setupContainerHTML = (): void => {
+	const setupContainerHTML = () : void => {
 		// Register parent as position = "relative" for absolute positioning to work
 		element.style.position = "relative";
 		element.style.overflow = "hidden";
@@ -482,7 +473,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		eventsContainer.style.height = "calc(100% - 50px)";
 		eventsContainer.style.width = "100%";
 	}
-	const format = (minutes: number): string => {
+	const format = (minutes: number) : string => {
 		const moment = new Date(minutes * 6e4);
 		if (viewDuration() < 1440 * 4) {
 			// minutes in an day = 1440
@@ -512,7 +503,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		// minutes in a year = 525948.766
 		return moment.getFullYear().toString();
 	}
-	const update = (): void => {
+	const update = () : void => {
 		if (!element) return;
 		const currentLevel = Math.floor(ratio);
 		// https://math.stackexchange.com/questions/3381728/find-closest-power-of-2-to-a-specific-number
@@ -571,11 +562,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		dividerContainer.innerHTML = "";
 		dividerContainer.appendChild(dividers);
 		
-		// Automatically close timelines when zooming out
-		// if(currentTimeline.start > viewStart() && currentTimeline.end < viewEnd() && currentTimeline.parent){
-		// 	currentTimeline = currentTimeline.parent;
-		// }
-
 		//
 		const eventsHtml = setupEventsHTML(currentTimeline);
 		eventsContainer.innerHTML = "";
@@ -583,14 +569,21 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			eventsContainer.appendChild(eventsHtml);
 
 		// Dispatch DOM event
-		element.dispatchEvent(new CustomEvent("update", {
-			detail: toJSON(),
+		element.dispatchEvent(new CustomEvent("update.tl", {
+			detail: {
+				options,
+				viewStartDate: viewStart(),
+				viewEndDate: viewEnd(),
+				viewDuration: viewDuration(),
+				ratio,
+				pivot,
+			},
 			bubbles: true,
 			cancelable: true,
 			composed: false,
 		}));
 	}
-	const parseToMinutes = (input: number[] | string | number | Date | undefined): number => {
+	const parseToMinutes = (input: number[] | string | number | Date | undefined) : number => {
 		if(input === undefined) return undefined;
 
 		// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
@@ -671,7 +664,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 
 		return undefined;
 	}
-	const isNumberArray = (array: any[]) => {
+	const isNumberArray = (array: any[]) : boolean => {
 		return array.every(element => {
 			return typeof element === 'number';
 		});
@@ -692,7 +685,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 				? tl.children[tl.children.length-1].end || tl.start + 1
 				: tl.start + 1;
 	}
-	const calcLevel = (timelineEvent: ITimeline, parent: ITimeline): number => {
+	const calcLevel = (timelineEvent: ITimeline, parent: ITimeline) : number => {
 		let level = 0
 		for(const eventLevel in parent.levelMatrix){
 			level = Number(eventLevel);
@@ -715,7 +708,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		}
 		return level;
 	}
-	const addEvents = (parent: ITimeline, ...children: ITimelineEvent[]): void => {
+	const addEvents = (parent: ITimeline, ...children: ITimelineEvent[]) : void => {
 		const calcScore = (timelineEvent: ITimeline, parent: ITimeline): number => {
 			const durationRatio = timelineEvent.duration / parent.duration;
 			const score = durationRatio * timelineEvent.children.length || 1;
@@ -746,7 +739,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			? Math.max.apply(1, parent.children.map((child) => child.level))
 			: 1;
 	}
-	const parseEvent = (timelineEvent: ITimelineEvent, parent?: ITimeline): ITimeline | undefined => {
+	const parseEvent = (timelineEvent: ITimelineEvent, parent?: ITimeline) : ITimeline | undefined => {
 		if(!timelineEvent){
 			console.warn('Event object is empty'); 
 			return undefined;
@@ -786,7 +779,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		// Return
 		return parsedTimelineEvent;
 	}
-	const parseTimelineHTML = (input: HTMLElement): any[] => {
+	const parseTimelineHTML = (input: HTMLElement) : any[] => {
 		// Initialize events
 		let result = []
 		const timelineEvents = input.querySelectorAll<HTMLElement>('.timelineEvent');
@@ -804,16 +797,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 				})
 		}
 		return result;
-	}
-	const toJSON = () => {
-		return {
-			options,
-			viewStartDate: viewStart(),
-			viewEndDate: viewEnd(),
-			viewDuration: viewDuration(),
-			ratio,
-			pivot,
-		}
 	}
 
 	init(elementIdentifier, settings);
