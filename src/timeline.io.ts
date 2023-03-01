@@ -9,8 +9,18 @@ interface ITimelineOptions {
 	minZoom: number;
 	maxZoom: number;
 	position: string;
-	expandRatio: number;
 	eventHeight: number;
+	autoFocus: boolean,
+	classNames: {
+		timeline: string,
+		timelineEvent: string,
+		timelineEventTitle: string,
+		timelineLabels: string,
+		timelineDividers: string,
+		timelineEvents: string,
+		timelineLabel: string,
+		timelineDivider: string,
+	}
 }
 interface IMatrix {
 	[key: number]: {
@@ -107,8 +117,18 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 				minZoom: 1,
 				maxZoom: 1e11,
 				position: "bottom",
-				expandRatio: 80,
 				eventHeight: 5,
+				autoFocus: true,
+				classNames: {
+					timeline: 'tl',
+					timelineEvent: 'tl__event',
+					timelineEventTitle: 'tl__event__title',
+					timelineLabels: 'tl__labels',
+					timelineDividers: 'tl__dividers',
+					timelineEvents: 'tl__events',
+					timelineLabel: 'tl__label',
+					timelineDivider: 'tl__divider',
+				}
 			},
 			...settings,
 		};
@@ -368,7 +388,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			eventHTML.style.position = 'absolute';
 			eventHTML.style.minWidth = '5px';
 			eventHTML.title = timelineEvent.title;
-			eventHTML.className = "timelineEventGenerated";
+			eventHTML.classList.add(options.classNames.timelineEvent);
 
 			eventHTML.attributes["starttime"] = fullWidth ? viewStart() : timelineEvent.start;
 
@@ -389,7 +409,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			eventHTML.style.minHeight = `100%`;
 			eventHTML.style.backgroundColor = `rgb(${timelineEvent.color.join(',')})`
 			eventHTML.title = timelineEvent.title;
-			eventHTML.className = "timelineEventGenerated";
+			eventHTML.classList.add(options.classNames.timelineEvent);
 			
 			eventHTML.attributes["starttime"] = fullWidth ? viewStart() : timelineEvent.start;
 
@@ -398,10 +418,10 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			const titleHTML = document.createElement("div");
 			titleHTML.title = timelineEvent.title;
 			titleHTML.innerText = timelineEvent.title;
-			titleHTML.className = "timelineEventGeneratedTitle";
 			titleHTML.style.whiteSpace = 'nowrap';
 			titleHTML.style.pointerEvents = 'none';
 			titleHTML.style.userSelect = 'none';
+			titleHTML.classList.add(options.classNames.timelineEventTitle);
 			eventHTML.appendChild(titleHTML);
 		}
 
@@ -428,11 +448,11 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		element.style.minHeight = "3rem";
 
 		// Initialize labels
-		const existingLabelContainer = element.querySelector('.timelineLabelContainer') as HTMLDivElement;
+		const existingLabelContainer = element.querySelector(`.${options.classNames.timelineLabels}`) as HTMLDivElement;
 		labelContainer = existingLabelContainer || document.createElement("div");
 		if(!existingLabelContainer) element.appendChild(labelContainer);
 
-		labelContainer.className = "timelineLabelContainer";
+		labelContainer.classList.add(options.classNames.timelineLabels);
 		labelContainer.style.width = "100%";
 		labelContainer.style.height = "50px";
 		labelContainer.style.textAlign = "center";
@@ -452,11 +472,11 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		}
 
 		// Initialize dividers
-		const existingDividerContainer = element.querySelector('.timelineDividerContainer') as HTMLDivElement;
+		const existingDividerContainer = element.querySelector(`.${options.classNames.timelineDividers}`) as HTMLDivElement;
 		dividerContainer = existingDividerContainer || document.createElement("div");
 		if(!existingDividerContainer) element.appendChild(dividerContainer);
 
-		dividerContainer.className = "timelineDividerContainer";
+		dividerContainer.classList.add(options.classNames.timelineDividers);
 		dividerContainer.style.width = "100%";
 		dividerContainer.style.height = "100%";
 		dividerContainer.style.position = "absolute";
@@ -464,10 +484,10 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		dividerContainer.style.bottom = '0';
 
 		// Initialize events container
-		const existingEventsContainer = element.querySelector('.timelineEventsContainer') as HTMLDivElement;
+		const existingEventsContainer = element.querySelector(`.${options.classNames.timelineEvents}`) as HTMLDivElement;
 		eventsContainer = existingEventsContainer || document.createElement("div");
 		if(!existingEventsContainer) element.appendChild(eventsContainer);
-		eventsContainer.className = "timelineEventsContainer";
+		eventsContainer.classList.add(options.classNames.timelineEvents);
 		eventsContainer.style.position = 'absolute';
 		eventsContainer.style.bottom = '50px';
 		eventsContainer.style.height = "calc(100% - 50px)";
@@ -535,7 +555,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			const dividerViewLeftPosition = dividerViewRatio * 100;
 
 			const label = document.createElement("div");
-			label.className = "timelineLabel";
+			label.classList.add(options.classNames.timelineLabel);
 			label.style.left = labelViewLeftPosition + "%";
 			label.style.top = "50%";
 			label.style.transform = "translate(calc(-50%), calc(-50%))";
@@ -547,7 +567,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			labels.appendChild(label);
 
 			const divider = document.createElement("div");
-			divider.className = "timelineDivider";
+			divider.classList.add(options.classNames.timelineDivider);
 			divider.style.left = dividerViewLeftPosition + "%";
 			divider.style.textAlign = "center";
 			divider.style.position = "absolute";
