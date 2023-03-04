@@ -70,9 +70,16 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 	let labelContainer: HTMLDivElement
 	let dividerContainer: HTMLDivElement
 	let eventsContainer: HTMLDivElement
-	let currentTimeline: ITimeline
 	let rootTimeline: ITimeline
 
+	const MINUTES_IN_DAY = 1440; // minutes in a day
+	const MINUTES_IN_WEEK = 10080; // minutes in a week
+	const MINUTES_IN_YEAR = 525948.766; // minutes in a year
+	const MINUTES_IN_MONTH = MINUTES_IN_YEAR / 12; // minutes in a month
+	const SHOW_MONTH_DURATION = MINUTES_IN_MONTH * 18; // When to show monthname in time label
+	const SHOW_DAY_DURATION = MINUTES_IN_WEEK * 6; // When to show date in time label
+	const SHOW_TIME_DURATION = MINUTES_IN_DAY * 4; // When to show time in time label
+	
 	const on = (type: string, action: (e: Event) => void) : void => {
 		element.addEventListener(type, action, true);
 	}
@@ -110,10 +117,10 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 				labelCount: 5,
 				zoomSpeed: 0.025,
 				dragSpeed: 0.001,
-				timelineStart: "-270000",
-				timelineEnd: "1000y",
-				start: "-1000y",
-				end: "100y",
+				timelineStart: "-1B",
+				timelineEnd: "1M",
+				start: "-100",
+				end: "now",
 				minZoom: 1,
 				maxZoom: 1e11,
 				position: "bottom",
@@ -153,9 +160,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		
 		ratio = timelineDuration() / viewDuration;
 		pivot = (timelineStart - viewStart) / viewDuration;
-
-		// Set initial timeline
-		currentTimeline = rootTimeline;
 
 		// Handle DOM elements setup
 		setupContainerHTML();
@@ -228,11 +232,12 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 
 		if(setRatio(direction, deltaRatio))
 			setPivot(deltaPivot);
-
+		
 		update();
 	}
 	const move = (deltaPivot: number) : void => {
 		setPivot(deltaPivot * options.dragSpeed);
+
 		update();
 	}
 	const focus = (timelineEvent: ITimeline) : void => {
@@ -497,35 +502,45 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		eventsContainer.style.height = "calc(100% - 50px)";
 		eventsContainer.style.width = "100%";
 	}
-	const format = (minutes: number) : string => {
-		const moment = new Date(minutes * 6e4);
-		if (viewDuration() < 1440 * 4) {
-			// minutes in an day = 1440
-			return Intl.DateTimeFormat(undefined, {
-				year: "numeric",
+	const formatDateLabel = (minutes: number) : string => {
+
+		const yearsCount = Math.floor(minutes / MINUTES_IN_YEAR);
+		const currentYear = yearsCount + 1970;
+		const currentYearLessThan5Digits = currentYear > -10000 && currentYear < 10000;
+		const currentYearString = currentYearLessThan5Digits ? currentYear.toString() : currentYear.toLocaleString("en-US", {
+			notation: 'compact',
+			minimumFractionDigits: 1,
+			maximumFractionDigits: 1,
+		});
+		const currentRemainder = Math.abs(minutes - (yearsCount * MINUTES_IN_YEAR));
+		const momentInValidateRange = minutes > 270000 * MINUTES_IN_YEAR * -1 && minutes < 270000 * MINUTES_IN_YEAR;
+		const date = momentInValidateRange ? new Date(minutes * 6e4) : new Date(currentRemainder * 6e4);
+
+		if (viewDuration() < SHOW_TIME_DURATION) {
+			return [Intl.DateTimeFormat(undefined, {
 				month: "short",
 				day: "numeric",
+			}).format(date), 
+			currentYearString, 
+			Intl.DateTimeFormat(undefined, {
 				hour: "numeric",
 				minute: "numeric",
-			}).format(moment);
+			}).format(date)].join(' ');
 		}
-		if (viewDuration() < 10080 * 6) {
-			// minutes in a week = 10080
-			return Intl.DateTimeFormat(undefined, {
-				year: "numeric",
+		if (viewDuration() < SHOW_DAY_DURATION) {
+			return [Intl.DateTimeFormat(undefined, {
 				month: "short",
 				day: "numeric",
-			}).format(moment);
+			}).format(date), 
+			currentYearString].join(' ');
 		}
-		if (viewDuration() < 43829.0639 * 18) {
-			// minutes in a month = 43829.0639
-			return Intl.DateTimeFormat(undefined, {
-				year: "numeric",
+		if (viewDuration() < SHOW_MONTH_DURATION) {
+			return [Intl.DateTimeFormat(undefined, {
 				month: "short",
-			}).format(moment);
+			}).format(date), 
+			currentYearString].join(' ');
 		}
-		// minutes in a year = 525948.766
-		return moment.getFullYear().toString();
+		return currentYearString;
 	}
 	const update = () : void => {
 		if (!element) return;
@@ -537,14 +552,13 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		const timestampDistance = timelineDuration() * granularity;
 		const currentTimestampDistanceByLevel = timestampDistance / iterator;
 
-		//console.log(ratio, pivot)
-
 		// Find integer value of timestamp difference
 		const integerDifFraction = Math.floor(timelineViewDifference / currentTimestampDistanceByLevel);
 		const currentDif = integerDifFraction * currentTimestampDistanceByLevel;
 
 		const labels = document.createDocumentFragment();
 		const dividers = document.createDocumentFragment();
+		
 		for (let i = 0; i < options.labelCount + 2; i++) {
 			const labelTime =
 				(i + 1) * currentTimestampDistanceByLevel + timelineStart + currentDif - currentTimestampDistanceByLevel;
@@ -567,7 +581,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 			label.style.position = "absolute";
 			label.style.zIndex = "-1";
 			label.style.width = granularity * 100 + "%";
-			label.innerHTML = format(labelTime);
+			label.innerHTML = formatDateLabel(labelTime);
 			labels.appendChild(label);
 
 			const divider = document.createElement("div");
@@ -587,7 +601,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		dividerContainer.appendChild(dividers);
 		
 		//
-		const eventsHtml = setupEventsHTML(currentTimeline);
+		const eventsHtml = setupEventsHTML(rootTimeline);
 		eventsContainer.innerHTML = "";
 		if(eventsHtml)
 			eventsContainer.appendChild(eventsHtml);
@@ -608,7 +622,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		}));
 	}
 	const parseToMinutes = (input: number[] | string | number | Date | undefined) : number => {
-		if(input === undefined) return undefined;
+		if(input === undefined) return new Date().getTime() / 6e4;
 
 		// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
 		// It should be noted that the maximum Date is not of the same value as the maximum safe integer (Number.MAX_SAFE_INTEGER is 9,007,199,254,740,991).
@@ -635,39 +649,51 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 
 			// 525948.766 = minutes in a year
 			const dateYearInMinutes = 525948.766 * input[0];
-			date.setFullYear(0);
 			return dateYearInMinutes + (date.getTime() / 6e4);
 		}
 
-		const parseDateString = (input: string): Date => {
+		const parseDateString = (input: string): number => {
 			switch (input) {
 				case "now":
-					return new Date(); 
+					return parseDateArray([]); 
 				default:
 					// 31556926 = Seconds in a year
 					// 525948.766 = minutes in a year
 					const years = Number(input.replace(/y$/, ''))
 					if(!isNaN(years)){
-						return new Date(Date.now() + (31556926 * 1e3 * years)); 
+						return parseDateArray([years+1970]); 
 					}
-					// const year0 = new Date('0001-01-01');
-					// const yearsBC = Number(input.replace(/bc$/, ''))
-					// if(!isNaN(yearsBC)){
-					// 	return new Date(year0.getTime() - 31556926 * 1e3 * yearsBC); 
-					// }
-					// const yearsAD = Number(input.replace(/ad$/, ''))
-					// if(!isNaN(yearsAD)){
-					// 	return new Date(year0.getTime() + 31556926 * 1e3 * yearsAD); 
-					// }
-					return new Date(input);
+					const yearsK = Number(input.replace(/K$/, ''))
+					if(!isNaN(yearsK)){
+						return parseDateArray([yearsK*1e3]); 
+					}
+					const yearsM = Number(input.replace(/M$/, ''))
+					if(!isNaN(yearsM)){
+						return parseDateArray([yearsM*1e6]); 
+					}
+					const yearsB = Number(input.replace(/B$/, ''))
+					if(!isNaN(yearsB)){
+						return parseDateArray([yearsB*1e9]); 
+					}
+					const yearsBC = Number(input.replace(/bc$/, ''))
+					if(!isNaN(yearsBC)){
+						return parseDateArray([-yearsBC]);
+					}
+					const yearsAD = Number(input.replace(/ad$/, ''))
+					if(!isNaN(yearsAD)){
+						return parseDateArray([yearsAD]); 
+					}
+
+					const timestamp = Date.parse(input);
+					if(isNaN(timestamp)) return new Date().getTime() / 6e4;
+					return timestamp / 6e4;
 			}
 		}
 
 		if(Array.isArray(input)){
 			let inputArray = input as number[];
 			if (inputArray.length === 0) throw new Error("argument Array cannot be empty");
-			const isNumberArray =
-			inputArray.every((value) => {
+			const isNumberArray = inputArray.every((value) => {
 				return typeof value === 'number';
 			});
 			if (!isNumberArray) throw new Error("input Array must contain only numbers");
@@ -679,7 +705,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings: obje
 		}
 
 		if(typeof input === "string"){
-			return parseDateString(input).getTime() / 6e4;
+			return parseDateString(input);
 		}
 
 		if(typeof input === "number"){
