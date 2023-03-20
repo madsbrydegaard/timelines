@@ -58,7 +58,7 @@ declare module "timeline.io" {
     export interface ITimelineContainer {
         load: (loader: () => Promise<ITimelineEvent>) => Promise<void>;
         add: (timelineEvent: ITimelineEvent) => void;
-        focus: (timelineEvent: ITimelineEventConverted, focused?: () => void) => void;
+        focus: (timelineEvent: ITimelineEventConverted, onfocus?: () => void) => void;
     }
     export const Timeline: (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions) => ITimelineContainer;
 }

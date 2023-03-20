@@ -57,7 +57,7 @@ interface ITimelineEventConverted extends ITimelineBase, Required<ITimelineProps
 export interface ITimelineContainer {
 	load: (loader: () => Promise<ITimelineEvent>) => Promise<void>;
 	add: (timelineEvent: ITimelineEvent) => void;
-	focus: (timelineEvent: ITimelineEventConverted, focused?: () => void) => void;
+	focus: (timelineEvent: ITimelineEventConverted, onfocus?: () => void) => void;
 }
 enum Direction {
 	In = -1,
@@ -241,16 +241,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 
 		update();
 	};
-	const focus = (timelineEvent: ITimelineEventConverted, focused?: () => void): void => {
+	const focus = (timelineEvent: ITimelineEventConverted, onfocus?: () => void): void => {
 		if (!timelineEvent) return;
-
-		element.dispatchEvent(
-			new CustomEvent("focus.tl.event", {
-				detail: timelineEvent,
-				bubbles: false,
-				cancelable: true,
-			})
-		);
 
 		const targetDurationExtension = timelineEvent.durationMinutes * 0.05;
 		const targetStart = timelineEvent.startMinutes - targetDurationExtension; // Create 10% spacing - 5% on each side of the timeline
@@ -285,14 +277,14 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				clearInterval(pivotTimer);
 
 				element.dispatchEvent(
-					new CustomEvent("focused.tl.event", {
+					new CustomEvent("focus.tl.event", {
 						detail: timelineEvent,
 						bubbles: false,
 						cancelable: true,
 					})
 				);
 
-				if (focused) focused();
+				if (onfocus) onfocus();
 			};
 
 			const pivotTimer = setInterval(() => {
