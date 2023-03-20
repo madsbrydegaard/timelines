@@ -6,16 +6,14 @@
 		<title>Timeline Demo</title>
 		<style>
 			#timeline {
-				width: 50%;
-				height: 150px;
-				margin: auto;
-				border: 1px solid black;
+				height: 300px;
 			}
-			.timelineLabelContainer {
+			.tl__labels {
+				box-sizing: border-box;
 				border-top: 1px solid black;
 				border-bottom: 1px solid black;
 			}
-			.timelineDivider {
+			.tl__divider {
 				border-left: 1px dashed gray;
 			}
 		</style>
@@ -24,12 +22,16 @@
 		<div id="timeline"></div>
 		<pre><code id="log"></code></pre>
 		<script type="module">
-			import { Timeline } from '../index.js'
+			import { Timeline } from "../index.js";
 
+			const timelineContainer = document.querySelector("#timeline");
 			const log = document.querySelector("#log");
-			new Timeline("#timeline", {startDate: '-500y', endDate: '500y'}, (timeline) => {
-				log.innerHTML = JSON.stringify(timeline, undefined, 2)
+
+			timelineContainer.addEventListener("update.tl.container", (timelineEvent) => {
+				log.innerHTML = JSON.stringify(timelineEvent.detail, undefined, 2);
 			});
+
+			const timeline = Timeline(timelineContainer, { start: "100bc", end: "100ad" });
 		</script>
 	</body>
 </html>

@@ -1,42 +1,64 @@
 declare module "timeline.io" {
+    export interface ITimelineOptions {
+        labelCount?: number;
+        zoomSpeed?: number;
+        dragSpeed?: number;
+        start?: number[] | string | number | Date;
+        end?: number[] | string | number | Date;
+        timelineStart?: number[] | string | number | Date;
+        timelineEnd?: number[] | string | number | Date;
+        minZoom?: number;
+        maxZoom?: number;
+        position?: string;
+        eventHeight?: number;
+        autoFocus?: boolean;
+        defaultColor?: number[];
+        classNames?: {
+            timeline?: string;
+            timelineEvent?: string;
+            timelineEventTitle?: string;
+            timelineLabels?: string;
+            timelineDividers?: string;
+            timelineEvents?: string;
+            timelineLabel?: string;
+            timelineDivider?: string;
+        };
+    }
     interface IMatrix {
         [key: number]: {
             height: number;
             time: number;
         };
     }
-    interface ITimeline {
-        start: number;
-        end: number;
-        duration: number;
+    interface ITimelineBase {
         title: string;
-        children: ITimeline[];
+    }
+    interface ITimelineProps {
+        type?: string;
+        color?: number[];
+    }
+    export interface ITimelineEvent extends ITimelineBase, ITimelineProps {
+        start?: number[] | string | number | Date;
+        end?: number[] | string | number | Date;
+        duration?: number | string;
+        events?: ITimelineEvent[];
+    }
+    interface ITimelineEventConverted extends ITimelineBase, Required<ITimelineProps> {
+        startMinutes: number;
+        endMinutes: number;
+        durationMinutes: number;
+        children: ITimelineEventConverted[];
         level: number;
         step: number;
         depth: number;
         height: number;
         score: number;
-        type: string;
-        color: number[];
-        wikipedia?: string;
-        description?: string;
         levelMatrix?: IMatrix;
     }
-    export interface ITimelineEvent {
-        title: string;
-        start?: number[] | string | number | Date;
-        end?: number[] | string | number | Date;
-        duration?: number;
-        events?: ITimelineEvent[];
-        type?: string;
-        color?: number[];
-        wikipedia?: string;
-        description?: string;
-    }
-    export const Timeline: (elementIdentifier: HTMLElement | string, settings: object | undefined) => {
-        focus: (timelineEvent: ITimeline) => void;
+    export interface ITimelineContainer {
         load: (loader: () => Promise<ITimelineEvent>) => Promise<void>;
         add: (timelineEvent: ITimelineEvent) => void;
-        on: (type: string, action: (e: Event) => void) => void;
-    };
+        focus: (timelineEvent: ITimelineEventConverted, focused?: () => void) => void;
+    }
+    export const Timeline: (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions) => ITimelineContainer;
 }
