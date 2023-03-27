@@ -2,7 +2,7 @@ import { build } from "esbuild";
 
 const shared = {
 	bundle: true,
-	minify: true,
+	minify: false,
 };
 
 build({
@@ -15,5 +15,5 @@ build({
 build({
 	...shared,
 	entryPoints: ["src/timeline.io.umd.js"],
-	outfile: "dist/timeline.io.umd.js"
+	outfile: "dist/timeline.io.umd.js",
 });

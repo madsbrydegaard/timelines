@@ -11,7 +11,7 @@ declare module "timeline.io" {
         maxZoom?: number;
         position?: string;
         eventHeight?: number;
-        autoFocus?: boolean;
+        autoZoom?: boolean;
         defaultColor?: number[];
         classNames?: {
             timeline?: string;
@@ -24,18 +24,13 @@ declare module "timeline.io" {
             timelineDivider?: string;
         };
     }
-    interface IMatrix {
-        [key: number]: {
-            height: number;
-            time: number;
-        };
-    }
     interface ITimelineBase {
         title: string;
     }
     interface ITimelineProps {
         type?: string;
         color?: number[];
+        open?: boolean;
     }
     export interface ITimelineEvent extends ITimelineBase, ITimelineProps {
         start?: number[] | string | number | Date;
@@ -43,22 +38,12 @@ declare module "timeline.io" {
         duration?: number | string;
         events?: ITimelineEvent[];
     }
-    interface ITimelineEventConverted extends ITimelineBase, Required<ITimelineProps> {
-        startMinutes: number;
-        endMinutes: number;
-        durationMinutes: number;
-        children: ITimelineEventConverted[];
-        level: number;
-        step: number;
-        depth: number;
-        height: number;
-        score: number;
-        levelMatrix?: IMatrix;
-    }
     export interface ITimelineContainer {
         load: (loader: () => Promise<ITimelineEvent>) => Promise<void>;
         add: (timelineEvent: ITimelineEvent) => void;
-        focus: (timelineEvent: ITimelineEventConverted, onfocus?: () => void) => void;
+        zoom: (timelineEvent: ITimelineEvent, useAnimation: boolean, onzoomend?: (timelineEvent: ITimelineEvent) => void) => void;
+        focus: (timelineEvent: ITimelineEvent, useAnimation: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
+        reset: () => void;
     }
     export const Timeline: (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions) => ITimelineContainer;
 }
