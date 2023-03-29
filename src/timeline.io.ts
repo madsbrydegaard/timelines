@@ -54,7 +54,7 @@ interface ITimelineEventDetails extends Required<ITimelineProps> {
 	// pivot?: number;
 }
 interface ITimelineEventWithDetails extends ITimelineEvent {
-	details: ITimelineEventDetails;
+	timelineEventDetails: ITimelineEventDetails;
 }
 export interface ITimelineEvent extends ITimelineBase, ITimelineProps {
 	start?: number[] | string | number | Date;
@@ -65,8 +65,8 @@ export interface ITimelineEvent extends ITimelineBase, ITimelineProps {
 export interface ITimelineContainer {
 	load: (loader: () => Promise<ITimelineEvent>) => Promise<void>;
 	add: (timelineEvent: ITimelineEvent) => void;
-	zoom: (timelineEvent: ITimelineEvent, useAnimation: boolean, onzoomend?: (timelineEvent: ITimelineEvent) => void) => void;
-	focus: (timelineEvent: ITimelineEvent, useAnimation: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
+	zoom: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onzoomend?: (timelineEvent: ITimelineEvent) => void) => void;
+	focus: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
 	reset: () => void;
 }
 enum Direction {
@@ -95,6 +95,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	const SHOW_DAY_DURATION = MINUTES_IN_WEEK * 6; // When to show date in time label
 	const SHOW_TIME_DURATION = MINUTES_IN_DAY * 4; // When to show time in time label
 
+	// ITimelineEventWithDetails guard
+	const isITimelineEventWithDetails = (timelineEvent: ITimelineEvent): timelineEvent is ITimelineEventWithDetails =>
+		"timelineEventDetails" in timelineEvent;
 	const load = async (loader: () => Promise<ITimelineEvent>): Promise<void> => {
 		if (!loader) throw new Error(`Argument is empty. Please provide a loader function as first arg`);
 		add(await loader());
@@ -164,8 +167,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		timelineStart = parseToMinutes(options.timelineStart);
 		timelineEnd = parseToMinutes(options.timelineEnd);
 
-		const viewStart = rootTimeline.details.startMinutes;
-		const viewEnd = rootTimeline.details.endMinutes;
+		const viewStart = rootTimeline.timelineEventDetails.startMinutes;
+		const viewEnd = rootTimeline.timelineEventDetails.endMinutes;
 
 		if (viewStart < timelineStart) timelineStart = viewStart;
 		if (viewEnd > timelineEnd) timelineEnd = viewEnd;
@@ -253,28 +256,63 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		update();
 	};
 	const focus = (timelineEvent: ITimelineEvent, useAnimation: boolean = true, onfocused?: (timelineEvent: ITimelineEvent) => void): void => {
-		if (!timelineEvent) return;
-		const timelineEventWithDetails = timelineEvent as ITimelineEventWithDetails;
-		if (!timelineEventWithDetails.details) return;
+		if (!timelineEvent) {
+			throw "first argument 'timelineEvent' of method 'zoom' must be an object";
+		}
+		if (!isITimelineEventWithDetails(timelineEvent)) {
+			throw "first argument 'timelineEvent' of method 'zoom' must be an object of type ITimelineEventWithDetails";
+		}
 
-		currentTimeline = timelineEventWithDetails;
+		currentTimeline = timelineEvent;
 
-		zoom(timelineEvent, useAnimation, () => {
-			update();
-			if (onfocused) onfocused(timelineEventWithDetails);
+		zoomto(currentTimeline.timelineEventDetails.startMinutes, currentTimeline.timelineEventDetails.endMinutes, useAnimation, () => {
+			element.dispatchEvent(
+				new CustomEvent("focus.tl.event", {
+					detail: currentTimeline,
+					bubbles: false,
+					cancelable: true,
+				})
+			);
+			if (onfocused) onfocused(currentTimeline);
 		});
 	};
 	const reset = (): void => {
-		focus(rootTimeline);
+		currentTimeline = rootTimeline;
+		zoomto(
+			options.start ? parseToMinutes(options.start) : currentTimeline.timelineEventDetails.startMinutes,
+			options.end ? parseToMinutes(options.end) : currentTimeline.timelineEventDetails.endMinutes
+		);
 	};
 	const zoom = (timelineEvent: ITimelineEvent, useAnimation: boolean = true, onzoomend?: (timelineEvent: ITimelineEvent) => void): void => {
-		if (!timelineEvent) return;
-		const timelineEventWithDetails = timelineEvent as ITimelineEventWithDetails;
-		if (!timelineEventWithDetails.details) return;
+		if (!timelineEvent) {
+			throw "first argument 'timelineEvent' of method 'zoom' must be an object";
+		}
+		if (!isITimelineEventWithDetails(timelineEvent)) {
+			throw "first argument 'timelineEvent' of method 'zoom' must be an object of type ITimelineEventWithDetails";
+		}
 
-		const targetDurationExtension = timelineEventWithDetails.details.durationMinutes * 0.05;
-		const targetStart = timelineEventWithDetails.details.startMinutes - targetDurationExtension; // Create 10% spacing - 5% on each side of the timeline
-		const targetEnd = timelineEventWithDetails.details.endMinutes + targetDurationExtension; // Create 10% spacing - 5% on each side of the timeline
+		zoomto(timelineEvent.timelineEventDetails.startMinutes, timelineEvent.timelineEventDetails.endMinutes, useAnimation, () => {
+			element.dispatchEvent(
+				new CustomEvent("zoom.tl.event", {
+					detail: timelineEvent,
+					bubbles: false,
+					cancelable: true,
+				})
+			);
+			if (onzoomend) onzoomend(timelineEvent);
+		});
+	};
+	const zoomto = (startMinutes: number, endMinutes: number, useAnimation: boolean = true, onzoomend?: () => void): void => {
+		if (!startMinutes) {
+			throw "first argument 'startMinutes' of method 'zoomto' must be a number";
+		}
+		if (!endMinutes) {
+			throw "second argument 'endMinutes' of method 'zoomto' must be a number";
+		}
+
+		const targetDurationExtension = (endMinutes - startMinutes) * 0.05;
+		const targetStart = startMinutes - targetDurationExtension; // Create 10% spacing - 5% on each side of the timeline
+		const targetEnd = endMinutes + targetDurationExtension; // Create 10% spacing - 5% on each side of the timeline
 		const targetDuration = targetEnd - targetStart;
 		const targetRatio = timelineDuration() / targetDuration;
 		const zDirection = Math.sign(ratio - targetRatio);
@@ -305,15 +343,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				const stopFocus = () => {
 					clearInterval(pivotTimer);
 
-					element.dispatchEvent(
-						new CustomEvent("focus.tl.event", {
-							detail: timelineEvent,
-							bubbles: false,
-							cancelable: true,
-						})
-					);
-
-					if (onzoomend) onzoomend(timelineEvent);
+					if (onzoomend) onzoomend();
 				};
 
 				const pivotTimer = setInterval(() => {
@@ -412,12 +442,12 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	};
 	const setupEventsHTML = (parentEvent: ITimelineEventWithDetails): DocumentFragment | undefined => {
 		const eventsFragment = document.createDocumentFragment();
-		for (const [key, timelineEvent] of Object.entries<ITimelineEventWithDetails>(parentEvent.details.children)) {
-			if (!timelineEvent || !timelineEvent.details) continue;
-			if (timelineEvent.details.startMinutes >= viewEnd()) continue;
-			if (timelineEvent.details.endMinutes <= viewStart()) continue;
-			//if (openTimelines.includes(timelineEvent.details.id)) continue;
-			//if (timelineEvent.details.parentId && !openTimelines.includes(timelineEvent.details.parentId)) continue;
+		for (const [key, timelineEvent] of Object.entries<ITimelineEventWithDetails>(parentEvent.timelineEventDetails.children)) {
+			if (!timelineEvent || !timelineEvent.timelineEventDetails) continue;
+			if (timelineEvent.timelineEventDetails.startMinutes >= viewEnd()) continue;
+			if (timelineEvent.timelineEventDetails.endMinutes <= viewStart()) continue;
+			//if (openTimelines.includes(timelineEvent.timelineEventDetails.id)) continue;
+			//if (timelineEvent.timelineEventDetails.parentId && !openTimelines.includes(timelineEvent.timelineEventDetails.parentId)) continue;
 
 			const focused = false;
 			if (focused) continue;
@@ -425,13 +455,18 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			const viewInside = isViewInside(timelineEvent);
 
 			const createTimelineEventHTML = (): HTMLDivElement => {
-				const parentLevel = timelineEvent.details.parentId ? parentEvent.details.level : 0;
-				const levelFactor = timelineEvent.details.level * 1.5;
-				const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.details.startMinutes);
-				const widthRatio = viewInside ? 100 : (timelineEvent.details.durationMinutes / viewDuration()) * 100;
+				const parentLevel = timelineEvent.timelineEventDetails.parentId ? parentEvent.timelineEventDetails.level : 0;
+				const levelFactor = timelineEvent.timelineEventDetails.level * 1.5;
+				const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.timelineEventDetails.startMinutes);
+				const widthRatio = viewInside ? 100 : (timelineEvent.timelineEventDetails.durationMinutes / viewDuration()) * 100;
 				const bgcolor = focused
-					? [timelineEvent.details.color[0], timelineEvent.details.color[1], timelineEvent.details.color[2], 0.1]
-					: timelineEvent.details.color;
+					? [
+							timelineEvent.timelineEventDetails.color[0],
+							timelineEvent.timelineEventDetails.color[1],
+							timelineEvent.timelineEventDetails.color[2],
+							0.1,
+					  ]
+					: timelineEvent.timelineEventDetails.color;
 
 				const eventHTML = document.createElement("div");
 				eventHTML.style.bottom = `${levelFactor * options.eventHeight}px`;
@@ -440,17 +475,17 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				eventHTML.style.boxSizing = "border-box";
 				eventHTML.style.cursor = "pointer";
 				eventHTML.style.backgroundColor = `rgb(${bgcolor.join(",")})`;
-				eventHTML.style.zIndex = timelineEvent.details.depth.toString();
+				eventHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
 				eventHTML.style.left = leftRatio * 100 + "%";
 				eventHTML.style.width = widthRatio + "%";
 				eventHTML.style.position = "absolute";
 				eventHTML.style.minWidth = "5px";
 				eventHTML.title = timelineEvent.title;
 				eventHTML.classList.add(options.classNames.timelineEvent);
-				eventHTML.setAttribute("level", timelineEvent.details.level.toString());
-				eventHTML.setAttribute("depth", timelineEvent.details.depth.toString());
-				eventHTML.setAttribute("height", timelineEvent.details.height.toString());
-				eventHTML.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.details.startMinutes;
+				eventHTML.setAttribute("level", timelineEvent.timelineEventDetails.level.toString());
+				eventHTML.setAttribute("depth", timelineEvent.timelineEventDetails.depth.toString());
+				eventHTML.setAttribute("height", timelineEvent.timelineEventDetails.height.toString());
+				eventHTML.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
 
 				eventHTML.addEventListener("click", (e) => {
 					element.dispatchEvent(
@@ -497,10 +532,13 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			};
 
 			const createBackgroundEventHTML = (): HTMLDivElement => {
-				const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.details.startMinutes);
-				const widthRatio = viewInside ? 100 : (timelineEvent.details.durationMinutes / viewDuration()) * 100;
+				const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.timelineEventDetails.startMinutes);
+				const widthRatio = viewInside ? 100 : (timelineEvent.timelineEventDetails.durationMinutes / viewDuration()) * 100;
 
-				const bgcolor = timelineEvent.details.color.length === 3 ? [...timelineEvent.details.color, 0.1] : timelineEvent.details.color;
+				const bgcolor =
+					timelineEvent.timelineEventDetails.color.length === 3
+						? [...timelineEvent.timelineEventDetails.color, 0.1]
+						: timelineEvent.timelineEventDetails.color;
 				const eventHTML = document.createElement("div");
 				eventHTML.style.left = leftRatio * 100 + "%";
 				eventHTML.style.width = widthRatio + "%";
@@ -512,7 +550,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				eventHTML.style.backgroundColor = `rgb(${bgcolor.join(",")})`;
 				eventHTML.classList.add(options.classNames.timelineEvent);
 
-				eventHTML.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.details.startMinutes;
+				eventHTML.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
 
 				const titleHTML = document.createElement("div");
 				titleHTML.innerText = timelineEvent.title;
@@ -525,7 +563,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				return eventHTML;
 			};
 
-			switch (timelineEvent.details.type) {
+			switch (timelineEvent.timelineEventDetails.type) {
 				case "container": {
 					eventsFragment.append(setupEventsHTML(timelineEvent));
 					break;
@@ -818,74 +856,76 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		return undefined;
 	};
 	const calcStart = (tl: ITimelineEventWithDetails, parsedChildren?: ITimelineEventWithDetails[]): number | undefined => {
-		return tl.details.startMinutes
+		return tl.timelineEventDetails.startMinutes
 			? parsedChildren && parsedChildren.length
-				? Math.min(tl.details.startMinutes, parsedChildren[0].details.startMinutes)
-				: tl.details.startMinutes
+				? Math.min(tl.timelineEventDetails.startMinutes, parsedChildren[0].timelineEventDetails.startMinutes)
+				: tl.timelineEventDetails.startMinutes
 			: parsedChildren && parsedChildren.length
-			? parsedChildren[0].details.startMinutes
+			? parsedChildren[0].timelineEventDetails.startMinutes
 			: undefined;
 	};
 	const calcEnd = (tl: ITimelineEventWithDetails, parsedChildren?: ITimelineEventWithDetails[]): number => {
-		return tl.details.endMinutes
-			? tl.details.endMinutes
+		return tl.timelineEventDetails.endMinutes
+			? tl.timelineEventDetails.endMinutes
 			: tl.duration && !isNaN(Number(tl.duration))
-			? tl.details.startMinutes + Number(tl.duration)
+			? tl.timelineEventDetails.startMinutes + Number(tl.duration)
 			: parsedChildren && parsedChildren.length
 			? Math.max.apply(
 					1,
-					parsedChildren.map((child) => child.details.endMinutes)
+					parsedChildren.map((child) => child.timelineEventDetails.endMinutes)
 			  )
-			: tl.details.startMinutes + 1;
+			: tl.timelineEventDetails.startMinutes + 1;
 	};
 	const calcLevel = (timelineEvent: ITimelineEventWithDetails, parent: ITimelineEventWithDetails): number => {
 		let level = 0;
-		for (const eventLevel in parent.details.levelMatrix) {
+		for (const eventLevel in parent.timelineEventDetails.levelMatrix) {
 			level = Number(eventLevel);
-			if (timelineEvent.details.startMinutes > parent.details.levelMatrix[eventLevel].time) {
-				for (let i = 0; i < timelineEvent.details.height; i++) {
-					parent.details.levelMatrix[(level + i).toString()] = {
-						height: timelineEvent.details.height,
-						time: timelineEvent.details.endMinutes,
+			if (timelineEvent.timelineEventDetails.startMinutes > parent.timelineEventDetails.levelMatrix[eventLevel].time) {
+				for (let i = 0; i < timelineEvent.timelineEventDetails.height; i++) {
+					parent.timelineEventDetails.levelMatrix[(level + i).toString()] = {
+						height: timelineEvent.timelineEventDetails.height,
+						time: timelineEvent.timelineEventDetails.endMinutes,
 					};
 				}
 				return level;
 			}
 		}
 		level++;
-		for (let i = 0; i < timelineEvent.details.height; i++) {
-			parent.details.levelMatrix[(level + i).toString()] = {
-				height: timelineEvent.details.height,
-				time: timelineEvent.details.endMinutes,
+		for (let i = 0; i < timelineEvent.timelineEventDetails.height; i++) {
+			parent.timelineEventDetails.levelMatrix[(level + i).toString()] = {
+				height: timelineEvent.timelineEventDetails.height,
+				time: timelineEvent.timelineEventDetails.endMinutes,
 			};
 		}
 		return level;
 	};
 	// const calcScore = (timelineEvent: ITimelineEventWithDetails, parent: ITimelineEventWithDetails): number => {
-	// 	const durationRatio = timelineEvent.details.durationMinutes / parent.details.durationMinutes;
-	// 	const score = durationRatio * timelineEvent.details.children.length || 1;
+	// 	const durationRatio = timelineEvent.timelineEventDetails.durationMinutes / parent.timelineEventDetails.durationMinutes;
+	// 	const score = durationRatio * timelineEvent.timelineEventDetails.children.length || 1;
 	// 	return score;
 	// };
 	const addEvents = (parent: ITimelineEventWithDetails, ...children: ITimelineEvent[]): void => {
 		const parsedChildren = children.map((tl) => parseEvent(tl, parent)).filter((tl) => !!tl);
 		if (parsedChildren && parsedChildren.length && parent) {
-			parsedChildren.sort((a, b) => a.details.startMinutes - b.details.startMinutes);
-			parent.details.startMinutes = calcStart(parent, parsedChildren);
-			parent.details.endMinutes = calcEnd(parent, parsedChildren);
-			parent.details.durationMinutes = parent.details.endMinutes - parent.details.startMinutes;
+			parsedChildren.sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
+			parent.timelineEventDetails.startMinutes = calcStart(parent, parsedChildren);
+			parent.timelineEventDetails.endMinutes = calcEnd(parent, parsedChildren);
+			parent.timelineEventDetails.durationMinutes = parent.timelineEventDetails.endMinutes - parent.timelineEventDetails.startMinutes;
 
 			parsedChildren.forEach((childEvent, i) => {
-				parent.details.children[childEvent.details.id] = childEvent;
+				parent.timelineEventDetails.children[childEvent.timelineEventDetails.id] = childEvent;
 
 				// Add score to result in order to sort by importance
-				// childEvent.details.score = ["container", "timeline"].includes(childEvent.details.type) ? calcScore(childEvent, parent) : 0;
+				// childEvent.timelineEventDetails.score = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcScore(childEvent, parent) : 0;
 
 				// Add level
-				childEvent.details.level = ["timeline", "container"].includes(childEvent.details.type) ? calcLevel(childEvent, parent) : 0;
+				childEvent.timelineEventDetails.level = ["timeline", "container"].includes(childEvent.timelineEventDetails.type)
+					? calcLevel(childEvent, parent)
+					: 0;
 			});
 		}
 
-		parent.details.height = parsedChildren.length ? Math.max(...parsedChildren.map((child) => child.details.level)) : 1;
+		parent.timelineEventDetails.height = parsedChildren.length ? Math.max(...parsedChildren.map((child) => child.timelineEventDetails.level)) : 1;
 	};
 	const parseEvent = (timelineEvent: ITimelineEvent, parent?: ITimelineEventWithDetails): ITimelineEventWithDetails | undefined => {
 		if (!timelineEvent) {
@@ -895,7 +935,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 
 		const timelineEventWithDetails = {
 			...timelineEvent,
-			details: {
+			timelineEventDetails: {
 				id: crypto.randomUUID(),
 				durationMinutes: 0,
 				type: timelineEvent.type || "timeline",
@@ -905,8 +945,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				score: 0,
 				height: 1,
 				children: {},
-				depth: parent ? parent.details.depth + 1 : 0,
-				parentId: parent?.details.id,
+				depth: parent ? parent.timelineEventDetails.depth + 1 : 0,
+				parentId: parent?.timelineEventDetails.id,
 				color: timelineEvent.color || options.defaultColor,
 				startMinutes: parseToMinutes(timelineEvent.start),
 				endMinutes: parseToMinutes(timelineEvent.end),
@@ -919,17 +959,18 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		}
 
 		// Calculate start date - if children exists take lowest date
-		timelineEventWithDetails.details.startMinutes = calcStart(timelineEventWithDetails);
+		timelineEventWithDetails.timelineEventDetails.startMinutes = calcStart(timelineEventWithDetails);
 
 		// Filter missing requirements
-		if (!timelineEventWithDetails.details.startMinutes) {
+		if (!timelineEventWithDetails.timelineEventDetails.startMinutes) {
 			console.warn("Missing start property on event - skipping", timelineEvent);
 			return undefined;
 		}
 
 		// Calculate end date
-		timelineEventWithDetails.details.endMinutes = calcEnd(timelineEventWithDetails);
-		timelineEventWithDetails.details.durationMinutes = timelineEventWithDetails.details.endMinutes - timelineEventWithDetails.details.startMinutes;
+		timelineEventWithDetails.timelineEventDetails.endMinutes = calcEnd(timelineEventWithDetails);
+		timelineEventWithDetails.timelineEventDetails.durationMinutes =
+			timelineEventWithDetails.timelineEventDetails.endMinutes - timelineEventWithDetails.timelineEventDetails.startMinutes;
 
 		// Return
 		return timelineEventWithDetails;

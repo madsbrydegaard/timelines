@@ -41,8 +41,8 @@ declare module "timeline.io" {
     export interface ITimelineContainer {
         load: (loader: () => Promise<ITimelineEvent>) => Promise<void>;
         add: (timelineEvent: ITimelineEvent) => void;
-        zoom: (timelineEvent: ITimelineEvent, useAnimation: boolean, onzoomend?: (timelineEvent: ITimelineEvent) => void) => void;
-        focus: (timelineEvent: ITimelineEvent, useAnimation: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
+        zoom: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onzoomend?: (timelineEvent: ITimelineEvent) => void) => void;
+        focus: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
         reset: () => void;
     }
     export const Timeline: (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions) => ITimelineContainer;
