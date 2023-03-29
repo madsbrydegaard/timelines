@@ -1,3 +1,5 @@
+import Hammer from "hammerjs";
+
 export interface ITimelineOptions {
 	labelCount?: number;
 	zoomSpeed?: number;
@@ -398,6 +400,15 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			},
 			{ passive: true }
 		);
+
+		var hammertime = new Hammer(element);
+		hammertime.get("pinch").set({ enable: true });
+		hammertime.on("pan", function (ev) {
+			console.log("pan", ev);
+		});
+		hammertime.on("pinch", function (ev) {
+			console.log("pinch", ev);
+		});
 
 		// Add drag event handler
 		let dragStartX: number, dragStartY: number;
