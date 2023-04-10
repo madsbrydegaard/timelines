@@ -23,7 +23,11 @@
 			const timelineContainer = document.querySelector("#timeline");
 			const log = document.querySelector("#log");
 
-			timelineContainer.addEventListener("update.tl.container", (timelineEvent) => {
+			timelineContainer.addEventListener("pinch.tl.container", (timelineEvent) => {
+				log.innerHTML = JSON.stringify(timelineEvent.detail, undefined, 2);
+			});
+
+			timelineContainer.addEventListener("touchmove.tl.container", (timelineEvent) => {
 				log.innerHTML = JSON.stringify(timelineEvent.detail, undefined, 2);
 			});
 
