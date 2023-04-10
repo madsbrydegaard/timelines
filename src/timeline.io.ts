@@ -94,6 +94,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	const SHOW_MONTH_DURATION = MINUTES_IN_MONTH * 18; // When to show monthname in time label
 	const SHOW_DAY_DURATION = MINUTES_IN_WEEK * 6; // When to show date in time label
 	const SHOW_TIME_DURATION = MINUTES_IN_DAY * 4; // When to show time in time label
+	const DEBUG = true;
 
 	// ITimelineEventWithDetails guard
 	const isITimelineEventWithDetails = (timelineEvent: ITimelineEvent): timelineEvent is ITimelineEventWithDetails =>
@@ -392,27 +393,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			onzoom(direction, mouseX2timeline);
 		});
 
-		// var mc = new Hammer.Manager(element);
-
-		// mc.add(new Hammer.Pan({ threshold: 0 }));
-		// mc.add(new Hammer.Pinch({ threshold: 0 })).recognizeWith("pan");
-
-		// // var hammertime = new Hammer(element);
-		// // hammertime.get("pinch").set({ enable: true });
-		// mc.on("pan", function (event) {
-		// 	const deltaScrollLeft = event.velocityX;
-		// 	console.log("pan", event);
-		// 	if (deltaScrollLeft) onmove(deltaScrollLeft);
-		// });
-		// mc.on("pinchstart", function (event) {
-		// 	console.log("pinchstart", event);
-		// });
-
-		// Log events flag
-		const logEvents = false;
-
 		// Touch Point cache
-		let tpCache = [];
+		let tpCache: Touch[] = [];
 
 		//
 		element.addEventListener("touchstart", (event: TouchEvent) => {
@@ -428,7 +410,39 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					tpCache.push(event.targetTouches[i]);
 				}
 			}
-			if (logEvents) console.log("touchstart", event);
+			if (DEBUG) {
+				// Dispatch DOM event
+				element.dispatchEvent(
+					new CustomEvent("touchstart.tl.container", {
+						detail: event,
+						bubbles: false,
+						cancelable: true,
+						composed: false,
+					})
+				);
+			}
+		});
+
+		element.addEventListener("touchend", (event: TouchEvent) => {
+			// If the user makes simultaneous touches, the browser will fire a
+			// separate touchstart event for each touch point. Thus if there are
+			// three simultaneous touches, the first touchstart event will have
+			// targetTouches length of one, the second event will have a length
+			// of two, and so on.
+			event.preventDefault();
+			// empty tpCache
+			tpCache = [];
+			if (DEBUG) {
+				// Dispatch DOM event
+				element.dispatchEvent(
+					new CustomEvent("touchend.tl.container", {
+						detail: event,
+						bubbles: false,
+						cancelable: true,
+						composed: false,
+					})
+				);
+			}
 		});
 
 		// This is a very basic 2-touch move/pinch/zoom handler that does not include
@@ -455,12 +469,34 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					// This threshold is device dependent as well as application specific
 					const PINCH_THRESHOLD = target.clientWidth / 10;
 					if (diff1 >= PINCH_THRESHOLD && diff2 >= PINCH_THRESHOLD) {
-						if (logEvents) console.log("touchmove", event);
+						if (DEBUG) {
+							// Dispatch DOM event
+							element.dispatchEvent(
+								new CustomEvent("pinch.tl.container", {
+									detail: event,
+									bubbles: false,
+									cancelable: true,
+									composed: false,
+								})
+							);
+						}
 					}
 				} else {
 					// empty tpCache
 					tpCache = [];
 				}
+			}
+
+			if (DEBUG) {
+				// Dispatch DOM event
+				element.dispatchEvent(
+					new CustomEvent("touchmove.tl.container", {
+						detail: event,
+						bubbles: false,
+						cancelable: true,
+						composed: false,
+					})
+				);
 			}
 		});
 

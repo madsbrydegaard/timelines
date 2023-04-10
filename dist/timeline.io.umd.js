@@ -59,6 +59,7 @@
     const SHOW_MONTH_DURATION = MINUTES_IN_MONTH * 18;
     const SHOW_DAY_DURATION = MINUTES_IN_WEEK * 6;
     const SHOW_TIME_DURATION = MINUTES_IN_DAY * 4;
+    const DEBUG = true;
     const isITimelineEventWithDetails = (timelineEvent) => "timelineEventDetails" in timelineEvent;
     const load = (loader) => __async(void 0, null, function* () {
       if (!loader)
@@ -311,7 +312,6 @@
         const mouseX2timeline = (mouseX2view - pivot) / ratio;
         onzoom(direction, mouseX2timeline);
       });
-      const logEvents = false;
       let tpCache = [];
       element2.addEventListener("touchstart", (event) => {
         event.preventDefault();
@@ -320,8 +320,30 @@
             tpCache.push(event.targetTouches[i]);
           }
         }
-        if (logEvents)
-          console.log("touchstart", event);
+        if (DEBUG) {
+          element2.dispatchEvent(
+            new CustomEvent("touchstart.tl.container", {
+              detail: event,
+              bubbles: false,
+              cancelable: true,
+              composed: false
+            })
+          );
+        }
+      });
+      element2.addEventListener("touchend", (event) => {
+        event.preventDefault();
+        tpCache = [];
+        if (DEBUG) {
+          element2.dispatchEvent(
+            new CustomEvent("touchend.tl.container", {
+              detail: event,
+              bubbles: false,
+              cancelable: true,
+              composed: false
+            })
+          );
+        }
       });
       element2.addEventListener("touchmove", (event) => {
         event.preventDefault();
@@ -334,12 +356,30 @@
             const diff2 = Math.abs(tpCache[point2].clientX - event.targetTouches[1].clientX);
             const PINCH_THRESHOLD = target.clientWidth / 10;
             if (diff1 >= PINCH_THRESHOLD && diff2 >= PINCH_THRESHOLD) {
-              if (logEvents)
-                console.log("touchmove", event);
+              if (DEBUG) {
+                element2.dispatchEvent(
+                  new CustomEvent("pinch.tl.container", {
+                    detail: event,
+                    bubbles: false,
+                    cancelable: true,
+                    composed: false
+                  })
+                );
+              }
             }
           } else {
             tpCache = [];
           }
+        }
+        if (DEBUG) {
+          element2.dispatchEvent(
+            new CustomEvent("touchmove.tl.container", {
+              detail: event,
+              bubbles: false,
+              cancelable: true,
+              composed: false
+            })
+          );
         }
       });
       let dragStartX, dragStartY;
