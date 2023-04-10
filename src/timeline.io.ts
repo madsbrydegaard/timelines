@@ -371,8 +371,20 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	};
 	const registerListeners = (element: HTMLElement): void => {
 		// Add resize handler
-		window.addEventListener("resize", () => {
+		window.addEventListener("resize", (event) => {
 			update();
+
+			if (DEBUG) {
+				// Dispatch DOM event
+				element.dispatchEvent(
+					new CustomEvent("resize.tl.container", {
+						detail: event,
+						bubbles: false,
+						cancelable: true,
+						composed: false,
+					})
+				);
+			}
 		});
 
 		// Add zoom event handler
@@ -391,6 +403,18 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			const mouseX2view = offsetX / viewWidth();
 			const mouseX2timeline = (mouseX2view - pivot) / ratio;
 			onzoom(direction, mouseX2timeline);
+
+			if (DEBUG) {
+				// Dispatch DOM event
+				element.dispatchEvent(
+					new CustomEvent("wheel.tl.container", {
+						detail: event,
+						bubbles: false,
+						cancelable: true,
+						composed: false,
+					})
+				);
+			}
 		});
 
 		// Touch Point cache
@@ -404,12 +428,14 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			// targetTouches length of one, the second event will have a length
 			// of two, and so on.
 			event.preventDefault();
+
 			// Cache the touch points for later processing of 2-touch pinch/zoom
 			if (event.targetTouches.length === 2) {
 				for (let i = 0; i < event.targetTouches.length; i++) {
 					tpCache.push(event.targetTouches[i]);
 				}
 			}
+
 			if (DEBUG) {
 				// Dispatch DOM event
 				element.dispatchEvent(
@@ -487,6 +513,10 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				}
 			}
 
+			if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
+				const target = event.target as HTMLDivElement;
+			}
+
 			if (DEBUG) {
 				// Dispatch DOM event
 				element.dispatchEvent(
@@ -504,42 +534,66 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		let dragStartX: number, dragStartY: number;
 		let inDrag = false;
 		let enableCall = true;
-		element.addEventListener(
-			"mousedown",
-			(e) => {
-				inDrag = true;
-				dragStartX = e.pageX;
-				dragStartY = e.pageY;
-			},
-			{ passive: true }
-		);
+		element.addEventListener("mousedown", (event) => {
+			inDrag = true;
+			dragStartX = event.pageX;
+			dragStartY = event.pageY;
+
+			if (DEBUG) {
+				// Dispatch DOM event
+				element.dispatchEvent(
+					new CustomEvent("mousedown.tl.container", {
+						detail: event,
+						bubbles: false,
+						cancelable: true,
+						composed: false,
+					})
+				);
+			}
+		});
 
 		// Add move handler
-		element.addEventListener(
-			"mousemove",
-			(event) => {
-				if (!inDrag || !enableCall) {
-					return;
-				}
-				enableCall = false;
-				const deltaScrollLeft = event.pageX - dragStartX;
-				//const deltaScrollTop = (e.pageY - dragStartY);
-				if (deltaScrollLeft) onmove(deltaScrollLeft);
-				dragStartX = event.pageX;
-				dragStartY = event.pageY;
-				setTimeout(() => (enableCall = true), 10); // Throttle mousemove for performance reasons
-			},
-			{ passive: true }
-		);
+		element.addEventListener("mousemove", (event) => {
+			if (!inDrag || !enableCall) {
+				return;
+			}
+			enableCall = false;
+			const deltaScrollLeft = event.pageX - dragStartX;
+			//const deltaScrollTop = (e.pageY - dragStartY);
+			if (deltaScrollLeft) onmove(deltaScrollLeft);
+			dragStartX = event.pageX;
+			dragStartY = event.pageY;
+			setTimeout(() => (enableCall = true), 10); // Throttle mousemove for performance reasons
+
+			if (DEBUG) {
+				// Dispatch DOM event
+				element.dispatchEvent(
+					new CustomEvent("mousemove.tl.container", {
+						detail: event,
+						bubbles: false,
+						cancelable: true,
+						composed: false,
+					})
+				);
+			}
+		});
 
 		// Add mouse up handler
-		element.addEventListener(
-			"mouseup",
-			() => {
-				inDrag = false;
-			},
-			{ passive: true }
-		);
+		element.addEventListener("mouseup", (event) => {
+			inDrag = false;
+
+			if (DEBUG) {
+				// Dispatch DOM event
+				element.dispatchEvent(
+					new CustomEvent("mouseup.tl.container", {
+						detail: event,
+						bubbles: false,
+						cancelable: true,
+						composed: false,
+					})
+				);
+			}
+		});
 	};
 	const setupEventsHTML = (parentEvent: ITimelineEventWithDetails): DocumentFragment | undefined => {
 		const eventsFragment = document.createDocumentFragment();

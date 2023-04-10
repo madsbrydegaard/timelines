@@ -298,8 +298,18 @@
       }
     };
     const registerListeners = (element2) => {
-      window.addEventListener("resize", () => {
+      window.addEventListener("resize", (event) => {
         update();
+        if (DEBUG) {
+          element2.dispatchEvent(
+            new CustomEvent("resize.tl.container", {
+              detail: event,
+              bubbles: false,
+              cancelable: true,
+              composed: false
+            })
+          );
+        }
       });
       element2.addEventListener("wheel", (event) => {
         if (event.defaultPrevented)
@@ -311,6 +321,16 @@
         const mouseX2view = offsetX / viewWidth();
         const mouseX2timeline = (mouseX2view - pivot) / ratio;
         onzoom(direction, mouseX2timeline);
+        if (DEBUG) {
+          element2.dispatchEvent(
+            new CustomEvent("wheel.tl.container", {
+              detail: event,
+              bubbles: false,
+              cancelable: true,
+              composed: false
+            })
+          );
+        }
       });
       let tpCache = [];
       element2.addEventListener("touchstart", (event) => {
@@ -371,6 +391,9 @@
             tpCache = [];
           }
         }
+        if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
+          const target = event.target;
+        }
         if (DEBUG) {
           element2.dispatchEvent(
             new CustomEvent("touchmove.tl.container", {
@@ -385,38 +408,56 @@
       let dragStartX, dragStartY;
       let inDrag = false;
       let enableCall = true;
-      element2.addEventListener(
-        "mousedown",
-        (e) => {
-          inDrag = true;
-          dragStartX = e.pageX;
-          dragStartY = e.pageY;
-        },
-        { passive: true }
-      );
-      element2.addEventListener(
-        "mousemove",
-        (event) => {
-          if (!inDrag || !enableCall) {
-            return;
-          }
-          enableCall = false;
-          const deltaScrollLeft = event.pageX - dragStartX;
-          if (deltaScrollLeft)
-            onmove(deltaScrollLeft);
-          dragStartX = event.pageX;
-          dragStartY = event.pageY;
-          setTimeout(() => enableCall = true, 10);
-        },
-        { passive: true }
-      );
-      element2.addEventListener(
-        "mouseup",
-        () => {
-          inDrag = false;
-        },
-        { passive: true }
-      );
+      element2.addEventListener("mousedown", (event) => {
+        inDrag = true;
+        dragStartX = event.pageX;
+        dragStartY = event.pageY;
+        if (DEBUG) {
+          element2.dispatchEvent(
+            new CustomEvent("mousedown.tl.container", {
+              detail: event,
+              bubbles: false,
+              cancelable: true,
+              composed: false
+            })
+          );
+        }
+      });
+      element2.addEventListener("mousemove", (event) => {
+        if (!inDrag || !enableCall) {
+          return;
+        }
+        enableCall = false;
+        const deltaScrollLeft = event.pageX - dragStartX;
+        if (deltaScrollLeft)
+          onmove(deltaScrollLeft);
+        dragStartX = event.pageX;
+        dragStartY = event.pageY;
+        setTimeout(() => enableCall = true, 10);
+        if (DEBUG) {
+          element2.dispatchEvent(
+            new CustomEvent("mousemove.tl.container", {
+              detail: event,
+              bubbles: false,
+              cancelable: true,
+              composed: false
+            })
+          );
+        }
+      });
+      element2.addEventListener("mouseup", (event) => {
+        inDrag = false;
+        if (DEBUG) {
+          element2.dispatchEvent(
+            new CustomEvent("mouseup.tl.container", {
+              detail: event,
+              bubbles: false,
+              cancelable: true,
+              composed: false
+            })
+          );
+        }
+      });
     };
     const setupEventsHTML = (parentEvent) => {
       const eventsFragment = document.createDocumentFragment();
