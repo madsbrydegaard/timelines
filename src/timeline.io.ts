@@ -1,5 +1,3 @@
-import Hammer from "hammerjs";
-
 export interface ITimelineOptions {
 	labelCount?: number;
 	zoomSpeed?: number;
@@ -372,42 +370,98 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	};
 	const registerListeners = (element: HTMLElement): void => {
 		// Add resize handler
-		window.addEventListener(
-			"resize",
-			() => {
-				update();
-			},
-			{ passive: true }
-		);
+		window.addEventListener("resize", () => {
+			update();
+		});
 
 		// Add zoom event handler
-		element.addEventListener(
-			"wheel",
-			(event) => {
-				if (event.defaultPrevented) return;
-				// Decide whether zoom is IN (-) or OUT (+)
-				var direction = Math.sign(event.deltaY) as Direction;
-				// console.log('wheel', direction, event)
-				// Adjust width of timeline for zooming effect
-				const leftRatio = (event.target as HTMLElement).attributes["starttime"]
-					? getViewRatio((event.target as HTMLElement).attributes["starttime"])
-					: 0;
+		element.addEventListener("wheel", (event: WheelEvent) => {
+			if (event.defaultPrevented) return;
+			event.preventDefault();
+			// Decide whether zoom is IN (-) or OUT (+)
+			var direction = Math.sign(event.deltaY) as Direction;
+			// console.log('wheel', direction, event)
+			// Adjust width of timeline for zooming effect
+			const leftRatio = (event.target as HTMLElement).attributes["starttime"]
+				? getViewRatio((event.target as HTMLElement).attributes["starttime"])
+				: 0;
 
-				const offsetX = leftRatio * element.getBoundingClientRect().width + event.offsetX;
-				const mouseX2view = offsetX / viewWidth();
-				const mouseX2timeline = (mouseX2view - pivot) / ratio;
-				onzoom(direction, mouseX2timeline);
-			},
-			{ passive: true }
-		);
-
-		var hammertime = new Hammer(element);
-		hammertime.get("pinch").set({ enable: true });
-		hammertime.on("pan", function (ev) {
-			console.log("pan", ev);
+			const offsetX = leftRatio * element.getBoundingClientRect().width + event.offsetX;
+			const mouseX2view = offsetX / viewWidth();
+			const mouseX2timeline = (mouseX2view - pivot) / ratio;
+			onzoom(direction, mouseX2timeline);
 		});
-		hammertime.on("pinch", function (ev) {
-			console.log("pinch", ev);
+
+		// var mc = new Hammer.Manager(element);
+
+		// mc.add(new Hammer.Pan({ threshold: 0 }));
+		// mc.add(new Hammer.Pinch({ threshold: 0 })).recognizeWith("pan");
+
+		// // var hammertime = new Hammer(element);
+		// // hammertime.get("pinch").set({ enable: true });
+		// mc.on("pan", function (event) {
+		// 	const deltaScrollLeft = event.velocityX;
+		// 	console.log("pan", event);
+		// 	if (deltaScrollLeft) onmove(deltaScrollLeft);
+		// });
+		// mc.on("pinchstart", function (event) {
+		// 	console.log("pinchstart", event);
+		// });
+
+		// Log events flag
+		const logEvents = false;
+
+		// Touch Point cache
+		let tpCache = [];
+
+		//
+		element.addEventListener("touchstart", (event: TouchEvent) => {
+			// If the user makes simultaneous touches, the browser will fire a
+			// separate touchstart event for each touch point. Thus if there are
+			// three simultaneous touches, the first touchstart event will have
+			// targetTouches length of one, the second event will have a length
+			// of two, and so on.
+			event.preventDefault();
+			// Cache the touch points for later processing of 2-touch pinch/zoom
+			if (event.targetTouches.length === 2) {
+				for (let i = 0; i < event.targetTouches.length; i++) {
+					tpCache.push(event.targetTouches[i]);
+				}
+			}
+			if (logEvents) console.log("touchstart", event);
+		});
+
+		// This is a very basic 2-touch move/pinch/zoom handler that does not include
+		// error handling, only handles horizontal moves, etc.
+		element.addEventListener("touchmove", (event: TouchEvent) => {
+			// If the user makes simultaneous touches, the browser will fire a
+			// separate touchstart event for each touch point. Thus if there are
+			// three simultaneous touches, the first touchstart event will have
+			// targetTouches length of one, the second event will have a length
+			// of two, and so on.
+			event.preventDefault();
+			if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
+				// Check if the two target touches are the same ones that started
+				// the 2-touch
+				const point1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
+				const point2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
+				const target = event.target as HTMLDivElement;
+
+				if (point1 >= 0 && point2 >= 0) {
+					// Calculate the difference between the start and move coordinates
+					const diff1 = Math.abs(tpCache[point1].clientX - event.targetTouches[0].clientX);
+					const diff2 = Math.abs(tpCache[point2].clientX - event.targetTouches[1].clientX);
+
+					// This threshold is device dependent as well as application specific
+					const PINCH_THRESHOLD = target.clientWidth / 10;
+					if (diff1 >= PINCH_THRESHOLD && diff2 >= PINCH_THRESHOLD) {
+						if (logEvents) console.log("touchmove", event);
+					}
+				} else {
+					// empty tpCache
+					tpCache = [];
+				}
+			}
 		});
 
 		// Add drag event handler
