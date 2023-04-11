@@ -136,7 +136,7 @@ var Timeline = (elementIdentifier, settings) => {
     return timelineEnd - timelineStart;
   };
   const viewWidth = () => {
-    return element.offsetWidth || 0;
+    return element.getBoundingClientRect().width || 0;
   };
   const viewStart = () => {
     return timelineStart - viewDuration() * pivot;
@@ -328,7 +328,7 @@ var Timeline = (elementIdentifier, settings) => {
       event.preventDefault();
       var direction = Math.sign(event.deltaY);
       const leftRatio = event.target.attributes["starttime"] ? getViewRatio(event.target.attributes["starttime"]) : 0;
-      const offsetX = leftRatio * element2.getBoundingClientRect().width + event.offsetX;
+      const offsetX = leftRatio * viewWidth() + event.offsetX;
       const mouseX2view = offsetX / viewWidth();
       const mouseX2timeline = (mouseX2view - pivot) / ratio;
       onzoom(direction, mouseX2timeline);
@@ -353,18 +353,23 @@ var Timeline = (elementIdentifier, settings) => {
     });
     element2.addEventListener("touchmove", (event) => {
       if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
-        const point1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
-        const point2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
+        const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
+        const touch2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
         const target = event.target;
-        if (point1 >= 0 && point2 >= 0) {
-          const diff1 = Math.abs(tpCache[point1].clientX - event.targetTouches[0].clientX);
-          const diff2 = Math.abs(tpCache[point2].clientX - event.targetTouches[1].clientX);
-          const PINCH_THRESHOLD = target.clientWidth / 10;
-          if (diff1 >= PINCH_THRESHOLD && diff2 >= PINCH_THRESHOLD) {
-            fire("pinch.tl.container");
-          }
-        } else {
-          tpCache = [];
+        if (touch1 >= 0 && touch2 >= 0) {
+          const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
+          const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
+          const diff = diff1 - diff2;
+          const offsetX = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX) / 2;
+          var direction = Math.sign(diff);
+          const mouseX2view = offsetX / viewWidth();
+          const mouseX2timeline = (mouseX2view - pivot) / ratio;
+          onzoom(direction, mouseX2timeline);
+          fire("pinch.tl.container");
+        }
+        tpCache = [];
+        for (let i = 0; i < event.targetTouches.length; i++) {
+          tpCache.push(event.targetTouches[i]);
         }
       }
       if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
