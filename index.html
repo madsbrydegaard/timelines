@@ -17,21 +17,32 @@
 	</head>
 	<body>
 		<div id="timeline" style="height: 300px"></div>
-		<pre><code id="log"></code></pre>
+		<pre><code id="log" style="height: 300px; overflow: auto;"></code></pre>
 		<script src="dist/timeline.io.umd.js"></script>
 		<script>
 			const timelineContainer = document.querySelector("#timeline");
 			const log = document.querySelector("#log");
+			const events = [
+				"pinch.tl.container",
+				"wheel.tl.container",
+				"drag.tl.container",
+				"touchstart.tl.container",
+				//"touchmove.tl.container",
+				"touchend.tl.container",
+				"mousedown.tl.container",
+				//"mousemove.tl.container",
+				"mouseup.tl.container",
+				//"update.tl.container",
+				"zoom.tl.event",
+			];
 
-			timelineContainer.addEventListener("pinch.tl.container", (timelineEvent) => {
-				log.innerHTML = JSON.stringify(timelineEvent.detail, undefined, 2);
+			events.forEach((eventName) => {
+				timelineContainer.addEventListener(eventName, (timelineEvent) => {
+					log.innerHTML = JSON.stringify(timelineEvent.detail.name, undefined, 2) + "\n" + log.innerHTML;
+				});
 			});
 
-			timelineContainer.addEventListener("touchmove.tl.container", (timelineEvent) => {
-				log.innerHTML = JSON.stringify(timelineEvent.detail, undefined, 2);
-			});
-
-			const timeline = Timeline(timelineContainer, { start: "100bc", end: "100ad" });
+			const timeline = Timeline(timelineContainer, { start: "100bc", end: "100ad", debug: true });
 		</script>
 	</body>
 </html>

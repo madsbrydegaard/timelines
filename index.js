@@ -58,7 +58,6 @@ var Timeline = (elementIdentifier, settings) => {
   const SHOW_MONTH_DURATION = MINUTES_IN_MONTH * 18;
   const SHOW_DAY_DURATION = MINUTES_IN_WEEK * 6;
   const SHOW_TIME_DURATION = MINUTES_IN_DAY * 4;
-  const DEBUG = true;
   const isITimelineEventWithDetails = (timelineEvent) => "timelineEventDetails" in timelineEvent;
   const load = (loader) => __async(void 0, null, function* () {
     if (!loader)
@@ -89,7 +88,7 @@ var Timeline = (elementIdentifier, settings) => {
     options = __spreadValues(__spreadValues({}, {
       labelCount: 5,
       zoomSpeed: 0.025,
-      dragSpeed: 1e-3,
+      dragSpeed: 3e-3,
       timelineStart: "-1B",
       timelineEnd: "1M",
       start: "-100y",
@@ -100,6 +99,7 @@ var Timeline = (elementIdentifier, settings) => {
       eventHeight: 5,
       autoZoom: false,
       defaultColor: [140, 140, 140],
+      debug: false,
       classNames: {
         timeline: "tl",
         timelineEvent: "tl__event",
@@ -223,13 +223,7 @@ var Timeline = (elementIdentifier, settings) => {
       throw "first argument 'timelineEvent' of method 'zoom' must be an object of type ITimelineEventWithDetails";
     }
     zoomto(timelineEvent.timelineEventDetails.startMinutes, timelineEvent.timelineEventDetails.endMinutes, useAnimation, () => {
-      element.dispatchEvent(
-        new CustomEvent("zoom.tl.event", {
-          detail: timelineEvent,
-          bubbles: false,
-          cancelable: true
-        })
-      );
+      fire("zoom.tl.event", timelineEvent);
       if (onzoomend)
         onzoomend(timelineEvent);
     });
@@ -297,18 +291,36 @@ var Timeline = (elementIdentifier, settings) => {
     }
   };
   const registerListeners = (element2) => {
+    let tpCache = [];
+    let dragStartX, dragStartY;
+    let inDrag = false;
+    let canDrag = true;
+    const drag = (x, y) => {
+      if (!inDrag || !canDrag) {
+        return;
+      }
+      canDrag = false;
+      const deltaScrollLeft = x - dragStartX;
+      if (deltaScrollLeft)
+        onmove(deltaScrollLeft);
+      dragStartX = x;
+      dragStartY = y;
+      setTimeout(() => canDrag = true, 10);
+      fire("drag.tl.container");
+    };
+    const startDrag = (x, y) => {
+      inDrag = true;
+      dragStartX = x;
+      dragStartY = y;
+      fire("startpan.tl.container");
+    };
+    const endDrag = () => {
+      inDrag = false;
+      fire("endpan.tl.container");
+    };
     window.addEventListener("resize", (event) => {
       update();
-      if (DEBUG) {
-        element2.dispatchEvent(
-          new CustomEvent("resize.tl.container", {
-            detail: event,
-            bubbles: false,
-            cancelable: true,
-            composed: false
-          })
-        );
-      }
+      fire("resize.tl.container");
     });
     element2.addEventListener("wheel", (event) => {
       if (event.defaultPrevented)
@@ -320,52 +332,26 @@ var Timeline = (elementIdentifier, settings) => {
       const mouseX2view = offsetX / viewWidth();
       const mouseX2timeline = (mouseX2view - pivot) / ratio;
       onzoom(direction, mouseX2timeline);
-      if (DEBUG) {
-        element2.dispatchEvent(
-          new CustomEvent("wheel.tl.container", {
-            detail: event,
-            bubbles: false,
-            cancelable: true,
-            composed: false
-          })
-        );
-      }
+      fire("wheel.tl.container");
     });
-    let tpCache = [];
     element2.addEventListener("touchstart", (event) => {
       event.preventDefault();
       if (event.targetTouches.length === 2) {
+        tpCache = [];
         for (let i = 0; i < event.targetTouches.length; i++) {
           tpCache.push(event.targetTouches[i]);
         }
       }
-      if (DEBUG) {
-        element2.dispatchEvent(
-          new CustomEvent("touchstart.tl.container", {
-            detail: event,
-            bubbles: false,
-            cancelable: true,
-            composed: false
-          })
-        );
+      if (event.targetTouches.length === 1) {
+        startDrag(event.targetTouches[0].clientX, event.targetTouches[0].clientY);
       }
+      fire("touchstart.tl.container");
     });
     element2.addEventListener("touchend", (event) => {
-      event.preventDefault();
-      tpCache = [];
-      if (DEBUG) {
-        element2.dispatchEvent(
-          new CustomEvent("touchend.tl.container", {
-            detail: event,
-            bubbles: false,
-            cancelable: true,
-            composed: false
-          })
-        );
-      }
+      endDrag();
+      fire("touchend.tl.container");
     });
     element2.addEventListener("touchmove", (event) => {
-      event.preventDefault();
       if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
         const point1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
         const point2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
@@ -375,87 +361,28 @@ var Timeline = (elementIdentifier, settings) => {
           const diff2 = Math.abs(tpCache[point2].clientX - event.targetTouches[1].clientX);
           const PINCH_THRESHOLD = target.clientWidth / 10;
           if (diff1 >= PINCH_THRESHOLD && diff2 >= PINCH_THRESHOLD) {
-            if (DEBUG) {
-              element2.dispatchEvent(
-                new CustomEvent("pinch.tl.container", {
-                  detail: event,
-                  bubbles: false,
-                  cancelable: true,
-                  composed: false
-                })
-              );
-            }
+            fire("pinch.tl.container");
           }
         } else {
           tpCache = [];
         }
       }
       if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
-        const target = event.target;
-      }
-      if (DEBUG) {
-        element2.dispatchEvent(
-          new CustomEvent("touchmove.tl.container", {
-            detail: event,
-            bubbles: false,
-            cancelable: true,
-            composed: false
-          })
-        );
+        drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
+        fire("touchmove.tl.container");
       }
     });
-    let dragStartX, dragStartY;
-    let inDrag = false;
-    let enableCall = true;
     element2.addEventListener("mousedown", (event) => {
-      inDrag = true;
-      dragStartX = event.pageX;
-      dragStartY = event.pageY;
-      if (DEBUG) {
-        element2.dispatchEvent(
-          new CustomEvent("mousedown.tl.container", {
-            detail: event,
-            bubbles: false,
-            cancelable: true,
-            composed: false
-          })
-        );
-      }
+      startDrag(event.clientX, event.clientY);
+      fire("mousedown.tl.container");
     });
     element2.addEventListener("mousemove", (event) => {
-      if (!inDrag || !enableCall) {
-        return;
-      }
-      enableCall = false;
-      const deltaScrollLeft = event.pageX - dragStartX;
-      if (deltaScrollLeft)
-        onmove(deltaScrollLeft);
-      dragStartX = event.pageX;
-      dragStartY = event.pageY;
-      setTimeout(() => enableCall = true, 10);
-      if (DEBUG) {
-        element2.dispatchEvent(
-          new CustomEvent("mousemove.tl.container", {
-            detail: event,
-            bubbles: false,
-            cancelable: true,
-            composed: false
-          })
-        );
-      }
+      drag(event.clientX, event.clientY);
+      fire("mousemove.tl.container");
     });
     element2.addEventListener("mouseup", (event) => {
-      inDrag = false;
-      if (DEBUG) {
-        element2.dispatchEvent(
-          new CustomEvent("mouseup.tl.container", {
-            detail: event,
-            bubbles: false,
-            cancelable: true,
-            composed: false
-          })
-        );
-      }
+      endDrag();
+      fire("mouseup.tl.container");
     });
   };
   const setupEventsHTML = (parentEvent) => {
@@ -717,21 +644,7 @@ var Timeline = (elementIdentifier, settings) => {
     eventsContainer.innerHTML = "";
     if (eventsHtml)
       eventsContainer.appendChild(eventsHtml);
-    element.dispatchEvent(
-      new CustomEvent("update.tl.container", {
-        detail: {
-          options,
-          viewStartDate: viewStart(),
-          viewEndDate: viewEnd(),
-          viewDuration: viewDuration(),
-          ratio,
-          pivot
-        },
-        bubbles: false,
-        cancelable: true,
-        composed: false
-      })
-    );
+    fire("update.tl.container");
   };
   const parseToMinutes = (input) => {
     if (input === void 0)
@@ -911,6 +824,25 @@ var Timeline = (elementIdentifier, settings) => {
       });
     }
     return result;
+  };
+  const fire = (name, timelineEvent) => {
+    element.dispatchEvent(
+      new CustomEvent(name, {
+        detail: {
+          name,
+          options,
+          timelineEvent,
+          viewStartDate: formatDateLabel(viewStart()),
+          viewEndDate: formatDateLabel(viewEnd()),
+          viewDuration: viewDuration(),
+          ratio,
+          pivot
+        },
+        bubbles: false,
+        cancelable: true,
+        composed: false
+      })
+    );
   };
   init(elementIdentifier, settings);
   return {

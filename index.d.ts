@@ -13,6 +13,7 @@ declare module "timeline.io" {
         eventHeight?: number;
         autoZoom?: boolean;
         defaultColor?: number[];
+        debug: boolean;
         classNames?: {
             timeline?: string;
             timelineEvent?: string;

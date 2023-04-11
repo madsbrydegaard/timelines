@@ -12,6 +12,7 @@ export interface ITimelineOptions {
 	eventHeight?: number;
 	autoZoom?: boolean;
 	defaultColor?: number[];
+	debug: boolean;
 	classNames?: {
 		timeline?: string;
 		timelineEvent?: string;
@@ -94,7 +95,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	const SHOW_MONTH_DURATION = MINUTES_IN_MONTH * 18; // When to show monthname in time label
 	const SHOW_DAY_DURATION = MINUTES_IN_WEEK * 6; // When to show date in time label
 	const SHOW_TIME_DURATION = MINUTES_IN_DAY * 4; // When to show time in time label
-	const DEBUG = true;
 
 	// ITimelineEventWithDetails guard
 	const isITimelineEventWithDetails = (timelineEvent: ITimelineEvent): timelineEvent is ITimelineEventWithDetails =>
@@ -132,7 +132,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			...{
 				labelCount: 5,
 				zoomSpeed: 0.025,
-				dragSpeed: 0.001,
+				dragSpeed: 0.003,
 				timelineStart: "-1B",
 				timelineEnd: "1M",
 				start: "-100y",
@@ -143,6 +143,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				eventHeight: 5,
 				autoZoom: false,
 				defaultColor: [140, 140, 140],
+				debug: false,
 				classNames: {
 					timeline: "tl",
 					timelineEvent: "tl__event",
@@ -293,13 +294,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		}
 
 		zoomto(timelineEvent.timelineEventDetails.startMinutes, timelineEvent.timelineEventDetails.endMinutes, useAnimation, () => {
-			element.dispatchEvent(
-				new CustomEvent("zoom.tl.event", {
-					detail: timelineEvent,
-					bubbles: false,
-					cancelable: true,
-				})
-			);
+			fire("zoom.tl.event", timelineEvent);
 			if (onzoomend) onzoomend(timelineEvent);
 		});
 	};
@@ -370,21 +365,45 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		}
 	};
 	const registerListeners = (element: HTMLElement): void => {
+		// Touch Point cache
+		let tpCache: Touch[] = [];
+		// Add drag event handler
+		let dragStartX: number, dragStartY: number;
+		let inDrag = false;
+		let canDrag = true;
+
+		// Drag handlers
+		const drag = (x: number, y: number) => {
+			if (!inDrag || !canDrag) {
+				return;
+			}
+			canDrag = false;
+			const deltaScrollLeft = x - dragStartX;
+			//const deltaScrollTop = (e.pageY - dragStartY);
+			if (deltaScrollLeft) onmove(deltaScrollLeft);
+			dragStartX = x;
+			dragStartY = y;
+			setTimeout(() => (canDrag = true), 10); // Throttle drag for performance reasons
+			fire("drag.tl.container");
+		};
+		const startDrag = (x: number, y: number) => {
+			inDrag = true;
+			dragStartX = x;
+			dragStartY = y;
+
+			fire("startpan.tl.container");
+		};
+		const endDrag = () => {
+			inDrag = false;
+
+			fire("endpan.tl.container");
+		};
+
 		// Add resize handler
 		window.addEventListener("resize", (event) => {
 			update();
 
-			if (DEBUG) {
-				// Dispatch DOM event
-				element.dispatchEvent(
-					new CustomEvent("resize.tl.container", {
-						detail: event,
-						bubbles: false,
-						cancelable: true,
-						composed: false,
-					})
-				);
-			}
+			fire("resize.tl.container");
 		});
 
 		// Add zoom event handler
@@ -404,21 +423,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			const mouseX2timeline = (mouseX2view - pivot) / ratio;
 			onzoom(direction, mouseX2timeline);
 
-			if (DEBUG) {
-				// Dispatch DOM event
-				element.dispatchEvent(
-					new CustomEvent("wheel.tl.container", {
-						detail: event,
-						bubbles: false,
-						cancelable: true,
-						composed: false,
-					})
-				);
-			}
+			fire("wheel.tl.container");
 		});
-
-		// Touch Point cache
-		let tpCache: Touch[] = [];
 
 		//
 		element.addEventListener("touchstart", (event: TouchEvent) => {
@@ -429,24 +435,19 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			// of two, and so on.
 			event.preventDefault();
 
-			// Cache the touch points for later processing of 2-touch pinch/zoom
+			//
 			if (event.targetTouches.length === 2) {
+				tpCache = [];
 				for (let i = 0; i < event.targetTouches.length; i++) {
 					tpCache.push(event.targetTouches[i]);
 				}
 			}
 
-			if (DEBUG) {
-				// Dispatch DOM event
-				element.dispatchEvent(
-					new CustomEvent("touchstart.tl.container", {
-						detail: event,
-						bubbles: false,
-						cancelable: true,
-						composed: false,
-					})
-				);
+			if (event.targetTouches.length === 1) {
+				startDrag(event.targetTouches[0].clientX, event.targetTouches[0].clientY);
 			}
+
+			fire("touchstart.tl.container");
 		});
 
 		element.addEventListener("touchend", (event: TouchEvent) => {
@@ -455,20 +456,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			// three simultaneous touches, the first touchstart event will have
 			// targetTouches length of one, the second event will have a length
 			// of two, and so on.
-			event.preventDefault();
-			// empty tpCache
-			tpCache = [];
-			if (DEBUG) {
-				// Dispatch DOM event
-				element.dispatchEvent(
-					new CustomEvent("touchend.tl.container", {
-						detail: event,
-						bubbles: false,
-						cancelable: true,
-						composed: false,
-					})
-				);
-			}
+			endDrag();
+			fire("touchend.tl.container");
 		});
 
 		// This is a very basic 2-touch move/pinch/zoom handler that does not include
@@ -479,120 +468,50 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			// three simultaneous touches, the first touchstart event will have
 			// targetTouches length of one, the second event will have a length
 			// of two, and so on.
-			event.preventDefault();
+			//event.preventDefault();
 			if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
 				// Check if the two target touches are the same ones that started
 				// the 2-touch
-				const point1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
-				const point2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
+				const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
+				const touch2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
 				const target = event.target as HTMLDivElement;
 
-				if (point1 >= 0 && point2 >= 0) {
+				if (touch1 >= 0 && touch2 >= 0) {
 					// Calculate the difference between the start and move coordinates
-					const diff1 = Math.abs(tpCache[point1].clientX - event.targetTouches[0].clientX);
-					const diff2 = Math.abs(tpCache[point2].clientX - event.targetTouches[1].clientX);
+					const diff1 = Math.abs(tpCache[touch1].clientX - event.targetTouches[0].clientX);
+					const diff2 = Math.abs(tpCache[touch2].clientX - event.targetTouches[1].clientX);
 
-					// This threshold is device dependent as well as application specific
-					const PINCH_THRESHOLD = target.clientWidth / 10;
-					if (diff1 >= PINCH_THRESHOLD && diff2 >= PINCH_THRESHOLD) {
-						if (DEBUG) {
-							// Dispatch DOM event
-							element.dispatchEvent(
-								new CustomEvent("pinch.tl.container", {
-									detail: event,
-									bubbles: false,
-									cancelable: true,
-									composed: false,
-								})
-							);
-						}
+					tpCache = [];
+					for (let i = 0; i < event.targetTouches.length; i++) {
+						tpCache.push(event.targetTouches[i]);
 					}
+					fire("pinch.tl.container");
 				} else {
 					// empty tpCache
 					tpCache = [];
 				}
 			}
-
 			if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
-				const target = event.target as HTMLDivElement;
-			}
-
-			if (DEBUG) {
-				// Dispatch DOM event
-				element.dispatchEvent(
-					new CustomEvent("touchmove.tl.container", {
-						detail: event,
-						bubbles: false,
-						cancelable: true,
-						composed: false,
-					})
-				);
+				drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
+				fire("touchmove.tl.container");
 			}
 		});
 
-		// Add drag event handler
-		let dragStartX: number, dragStartY: number;
-		let inDrag = false;
-		let enableCall = true;
 		element.addEventListener("mousedown", (event) => {
-			inDrag = true;
-			dragStartX = event.pageX;
-			dragStartY = event.pageY;
-
-			if (DEBUG) {
-				// Dispatch DOM event
-				element.dispatchEvent(
-					new CustomEvent("mousedown.tl.container", {
-						detail: event,
-						bubbles: false,
-						cancelable: true,
-						composed: false,
-					})
-				);
-			}
+			startDrag(event.clientX, event.clientY);
+			fire("mousedown.tl.container");
 		});
 
 		// Add move handler
 		element.addEventListener("mousemove", (event) => {
-			if (!inDrag || !enableCall) {
-				return;
-			}
-			enableCall = false;
-			const deltaScrollLeft = event.pageX - dragStartX;
-			//const deltaScrollTop = (e.pageY - dragStartY);
-			if (deltaScrollLeft) onmove(deltaScrollLeft);
-			dragStartX = event.pageX;
-			dragStartY = event.pageY;
-			setTimeout(() => (enableCall = true), 10); // Throttle mousemove for performance reasons
-
-			if (DEBUG) {
-				// Dispatch DOM event
-				element.dispatchEvent(
-					new CustomEvent("mousemove.tl.container", {
-						detail: event,
-						bubbles: false,
-						cancelable: true,
-						composed: false,
-					})
-				);
-			}
+			drag(event.clientX, event.clientY);
+			fire("mousemove.tl.container");
 		});
 
 		// Add mouse up handler
 		element.addEventListener("mouseup", (event) => {
-			inDrag = false;
-
-			if (DEBUG) {
-				// Dispatch DOM event
-				element.dispatchEvent(
-					new CustomEvent("mouseup.tl.container", {
-						detail: event,
-						bubbles: false,
-						cancelable: true,
-						composed: false,
-					})
-				);
-			}
+			endDrag();
+			fire("mouseup.tl.container");
 		});
 	};
 	const setupEventsHTML = (parentEvent: ITimelineEventWithDetails): DocumentFragment | undefined => {
@@ -897,21 +816,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		if (eventsHtml) eventsContainer.appendChild(eventsHtml);
 
 		// Dispatch DOM event
-		element.dispatchEvent(
-			new CustomEvent("update.tl.container", {
-				detail: {
-					options,
-					viewStartDate: viewStart(),
-					viewEndDate: viewEnd(),
-					viewDuration: viewDuration(),
-					ratio,
-					pivot,
-				},
-				bubbles: false,
-				cancelable: true,
-				composed: false,
-			})
-		);
+		fire("update.tl.container");
 	};
 	const parseToMinutes = (input: number[] | string | number | Date | undefined): number | undefined => {
 		if (input === undefined) return undefined;
@@ -1147,6 +1052,25 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			});
 		}
 		return result;
+	};
+	const fire = (name: string, timelineEvent?: ITimelineEvent) => {
+		element.dispatchEvent(
+			new CustomEvent(name, {
+				detail: {
+					name,
+					options,
+					timelineEvent,
+					viewStartDate: formatDateLabel(viewStart()),
+					viewEndDate: formatDateLabel(viewEnd()),
+					viewDuration: viewDuration(),
+					ratio,
+					pivot,
+				},
+				bubbles: false,
+				cancelable: true,
+				composed: false,
+			})
+		);
 	};
 
 	init(elementIdentifier, settings);
