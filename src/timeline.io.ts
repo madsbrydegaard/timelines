@@ -192,7 +192,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		return timelineEnd - timelineStart;
 	};
 	const viewWidth = (): number => {
-		return element.offsetWidth || 0;
+		return element.getBoundingClientRect().width || 0;
 	};
 	const viewStart = (): number => {
 		return timelineStart - viewDuration() * pivot;
@@ -418,7 +418,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				? getViewRatio((event.target as HTMLElement).attributes["starttime"])
 				: 0;
 
-			const offsetX = leftRatio * element.getBoundingClientRect().width + event.offsetX;
+			const offsetX = leftRatio * viewWidth() + event.offsetX;
 			const mouseX2view = offsetX / viewWidth();
 			const mouseX2timeline = (mouseX2view - pivot) / ratio;
 			onzoom(direction, mouseX2timeline);
@@ -478,17 +478,28 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 
 				if (touch1 >= 0 && touch2 >= 0) {
 					// Calculate the difference between the start and move coordinates
-					const diff1 = Math.abs(tpCache[touch1].clientX - event.targetTouches[0].clientX);
-					const diff2 = Math.abs(tpCache[touch2].clientX - event.targetTouches[1].clientX);
+					// const diff1 = Math.abs(tpCache[touch1].clientX - event.targetTouches[0].clientX);
+					// const diff2 = Math.abs(tpCache[touch2].clientX - event.targetTouches[1].clientX);
+					const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
+					const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
+					const diff = diff1 - diff2;
+					const offsetX = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX) / 2;
+					// Decide whether zoom is IN (-) or OUT (+)
+					var direction = Math.sign(diff) as Direction;
+					const mouseX2view = offsetX / viewWidth();
+					const mouseX2timeline = (mouseX2view - pivot) / ratio;
+					onzoom(direction, mouseX2timeline);
+					// if(diff > 0) { // Pinch OUT
 
-					tpCache = [];
-					for (let i = 0; i < event.targetTouches.length; i++) {
-						tpCache.push(event.targetTouches[i]);
-					}
+					// } else { // Pinch IN
+
+					// }
 					fire("pinch.tl.container");
-				} else {
-					// empty tpCache
-					tpCache = [];
+				}
+
+				tpCache = [];
+				for (let i = 0; i < event.targetTouches.length; i++) {
+					tpCache.push(event.targetTouches[i]);
 				}
 			}
 			if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
