@@ -483,7 +483,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
 					const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
 					const diff = diff1 - diff2;
-					const offsetX = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX) / 2;
+					const offsetX = event.targetTouches[0].clientX + diff2 / 2;
 					// Decide whether zoom is IN (-) or OUT (+)
 					var direction = Math.sign(diff) as Direction;
 					const mouseX2view = offsetX / viewWidth();
