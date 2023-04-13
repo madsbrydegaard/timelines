@@ -295,6 +295,7 @@ var Timeline = (elementIdentifier, settings) => {
     let dragStartX, dragStartY;
     let inDrag = false;
     let canDrag = true;
+    let canPinch = true;
     const drag = (x, y) => {
       if (!inDrag || !canDrag) {
         return;
@@ -318,6 +319,17 @@ var Timeline = (elementIdentifier, settings) => {
       inDrag = false;
       fire("endpan.tl.container");
     };
+    const pinch = (offsetX, direction) => {
+      if (!canPinch) {
+        return;
+      }
+      canPinch = false;
+      const mouseX2view = offsetX / viewWidth();
+      const mouseX2timeline = (mouseX2view - pivot) / ratio;
+      onzoom(direction, mouseX2timeline);
+      setTimeout(() => canPinch = true, 10);
+      fire("pinch.tl.container");
+    };
     window.addEventListener("resize", (event) => {
       update();
       fire("resize.tl.container");
@@ -329,9 +341,7 @@ var Timeline = (elementIdentifier, settings) => {
       var direction = Math.sign(event.deltaY);
       const leftRatio = event.target.attributes["starttime"] ? getViewRatio(event.target.attributes["starttime"]) : 0;
       const offsetX = leftRatio * viewWidth() + event.offsetX;
-      const mouseX2view = offsetX / viewWidth();
-      const mouseX2timeline = (mouseX2view - pivot) / ratio;
-      onzoom(direction, mouseX2timeline);
+      pinch(offsetX, direction);
       fire("wheel.tl.container");
     });
     element2.addEventListener("touchstart", (event) => {
@@ -362,10 +372,8 @@ var Timeline = (elementIdentifier, settings) => {
           const diff = diff1 - diff2;
           const offsetX = event.targetTouches[0].clientX + diff2 / 2;
           var direction = Math.sign(diff);
-          const mouseX2view = offsetX / viewWidth();
-          const mouseX2timeline = (mouseX2view - pivot) / ratio;
-          onzoom(direction, mouseX2timeline);
-          fire("pinch.tl.container");
+          pinch(offsetX, direction);
+          fire("touchmove.tl.container");
         }
         tpCache = [];
         for (let i = 0; i < event.targetTouches.length; i++) {

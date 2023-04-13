@@ -371,6 +371,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		let dragStartX: number, dragStartY: number;
 		let inDrag = false;
 		let canDrag = true;
+		let canPinch = true;
 
 		// Drag handlers
 		const drag = (x: number, y: number) => {
@@ -398,6 +399,17 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 
 			fire("endpan.tl.container");
 		};
+		const pinch = (offsetX: number, direction: Direction) => {
+			if (!canPinch) {
+				return;
+			}
+			canPinch = false;
+			const mouseX2view = offsetX / viewWidth();
+			const mouseX2timeline = (mouseX2view - pivot) / ratio;
+			onzoom(direction, mouseX2timeline);
+			setTimeout(() => (canPinch = true), 10); // Throttle drag for performance reasons
+			fire("pinch.tl.container");
+		};
 
 		// Add resize handler
 		window.addEventListener("resize", (event) => {
@@ -419,9 +431,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				: 0;
 
 			const offsetX = leftRatio * viewWidth() + event.offsetX;
-			const mouseX2view = offsetX / viewWidth();
-			const mouseX2timeline = (mouseX2view - pivot) / ratio;
-			onzoom(direction, mouseX2timeline);
+			pinch(offsetX, direction);
 
 			fire("wheel.tl.container");
 		});
@@ -478,18 +488,14 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 
 				if (touch1 >= 0 && touch2 >= 0) {
 					// Calculate the difference between the start and move coordinates
-					// const diff1 = Math.abs(tpCache[touch1].clientX - event.targetTouches[0].clientX);
-					// const diff2 = Math.abs(tpCache[touch2].clientX - event.targetTouches[1].clientX);
 					const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
 					const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
 					const diff = diff1 - diff2;
 					const offsetX = event.targetTouches[0].clientX + diff2 / 2;
 					// Decide whether zoom is IN (-) or OUT (+)
 					var direction = Math.sign(diff) as Direction;
-					const mouseX2view = offsetX / viewWidth();
-					const mouseX2timeline = (mouseX2view - pivot) / ratio;
-					onzoom(direction, mouseX2timeline);
-					fire("pinch.tl.container");
+					pinch(offsetX, direction);
+					fire("touchmove.tl.container");
 				}
 
 				tpCache = [];
