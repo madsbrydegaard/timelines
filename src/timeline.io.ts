@@ -489,11 +489,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					const mouseX2view = offsetX / viewWidth();
 					const mouseX2timeline = (mouseX2view - pivot) / ratio;
 					onzoom(direction, mouseX2timeline);
-					// if(diff > 0) { // Pinch OUT
-
-					// } else { // Pinch IN
-
-					// }
 					fire("pinch.tl.container");
 				}
 
@@ -501,13 +496,14 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				for (let i = 0; i < event.targetTouches.length; i++) {
 					tpCache.push(event.targetTouches[i]);
 				}
+
+				return;
 			}
-			// if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
-			// 	drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
-			// 	fire("touchmove.tl.container");
-			// }
-			drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
-			fire("touchmove.tl.container");
+
+			if (event.targetTouches.length > 1 && event.changedTouches.length > 1) {
+				drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
+				fire("touchmove.tl.container");
+			}
 		});
 
 		element.addEventListener("mousedown", (event) => {
