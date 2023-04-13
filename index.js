@@ -360,7 +360,7 @@ var Timeline = (elementIdentifier, settings) => {
           const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
           const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
           const diff = diff1 - diff2;
-          const offsetX = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX) / 2;
+          const offsetX = event.targetTouches[0].clientX + diff2 / 2;
           var direction = Math.sign(diff);
           const mouseX2view = offsetX / viewWidth();
           const mouseX2timeline = (mouseX2view - pivot) / ratio;
@@ -372,10 +372,8 @@ var Timeline = (elementIdentifier, settings) => {
           tpCache.push(event.targetTouches[i]);
         }
       }
-      if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
-        drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
-        fire("touchmove.tl.container");
-      }
+      drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
+      fire("touchmove.tl.container");
     });
     element2.addEventListener("mousedown", (event) => {
       startDrag(event.clientX, event.clientY);

@@ -502,10 +502,12 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					tpCache.push(event.targetTouches[i]);
 				}
 			}
-			if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
-				drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
-				fire("touchmove.tl.container");
-			}
+			// if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
+			// 	drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
+			// 	fire("touchmove.tl.container");
+			// }
+			drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
+			fire("touchmove.tl.container");
 		});
 
 		element.addEventListener("mousedown", (event) => {
