@@ -371,7 +371,6 @@ var Timeline = (elementIdentifier, settings) => {
         for (let i = 0; i < event.targetTouches.length; i++) {
           tpCache.push(event.targetTouches[i]);
         }
-        return;
       }
       if (event.targetTouches.length > 1 && event.changedTouches.length > 1) {
         drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);

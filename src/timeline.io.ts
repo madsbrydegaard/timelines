@@ -496,8 +496,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				for (let i = 0; i < event.targetTouches.length; i++) {
 					tpCache.push(event.targetTouches[i]);
 				}
-
-				return;
 			}
 
 			if (event.targetTouches.length > 1 && event.changedTouches.length > 1) {
