@@ -373,7 +373,7 @@
             tpCache.push(event.targetTouches[i]);
           }
         }
-        if (event.targetTouches.length > 1 && event.changedTouches.length > 1) {
+        if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
           drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
           fire("touchmove.tl.container");
         }

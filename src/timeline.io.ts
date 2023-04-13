@@ -498,7 +498,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				}
 			}
 
-			if (event.targetTouches.length > 1 && event.changedTouches.length > 1) {
+			if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
 				drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
 				fire("touchmove.tl.container");
 			}
