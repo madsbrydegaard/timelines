@@ -88,8 +88,8 @@
       }
       options = __spreadValues(__spreadValues({}, {
         labelCount: 5,
-        zoomSpeed: 0.025,
-        dragSpeed: 3e-3,
+        zoomSpeed: 0.04,
+        dragSpeed: 1e-3,
         timelineStart: "-1B",
         timelineEnd: "1M",
         start: "-100y",
@@ -366,7 +366,6 @@
         if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
           const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
           const touch2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
-          const target = event.target;
           if (touch1 >= 0 && touch2 >= 0) {
             const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
             const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
@@ -564,6 +563,7 @@
       eventsContainer.style.bottom = "50px";
       eventsContainer.style.height = "calc(100% - 50px)";
       eventsContainer.style.width = "100%";
+      eventsContainer.style.overflowY = "auto";
     };
     const formatDateLabel = (minutes) => {
       const yearsCount = Math.floor(minutes / MINUTES_IN_YEAR);

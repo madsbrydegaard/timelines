@@ -32,6 +32,7 @@ interface IMatrix {
 }
 interface ITimelineBase {
 	title: string;
+	render?: (timelineEvent: ITimelineEventDetails) => HTMLDivElement;
 }
 interface ITimelineProps {
 	type?: string;
@@ -51,8 +52,6 @@ interface ITimelineEventDetails extends Required<ITimelineProps> {
 	parentId?: string;
 	levelMatrix: IMatrix;
 	children: { [key: string]: ITimelineEventWithDetails };
-	// ratio?: number;
-	// pivot?: number;
 }
 interface ITimelineEventWithDetails extends ITimelineEvent {
 	timelineEventDetails: ITimelineEventDetails;
@@ -131,8 +130,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		options = {
 			...{
 				labelCount: 5,
-				zoomSpeed: 0.025,
-				dragSpeed: 0.003,
+				zoomSpeed: 0.04,
+				dragSpeed: 0.001,
 				timelineStart: "-1B",
 				timelineEnd: "1M",
 				start: "-100y",
@@ -478,13 +477,13 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			// three simultaneous touches, the first touchstart event will have
 			// targetTouches length of one, the second event will have a length
 			// of two, and so on.
-			//event.preventDefault();
+
 			if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
 				// Check if the two target touches are the same ones that started
 				// the 2-touch
 				const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
 				const touch2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
-				const target = event.target as HTMLDivElement;
+				// const target = event.target as HTMLDivElement;
 
 				if (touch1 >= 0 && touch2 >= 0) {
 					// Calculate the difference between the start and move coordinates
@@ -718,6 +717,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		eventsContainer.style.bottom = "50px";
 		eventsContainer.style.height = "calc(100% - 50px)";
 		eventsContainer.style.width = "100%";
+		eventsContainer.style.overflowY = "auto";
 	};
 	const formatDateLabel = (minutes: number): string => {
 		const yearsCount = Math.floor(minutes / MINUTES_IN_YEAR);

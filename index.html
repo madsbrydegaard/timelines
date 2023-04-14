@@ -5,6 +5,12 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Timeline Demo</title>
 		<style>
+			html,
+			body {
+				height: 100%;
+				margin: 0;
+				padding: 0;
+			}
 			.tl__labels {
 				box-sizing: border-box;
 				border-top: 1px solid black;
@@ -16,7 +22,7 @@
 		</style>
 	</head>
 	<body>
-		<div id="timeline" style="height: 300px"></div>
+		<div id="timeline" style="height: 100%; max-height: 400px"></div>
 		<pre><code id="log" style="height: 300px; overflow: auto;"></code></pre>
 		<script src="dist/timeline.io.umd.js"></script>
 		<script>

@@ -25,13 +25,39 @@ declare module "timeline.io" {
             timelineDivider?: string;
         };
     }
+    interface IMatrix {
+        [key: number]: {
+            height: number;
+            time: number;
+        };
+    }
     interface ITimelineBase {
         title: string;
+        render?: (timelineEvent: ITimelineEventDetails) => HTMLDivElement;
     }
     interface ITimelineProps {
         type?: string;
         color?: number[];
         open?: boolean;
+    }
+    interface ITimelineEventDetails extends Required<ITimelineProps> {
+        id: string;
+        startMinutes: number;
+        endMinutes: number;
+        durationMinutes: number;
+        level: number;
+        step: number;
+        depth: number;
+        height: number;
+        score: number;
+        parentId?: string;
+        levelMatrix: IMatrix;
+        children: {
+            [key: string]: ITimelineEventWithDetails;
+        };
+    }
+    interface ITimelineEventWithDetails extends ITimelineEvent {
+        timelineEventDetails: ITimelineEventDetails;
     }
     export interface ITimelineEvent extends ITimelineBase, ITimelineProps {
         start?: number[] | string | number | Date;
