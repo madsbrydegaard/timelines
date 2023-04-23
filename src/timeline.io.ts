@@ -10,9 +10,11 @@ export interface ITimelineOptions {
 	maxZoom?: number;
 	position?: string;
 	eventHeight?: number;
+	eventSpacing?: number;
 	autoZoom?: boolean;
+	autoHighlight?: boolean;
 	defaultColor?: number[];
-	debug: boolean;
+	debug?: boolean;
 	classNames?: {
 		timeline?: string;
 		timelineEvent?: string;
@@ -32,7 +34,7 @@ interface IMatrix {
 }
 interface ITimelineBase {
 	title: string;
-	render?: (timelineEvent: ITimelineEventDetails) => HTMLDivElement;
+	render?: (timelineEvent: ITimelineEventWithDetails) => HTMLDivElement;
 }
 interface ITimelineProps {
 	type?: string;
@@ -41,8 +43,8 @@ interface ITimelineProps {
 }
 interface ITimelineEventDetails extends Required<ITimelineProps> {
 	id: string;
-	startMinutes: number;
-	endMinutes: number;
+	startMinutes?: number;
+	endMinutes?: number;
 	durationMinutes: number;
 	level: number;
 	step: number;
@@ -51,7 +53,8 @@ interface ITimelineEventDetails extends Required<ITimelineProps> {
 	score: number;
 	parentId?: string;
 	levelMatrix: IMatrix;
-	children: { [key: string]: ITimelineEventWithDetails };
+	html?: HTMLDivElement;
+	children: ITimelineEventWithDetails[];
 }
 interface ITimelineEventWithDetails extends ITimelineEvent {
 	timelineEventDetails: ITimelineEventDetails;
@@ -86,6 +89,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	let eventsContainer: HTMLDivElement;
 	let rootTimeline: ITimelineEventWithDetails;
 	let currentTimeline: ITimelineEventWithDetails;
+	let hightligtedTimelineId: string;
 
 	const MINUTES_IN_DAY = 1440; // minutes in a day
 	const MINUTES_IN_WEEK = 10080; // minutes in a week
@@ -111,8 +115,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		// Draw
 		update();
 	};
-	const isViewInside = (timelineEvent: ITimelineEvent): boolean => {
-		return timelineEvent.start < viewStart() && timelineEvent.end > viewEnd();
+	const isViewInside = (timelineEvent: ITimelineEventWithDetails): boolean => {
+		return timelineEvent.timelineEventDetails.startMinutes < viewStart() && timelineEvent.timelineEventDetails.endMinutes > viewEnd();
 	};
 	const init = (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions): void => {
 		// Handle DOM Element
@@ -140,7 +144,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				maxZoom: 1e11,
 				position: "bottom",
 				eventHeight: 5,
+				eventSpacing: 3,
 				autoZoom: false,
+				autoHighlight: false,
 				defaultColor: [140, 140, 140],
 				debug: false,
 				classNames: {
@@ -165,8 +171,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		});
 
 		// Set timeline boundaries
-		timelineStart = parseToMinutes(options.timelineStart);
-		timelineEnd = parseToMinutes(options.timelineEnd);
+		timelineStart = parseDateToMinutes(options.timelineStart);
+		timelineEnd = parseDateToMinutes(options.timelineEnd);
 
 		const viewStart = rootTimeline.timelineEventDetails.startMinutes;
 		const viewEnd = rootTimeline.timelineEventDetails.endMinutes;
@@ -280,9 +286,22 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	const reset = (): void => {
 		currentTimeline = rootTimeline;
 		zoomto(
-			options.start ? parseToMinutes(options.start) : currentTimeline.timelineEventDetails.startMinutes,
-			options.end ? parseToMinutes(options.end) : currentTimeline.timelineEventDetails.endMinutes
+			options.start ? parseDateToMinutes(options.start) : currentTimeline.timelineEventDetails.startMinutes,
+			options.end ? parseDateToMinutes(options.end) : currentTimeline.timelineEventDetails.endMinutes
 		);
+		if (options.autoHighlight) {
+			hightlight();
+		}
+	};
+	const hightlight = (timelineEvent?: ITimelineEvent): void => {
+		if (!timelineEvent) {
+			hightligtedTimelineId = undefined;
+		}
+		if (timelineEvent && isITimelineEventWithDetails(timelineEvent)) {
+			hightligtedTimelineId = timelineEvent.timelineEventDetails.id;
+		}
+
+		update();
 	};
 	const zoom = (timelineEvent: ITimelineEvent, useAnimation: boolean = true, onzoomend?: (timelineEvent: ITimelineEvent) => void): void => {
 		if (!timelineEvent) {
@@ -525,106 +544,42 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			endDrag();
 			fire("mouseup.tl.container");
 		});
+
+		// Add event click handler
+		element.addEventListener("click.tl.event", (event: CustomEvent) => {
+			if (options.autoHighlight) {
+				hightlight(event.detail);
+			}
+			if (options.autoZoom) {
+				zoom(event.detail);
+			}
+		});
 	};
 	const setupEventsHTML = (parentEvent: ITimelineEventWithDetails): DocumentFragment | undefined => {
 		const eventsFragment = document.createDocumentFragment();
-		for (const [key, timelineEvent] of Object.entries<ITimelineEventWithDetails>(parentEvent.timelineEventDetails.children)) {
+		for (const timelineEvent of parentEvent.timelineEventDetails.children) {
 			if (!timelineEvent || !timelineEvent.timelineEventDetails) continue;
 			if (timelineEvent.timelineEventDetails.startMinutes >= viewEnd()) continue;
 			if (timelineEvent.timelineEventDetails.endMinutes <= viewStart()) continue;
-			//if (openTimelines.includes(timelineEvent.timelineEventDetails.id)) continue;
-			//if (timelineEvent.timelineEventDetails.parentId && !openTimelines.includes(timelineEvent.timelineEventDetails.parentId)) continue;
-
-			const focused = false;
-			if (focused) continue;
 
 			const viewInside = isViewInside(timelineEvent);
+			const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.timelineEventDetails.startMinutes);
+			const widthRatio = viewInside ? 100 : (timelineEvent.timelineEventDetails.durationMinutes / viewDuration()) * 100;
+			const isHighlighted = hightligtedTimelineId === undefined || hightligtedTimelineId === timelineEvent.timelineEventDetails.id;
 
 			const createTimelineEventHTML = (): HTMLDivElement => {
-				const parentLevel = timelineEvent.timelineEventDetails.parentId ? parentEvent.timelineEventDetails.level : 0;
-				const levelFactor = timelineEvent.timelineEventDetails.level * 1.5;
-				const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.timelineEventDetails.startMinutes);
-				const widthRatio = viewInside ? 100 : (timelineEvent.timelineEventDetails.durationMinutes / viewDuration()) * 100;
-				const bgcolor = focused
-					? [
-							timelineEvent.timelineEventDetails.color[0],
-							timelineEvent.timelineEventDetails.color[1],
-							timelineEvent.timelineEventDetails.color[2],
-							0.1,
-					  ]
-					: timelineEvent.timelineEventDetails.color;
+				timelineEvent.timelineEventDetails.html.style.backgroundColor = `rgba(${[
+					...timelineEvent.timelineEventDetails.color,
+					isHighlighted ? 1 : 0.3,
+				].join(",")})`;
+				timelineEvent.timelineEventDetails.html.style.left = leftRatio * 100 + "%";
+				timelineEvent.timelineEventDetails.html.style.width = widthRatio + "%";
+				timelineEvent.timelineEventDetails.html.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
 
-				const eventHTML = document.createElement("div");
-				eventHTML.style.bottom = `${levelFactor * options.eventHeight}px`;
-				eventHTML.style.minHeight = `${options.eventHeight}px`;
-				eventHTML.style.borderRadius = "5px";
-				eventHTML.style.boxSizing = "border-box";
-				eventHTML.style.cursor = "pointer";
-				eventHTML.style.backgroundColor = `rgb(${bgcolor.join(",")})`;
-				eventHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
-				eventHTML.style.left = leftRatio * 100 + "%";
-				eventHTML.style.width = widthRatio + "%";
-				eventHTML.style.position = "absolute";
-				eventHTML.style.minWidth = "5px";
-				eventHTML.title = timelineEvent.title;
-				eventHTML.classList.add(options.classNames.timelineEvent);
-				eventHTML.setAttribute("level", timelineEvent.timelineEventDetails.level.toString());
-				eventHTML.setAttribute("depth", timelineEvent.timelineEventDetails.depth.toString());
-				eventHTML.setAttribute("height", timelineEvent.timelineEventDetails.height.toString());
-				eventHTML.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
-
-				eventHTML.addEventListener("click", (e) => {
-					element.dispatchEvent(
-						new CustomEvent("click.tl.event", {
-							detail: timelineEvent,
-							bubbles: false,
-							cancelable: true,
-						})
-					);
-
-					if (options.autoZoom) {
-						zoom(timelineEvent);
-					}
-				});
-				eventHTML.addEventListener("mouseenter", (e) => {
-					element.dispatchEvent(
-						new CustomEvent("mouseenter.tl.event", {
-							detail: timelineEvent,
-							bubbles: false,
-							cancelable: true,
-						})
-					);
-				});
-				eventHTML.addEventListener("mouseleave", (e) => {
-					element.dispatchEvent(
-						new CustomEvent("mouseleave.tl.event", {
-							detail: timelineEvent,
-							bubbles: false,
-							cancelable: true,
-						})
-					);
-				});
-				eventHTML.addEventListener("dblclick", (e) => {
-					element.dispatchEvent(
-						new CustomEvent("dblclick.tl.event", {
-							detail: timelineEvent,
-							bubbles: false,
-							cancelable: true,
-						})
-					);
-				});
-
-				return eventHTML;
+				return timelineEvent.timelineEventDetails.html;
 			};
 
 			const createBackgroundEventHTML = (): HTMLDivElement => {
-				const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.timelineEventDetails.startMinutes);
-				const widthRatio = viewInside ? 100 : (timelineEvent.timelineEventDetails.durationMinutes / viewDuration()) * 100;
-
-				const bgcolor =
-					timelineEvent.timelineEventDetails.color.length === 3
-						? [...timelineEvent.timelineEventDetails.color, 0.1]
-						: timelineEvent.timelineEventDetails.color;
 				const eventHTML = document.createElement("div");
 				eventHTML.style.left = leftRatio * 100 + "%";
 				eventHTML.style.width = widthRatio + "%";
@@ -633,7 +588,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				eventHTML.style.overflow = "hidden";
 				eventHTML.style.bottom = `0px`;
 				eventHTML.style.minHeight = `100%`;
-				eventHTML.style.backgroundColor = `rgb(${bgcolor.join(",")})`;
+				eventHTML.style.backgroundColor = `rgba(${[...timelineEvent.timelineEventDetails.color, 0.1].join(",")})`;
 				eventHTML.classList.add(options.classNames.timelineEvent);
 
 				eventHTML.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
@@ -718,6 +673,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		eventsContainer.style.height = "calc(100% - 50px)";
 		eventsContainer.style.width = "100%";
 		eventsContainer.style.overflowY = "auto";
+		eventsContainer.style.overflowX = "hidden";
 	};
 	const formatDateLabel = (minutes: number): string => {
 		const yearsCount = Math.floor(minutes / MINUTES_IN_YEAR);
@@ -831,7 +787,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		// Dispatch DOM event
 		fire("update.tl.container");
 	};
-	const parseToMinutes = (input: number[] | string | number | Date | undefined): number | undefined => {
+	const parseDateToMinutes = (input: number[] | string | number | Date | undefined): number | undefined => {
 		if (input === undefined) return undefined;
 
 		// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
@@ -928,77 +884,180 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 
 		return undefined;
 	};
-	const calcStart = (tl: ITimelineEventWithDetails, parsedChildren?: ITimelineEventWithDetails[]): number | undefined => {
-		return tl.timelineEventDetails.startMinutes
-			? parsedChildren && parsedChildren.length
-				? Math.min(tl.timelineEventDetails.startMinutes, parsedChildren[0].timelineEventDetails.startMinutes)
-				: tl.timelineEventDetails.startMinutes
-			: parsedChildren && parsedChildren.length
-			? parsedChildren[0].timelineEventDetails.startMinutes
-			: undefined;
-	};
-	const calcEnd = (tl: ITimelineEventWithDetails, parsedChildren?: ITimelineEventWithDetails[]): number => {
-		return tl.timelineEventDetails.endMinutes
-			? tl.timelineEventDetails.endMinutes
-			: tl.duration && !isNaN(Number(tl.duration))
-			? tl.timelineEventDetails.startMinutes + Number(tl.duration)
-			: parsedChildren && parsedChildren.length
-			? Math.max.apply(
-					1,
-					parsedChildren.map((child) => child.timelineEventDetails.endMinutes)
-			  )
-			: tl.timelineEventDetails.startMinutes + 1;
-	};
-	const calcLevel = (timelineEvent: ITimelineEventWithDetails, parent: ITimelineEventWithDetails): number => {
-		let level = 0;
-		for (const eventLevel in parent.timelineEventDetails.levelMatrix) {
-			level = Number(eventLevel);
-			if (timelineEvent.timelineEventDetails.startMinutes > parent.timelineEventDetails.levelMatrix[eventLevel].time) {
-				for (let i = 0; i < timelineEvent.timelineEventDetails.height; i++) {
-					parent.timelineEventDetails.levelMatrix[(level + i).toString()] = {
-						height: timelineEvent.timelineEventDetails.height,
-						time: timelineEvent.timelineEventDetails.endMinutes,
-					};
-				}
-				return level;
+	const parseNumberToMinutes = (input: string | number | undefined): number | undefined => {
+		if (input === undefined) return undefined;
+
+		if (typeof input === "string") {
+			// 31556926 = Seconds in a year
+			// 525948.766 = minutes in a year
+			const seconds = input.match(/s$/) ? Number(input.replace(/s$/, "")) : NaN;
+			if (!isNaN(seconds)) {
+				return seconds / 60;
+			}
+			const hours = input.match(/H$/) ? Number(input.replace(/H$/, "")) : NaN;
+			if (!isNaN(hours)) {
+				return hours * 60;
+			}
+			const days = input.match(/d$/) ? Number(input.replace(/d$/, "")) : NaN;
+			if (!isNaN(days)) {
+				return days * 24 * 60;
+			}
+			const weeks = input.match(/w$/) ? Number(input.replace(/w$/, "")) : NaN;
+			if (!isNaN(weeks)) {
+				return weeks * 7 * 24 * 60;
+			}
+			const minutes = Number(input);
+			if (!isNaN(minutes)) {
+				return minutes;
 			}
 		}
-		level++;
-		for (let i = 0; i < timelineEvent.timelineEventDetails.height; i++) {
-			parent.timelineEventDetails.levelMatrix[(level + i).toString()] = {
-				height: timelineEvent.timelineEventDetails.height,
-				time: timelineEvent.timelineEventDetails.endMinutes,
-			};
+
+		if (typeof input === "number") {
+			return input;
 		}
-		return level;
+
+		return undefined;
 	};
-	// const calcScore = (timelineEvent: ITimelineEventWithDetails, parent: ITimelineEventWithDetails): number => {
-	// 	const durationRatio = timelineEvent.timelineEventDetails.durationMinutes / parent.timelineEventDetails.durationMinutes;
-	// 	const score = durationRatio * timelineEvent.timelineEventDetails.children.length || 1;
-	// 	return score;
-	// };
+	const calcStart = (timelineEventWithDetails: ITimelineEventWithDetails): number | undefined => {
+		return timelineEventWithDetails.timelineEventDetails.startMinutes
+			? timelineEventWithDetails.timelineEventDetails.children.length
+				? Math.min(
+						timelineEventWithDetails.timelineEventDetails.startMinutes,
+						timelineEventWithDetails.timelineEventDetails.children[0].timelineEventDetails.startMinutes
+				  )
+				: timelineEventWithDetails.timelineEventDetails.startMinutes
+			: timelineEventWithDetails.timelineEventDetails.children.length
+			? timelineEventWithDetails.timelineEventDetails.children[0].timelineEventDetails.startMinutes
+			: undefined;
+	};
+	const calcEnd = (timelineEventWithDetails: ITimelineEventWithDetails): number => {
+		return timelineEventWithDetails.timelineEventDetails.endMinutes
+			? timelineEventWithDetails.timelineEventDetails.endMinutes
+			: timelineEventWithDetails.timelineEventDetails.durationMinutes
+			? timelineEventWithDetails.timelineEventDetails.startMinutes + timelineEventWithDetails.timelineEventDetails.durationMinutes
+			: timelineEventWithDetails.timelineEventDetails.children.length
+			? Math.max.apply(
+					1,
+					timelineEventWithDetails.timelineEventDetails.children.map((child) => child.timelineEventDetails.endMinutes)
+			  )
+			: timelineEventWithDetails.timelineEventDetails.startMinutes + 1;
+	};
 	const addEvents = (parent: ITimelineEventWithDetails, ...children: ITimelineEvent[]): void => {
-		const parsedChildren = children.map((tl) => parseEvent(tl, parent)).filter((tl) => !!tl);
-		if (parsedChildren && parsedChildren.length && parent) {
-			parsedChildren.sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
-			parent.timelineEventDetails.startMinutes = calcStart(parent, parsedChildren);
-			parent.timelineEventDetails.endMinutes = calcEnd(parent, parsedChildren);
-			parent.timelineEventDetails.durationMinutes = parent.timelineEventDetails.endMinutes - parent.timelineEventDetails.startMinutes;
+		const parsedSortedChildren = children
+			.map((tl) => parseEvent(tl, parent))
+			.filter((tl) => !!tl)
+			.sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
 
-			parsedChildren.forEach((childEvent, i) => {
-				parent.timelineEventDetails.children[childEvent.timelineEventDetails.id] = childEvent;
+		const calcLevel = (timelineEvent: ITimelineEventWithDetails): number => {
+			let level = 0;
+			for (const eventLevel in parent.timelineEventDetails.levelMatrix) {
+				level = Number(eventLevel);
+				if (timelineEvent.timelineEventDetails.startMinutes > parent.timelineEventDetails.levelMatrix[eventLevel].time) {
+					for (let i = 0; i < timelineEvent.timelineEventDetails.height; i++) {
+						parent.timelineEventDetails.levelMatrix[(level + i).toString()] = {
+							height: timelineEvent.timelineEventDetails.height,
+							time: timelineEvent.timelineEventDetails.endMinutes,
+						};
+					}
+					return level;
+				}
+			}
+			level++;
+			for (let i = 0; i < timelineEvent.timelineEventDetails.height; i++) {
+				parent.timelineEventDetails.levelMatrix[(level + i).toString()] = {
+					height: timelineEvent.timelineEventDetails.height,
+					time: timelineEvent.timelineEventDetails.endMinutes,
+				};
+			}
+			return level;
+		};
+		const calcScore = (timelineEvent: ITimelineEventWithDetails): number => {
+			const durationRatio = timelineEvent.timelineEventDetails.durationMinutes / parent.timelineEventDetails.durationMinutes;
+			const score = durationRatio * (Object.keys(timelineEvent.timelineEventDetails.children).length || 1);
+			return score;
+		};
+		const createEventNode = (timelineEvent: ITimelineEventWithDetails): HTMLDivElement => {
+			const spaceFactor = timelineEvent.timelineEventDetails.level * options.eventSpacing;
+			const heightFactor = (timelineEvent.timelineEventDetails.level - 1) * options.eventHeight;
+			const eventHTML = document.createElement("div");
+			eventHTML.style.bottom = `${spaceFactor + heightFactor}px`;
+			eventHTML.style.height = `${options.eventHeight}px`;
+			eventHTML.style.borderRadius = "5px";
+			eventHTML.style.boxSizing = "border-box";
+			eventHTML.style.cursor = "pointer";
+			eventHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
+			eventHTML.style.position = "absolute";
+			eventHTML.style.minWidth = "5px";
+			eventHTML.style.overflow = "hidden";
+			eventHTML.title = timelineEvent.title;
+			eventHTML.classList.add(options.classNames.timelineEvent);
+			eventHTML.setAttribute("level", timelineEvent.timelineEventDetails.level.toString());
+			eventHTML.setAttribute("depth", timelineEvent.timelineEventDetails.depth.toString());
+			eventHTML.setAttribute("height", timelineEvent.timelineEventDetails.height.toString());
 
-				// Add score to result in order to sort by importance
-				// childEvent.timelineEventDetails.score = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcScore(childEvent, parent) : 0;
+			if (timelineEvent.render) {
+				eventHTML.append(timelineEvent.render(timelineEvent));
+			}
 
-				// Add level
-				childEvent.timelineEventDetails.level = ["timeline", "container"].includes(childEvent.timelineEventDetails.type)
-					? calcLevel(childEvent, parent)
-					: 0;
+			eventHTML.addEventListener("click", (e) => {
+				element.dispatchEvent(
+					new CustomEvent("click.tl.event", {
+						detail: timelineEvent,
+						bubbles: false,
+						cancelable: true,
+					})
+				);
 			});
-		}
+			eventHTML.addEventListener("mouseenter", (e) => {
+				element.dispatchEvent(
+					new CustomEvent("mouseenter.tl.event", {
+						detail: timelineEvent,
+						bubbles: false,
+						cancelable: true,
+					})
+				);
+			});
+			eventHTML.addEventListener("mouseleave", (e) => {
+				element.dispatchEvent(
+					new CustomEvent("mouseleave.tl.event", {
+						detail: timelineEvent,
+						bubbles: false,
+						cancelable: true,
+					})
+				);
+			});
+			eventHTML.addEventListener("dblclick", (e) => {
+				element.dispatchEvent(
+					new CustomEvent("dblclick.tl.event", {
+						detail: timelineEvent,
+						bubbles: false,
+						cancelable: true,
+					})
+				);
+			});
 
-		parent.timelineEventDetails.height = parsedChildren.length ? Math.max(...parsedChildren.map((child) => child.timelineEventDetails.level)) : 1;
+			return eventHTML;
+		};
+
+		parsedSortedChildren.forEach((childEvent, i) => {
+			// Add score to result in order to sort by importance
+			childEvent.timelineEventDetails.score = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcScore(childEvent) : 0;
+
+			// Add level
+			childEvent.timelineEventDetails.level = ["timeline", "container"].includes(childEvent.timelineEventDetails.type) ? calcLevel(childEvent) : 0;
+
+			// Create HTML Node
+			childEvent.timelineEventDetails.html = createEventNode(childEvent);
+		});
+
+		parent.timelineEventDetails.children.push(...parsedSortedChildren);
+
+		// Adjust parent start & end if children changed range
+		parent.timelineEventDetails.startMinutes = calcStart(parent);
+		parent.timelineEventDetails.endMinutes = calcEnd(parent);
+		parent.timelineEventDetails.durationMinutes = parent.timelineEventDetails.endMinutes - parent.timelineEventDetails.startMinutes;
+
+		//parent.timelineEventDetails.height = parsedChildren.length ? Math.max(...parsedChildren.map((child) => child.timelineEventDetails.level)) : 1;
 	};
 	const parseEvent = (timelineEvent: ITimelineEvent, parent?: ITimelineEventWithDetails): ITimelineEventWithDetails | undefined => {
 		if (!timelineEvent) {
@@ -1010,21 +1069,21 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			...timelineEvent,
 			timelineEventDetails: {
 				id: crypto.randomUUID(),
-				durationMinutes: 0,
 				type: timelineEvent.type || "timeline",
 				open: timelineEvent.open || false,
 				level: 1,
 				step: 0,
 				score: 0,
 				height: 1,
-				children: {},
+				children: [],
 				depth: parent ? parent.timelineEventDetails.depth + 1 : 0,
 				parentId: parent?.timelineEventDetails.id,
 				color: timelineEvent.color || options.defaultColor,
-				startMinutes: parseToMinutes(timelineEvent.start),
-				endMinutes: parseToMinutes(timelineEvent.end),
+				startMinutes: parseDateToMinutes(timelineEvent.start),
+				endMinutes: parseDateToMinutes(timelineEvent.end),
+				durationMinutes: parseNumberToMinutes(timelineEvent.duration) || 0,
 				levelMatrix: { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } },
-			},
+			} as ITimelineEventDetails,
 		};
 
 		if (timelineEvent.events && timelineEvent.events.length) {
@@ -1034,7 +1093,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		// Calculate start date - if children exists take lowest date
 		timelineEventWithDetails.timelineEventDetails.startMinutes = calcStart(timelineEventWithDetails);
 
-		// Filter missing requirements
+		// // Filter missing requirements
 		if (!timelineEventWithDetails.timelineEventDetails.startMinutes) {
 			console.warn("Missing start property on event - skipping", timelineEvent);
 			return undefined;

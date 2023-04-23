@@ -11,9 +11,11 @@ declare module "timeline.io" {
         maxZoom?: number;
         position?: string;
         eventHeight?: number;
+        eventSpacing?: number;
         autoZoom?: boolean;
+        autoHighlight?: boolean;
         defaultColor?: number[];
-        debug: boolean;
+        debug?: boolean;
         classNames?: {
             timeline?: string;
             timelineEvent?: string;
@@ -33,7 +35,7 @@ declare module "timeline.io" {
     }
     interface ITimelineBase {
         title: string;
-        render?: (timelineEvent: ITimelineEventDetails) => HTMLDivElement;
+        render?: (timelineEvent: ITimelineEventWithDetails) => HTMLDivElement;
     }
     interface ITimelineProps {
         type?: string;
@@ -42,8 +44,8 @@ declare module "timeline.io" {
     }
     interface ITimelineEventDetails extends Required<ITimelineProps> {
         id: string;
-        startMinutes: number;
-        endMinutes: number;
+        startMinutes?: number;
+        endMinutes?: number;
         durationMinutes: number;
         level: number;
         step: number;
@@ -52,9 +54,8 @@ declare module "timeline.io" {
         score: number;
         parentId?: string;
         levelMatrix: IMatrix;
-        children: {
-            [key: string]: ITimelineEventWithDetails;
-        };
+        html?: HTMLDivElement;
+        children: ITimelineEventWithDetails[];
     }
     interface ITimelineEventWithDetails extends ITimelineEvent {
         timelineEventDetails: ITimelineEventDetails;

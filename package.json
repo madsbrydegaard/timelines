@@ -18,7 +18,6 @@
   "author": "Mads Brydegaard <mb@vidcore.com>",
   "license": "ISC",
   "devDependencies": {
-    "@types/hammerjs": "^2.0.41",
     "esbuild": "^0.14.50",
     "typescript": "^4.9.5"
   },
