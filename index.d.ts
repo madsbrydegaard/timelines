@@ -27,6 +27,16 @@ declare module "timeline.io" {
             timelineDivider?: string;
         };
     }
+    export interface ITimelineCustomEventDetails {
+        name: string;
+        options: ITimelineOptions;
+        timelineEvent: ITimelineEventWithDetails;
+        viewStartDate: string;
+        viewEndDate: string;
+        viewDuration: number;
+        ratio: number;
+        pivot: number;
+    }
     interface IMatrix {
         [key: number]: {
             height: number;

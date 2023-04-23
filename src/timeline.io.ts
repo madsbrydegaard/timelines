@@ -26,6 +26,16 @@ export interface ITimelineOptions {
 		timelineDivider?: string;
 	};
 }
+export interface ITimelineCustomEventDetails {
+	name: string;
+	options: ITimelineOptions;
+	timelineEvent: ITimelineEventWithDetails;
+	viewStartDate: string;
+	viewEndDate: string;
+	viewDuration: number;
+	ratio: number;
+	pivot: number;
+}
 interface IMatrix {
 	[key: number]: {
 		height: number;
@@ -546,12 +556,12 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		});
 
 		// Add event click handler
-		element.addEventListener("click.tl.event", (event: CustomEvent) => {
+		element.addEventListener("click.tl.event", (event: CustomEvent<ITimelineCustomEventDetails>) => {
 			if (options.autoHighlight) {
-				hightlight(event.detail);
+				hightlight(event.detail.timelineEvent);
 			}
 			if (options.autoZoom) {
-				zoom(event.detail);
+				zoom(event.detail.timelineEvent);
 			}
 		});
 	};
@@ -999,42 +1009,10 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				eventHTML.append(timelineEvent.render(timelineEvent));
 			}
 
-			eventHTML.addEventListener("click", (e) => {
-				element.dispatchEvent(
-					new CustomEvent("click.tl.event", {
-						detail: timelineEvent,
-						bubbles: false,
-						cancelable: true,
-					})
-				);
-			});
-			eventHTML.addEventListener("mouseenter", (e) => {
-				element.dispatchEvent(
-					new CustomEvent("mouseenter.tl.event", {
-						detail: timelineEvent,
-						bubbles: false,
-						cancelable: true,
-					})
-				);
-			});
-			eventHTML.addEventListener("mouseleave", (e) => {
-				element.dispatchEvent(
-					new CustomEvent("mouseleave.tl.event", {
-						detail: timelineEvent,
-						bubbles: false,
-						cancelable: true,
-					})
-				);
-			});
-			eventHTML.addEventListener("dblclick", (e) => {
-				element.dispatchEvent(
-					new CustomEvent("dblclick.tl.event", {
-						detail: timelineEvent,
-						bubbles: false,
-						cancelable: true,
-					})
-				);
-			});
+			eventHTML.addEventListener("click", (e) => fire("click.tl.event", timelineEvent));
+			eventHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.event", timelineEvent));
+			eventHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.event", timelineEvent));
+			eventHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.event", timelineEvent));
 
 			return eventHTML;
 		};
@@ -1125,9 +1103,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		}
 		return result;
 	};
-	const fire = (name: string, timelineEvent?: ITimelineEvent) => {
+	const fire = (name: string, timelineEvent?: ITimelineEventWithDetails) => {
 		element.dispatchEvent(
-			new CustomEvent(name, {
+			new CustomEvent<ITimelineCustomEventDetails>(name, {
 				detail: {
 					name,
 					options,
