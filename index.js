@@ -201,6 +201,7 @@ var Timeline = (elementIdentifier, settings) => {
       throw "first argument 'timelineEvent' of method 'zoom' must be an object of type ITimelineEventWithDetails";
     }
     currentTimeline = timelineEvent;
+    highlight();
     zoomto(currentTimeline.timelineEventDetails.startMinutes, currentTimeline.timelineEventDetails.endMinutes, useAnimation, () => {
       fire("focus.tl.event");
       if (onfocused)
@@ -214,10 +215,10 @@ var Timeline = (elementIdentifier, settings) => {
       options.end ? parseDateToMinutes(options.end) : currentTimeline.timelineEventDetails.endMinutes
     );
     if (options.autoHighlight) {
-      hightlight();
+      highlight();
     }
   };
-  const hightlight = (timelineEvent) => {
+  const highlight = (timelineEvent) => {
     if (!timelineEvent) {
       hightligtedTimelineId = void 0;
     }
@@ -400,7 +401,7 @@ var Timeline = (elementIdentifier, settings) => {
     });
     element2.addEventListener("click.tl.event", (event) => {
       if (options.autoHighlight) {
-        hightlight(event.detail.timelineEvent);
+        highlight(event.detail.timelineEvent);
       }
       if (options.autoZoom) {
         zoom(event.detail.timelineEvent);
@@ -874,7 +875,8 @@ var Timeline = (elementIdentifier, settings) => {
     zoom,
     load,
     add,
-    reset
+    reset,
+    highlight
   };
 };
 export {

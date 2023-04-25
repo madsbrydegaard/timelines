@@ -83,6 +83,7 @@ export interface ITimelineContainer {
 	zoom: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onzoomend?: (timelineEvent: ITimelineEvent) => void) => void;
 	focus: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
 	reset: () => void;
+	highlight: (timelineEvent?: ITimelineEvent) => void;
 }
 enum Direction {
 	In = -1,
@@ -285,6 +286,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		}
 
 		currentTimeline = timelineEvent;
+		highlight();
 
 		zoomto(currentTimeline.timelineEventDetails.startMinutes, currentTimeline.timelineEventDetails.endMinutes, useAnimation, () => {
 			fire("focus.tl.event");
@@ -298,10 +300,10 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			options.end ? parseDateToMinutes(options.end) : currentTimeline.timelineEventDetails.endMinutes
 		);
 		if (options.autoHighlight) {
-			hightlight();
+			highlight();
 		}
 	};
-	const hightlight = (timelineEvent?: ITimelineEvent): void => {
+	const highlight = (timelineEvent?: ITimelineEvent): void => {
 		if (!timelineEvent) {
 			hightligtedTimelineId = undefined;
 		}
@@ -551,7 +553,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		// Add event click handler
 		element.addEventListener("click.tl.event", (event: CustomEvent<ITimelineCustomEventDetails>) => {
 			if (options.autoHighlight) {
-				hightlight(event.detail.timelineEvent);
+				highlight(event.detail.timelineEvent);
 			}
 			if (options.autoZoom) {
 				zoom(event.detail.timelineEvent);
@@ -1124,5 +1126,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		load,
 		add,
 		reset,
+		highlight,
 	};
 };
