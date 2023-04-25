@@ -15,6 +15,8 @@ declare module "timeline.io" {
         autoZoom?: boolean;
         autoHighlight?: boolean;
         defaultColor?: number[];
+        zoomDuration?: number;
+        easing?: string | ((time: number, start: number, change: number, duration: number) => number);
         debug?: boolean;
         classNames?: {
             timeline?: string;

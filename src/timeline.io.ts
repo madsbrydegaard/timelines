@@ -14,6 +14,8 @@ export interface ITimelineOptions {
 	autoZoom?: boolean;
 	autoHighlight?: boolean;
 	defaultColor?: number[];
+	zoomDuration?: number;
+	easing?: string | ((time: number, start: number, change: number, duration: number) => number);
 	debug?: boolean;
 	classNames?: {
 		timeline?: string;
@@ -158,6 +160,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				autoZoom: false,
 				autoHighlight: false,
 				defaultColor: [140, 140, 140],
+				zoomDuration: 200,
+				easing: "easeOutCubic",
 				debug: false,
 				classNames: {
 					timeline: "tl",
@@ -283,13 +287,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		currentTimeline = timelineEvent;
 
 		zoomto(currentTimeline.timelineEventDetails.startMinutes, currentTimeline.timelineEventDetails.endMinutes, useAnimation, () => {
-			element.dispatchEvent(
-				new CustomEvent("focus.tl.event", {
-					detail: currentTimeline,
-					bubbles: false,
-					cancelable: true,
-				})
-			);
+			fire("focus.tl.event");
 			if (onfocused) onfocused(currentTimeline);
 		});
 	};
@@ -339,57 +337,52 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		const targetEnd = endMinutes + targetDurationExtension; // Create 10% spacing - 5% on each side of the timeline
 		const targetDuration = targetEnd - targetStart;
 		const targetRatio = timelineDuration() / targetDuration;
-		const zDirection = Math.sign(ratio - targetRatio);
-		let back = zDirection > 0;
-		let mouseX2Timeline = 0;
+		const targetPivot = (timelineStart - targetStart) / targetDuration;
 
-		if (back) {
-			const offsetCenter = viewStart() + viewDuration() / 2;
-			const offsetCenter2Target = (offsetCenter - targetStart) / targetDuration;
-			const offsetCenterCorrected = viewStart() + viewDuration() * offsetCenter2Target;
-			const offsetCenter2Timeline = getTimelineRatio(offsetCenterCorrected);
-			mouseX2Timeline = offsetCenter2Timeline;
-		} else {
-			const targetCenter = targetStart + targetDuration / 2;
-			const targetCenter2View = getViewRatio(targetCenter);
-			const targetCenterCorrected = targetStart + targetDuration * targetCenter2View;
-			const targetCenter2Timeline = getTimelineRatio(targetCenterCorrected);
-			mouseX2Timeline = targetCenter2Timeline;
-		}
+		const animate = () => {
+			let i = 0;
+			const animationDuration = options.zoomDuration;
 
-		const animateZoom = () => {
-			const stopZoom = () => {
-				clearInterval(ratioTimer);
-
-				const targetPivot = pivot - (targetStart - viewStart()) / viewDuration();
-				const xDirection = Math.sign(targetPivot - pivot);
-
-				const stopFocus = () => {
-					clearInterval(pivotTimer);
-
-					if (onzoomend) onzoomend();
-				};
-
-				const pivotTimer = setInterval(() => {
-					onmove(xDirection * 10);
-					if (xDirection < 0 && pivot < targetPivot) stopFocus(); // Right (Forward in time)
-					if (xDirection > 0 && pivot > targetPivot) stopFocus(); // Left (Back in time)
-				}, 1);
+			// Thanks to http://robertpenner.com/easing/
+			// Exampled @ https://spicyyoghurt.com/tools/easing-functions
+			const easings = {
+				easeOutExpo: (time: number, start: number, change: number, duration: number) => {
+					return time == duration ? start + change : change * (-Math.pow(2, (-10 * time) / duration) + 1) + start;
+				},
+				easeOutCubic: (time: number, start: number, change: number, duration: number) => {
+					return change * ((time = time / duration - 1) * time * time + 1) + start;
+				},
+				easeLinear: (time: number, start: number, change: number, duration: number) => {
+					return (change * time) / duration + start;
+				},
 			};
 
-			const ratioTimer = setInterval(() => {
-				onzoom(zDirection, mouseX2Timeline);
-				if (zDirection < 0 && ratio > targetRatio) stopZoom(); // In
-				if (zDirection > 0 && ratio < targetRatio) stopZoom(); // Out
+			const startRatio = ratio;
+			const startPivot = pivot;
+			const deltaRatio = targetRatio - ratio;
+			const deltaPivot = targetPivot - pivot;
+			const easing = typeof options.easing === "string" ? easings[options.easing] : options.easing;
+
+			const myTimer = setInterval(() => {
+				if (++i > animationDuration) {
+					clearInterval(myTimer);
+					if (onzoomend) onzoomend();
+				}
+
+				ratio = easing(i, startRatio, deltaRatio, animationDuration);
+				pivot = easing(i, startPivot, deltaPivot, animationDuration);
+
+				update();
 			}, 1);
 		};
 
 		if (useAnimation) {
-			animateZoom();
+			animate();
 		} else {
 			ratio = targetRatio;
-			pivot = (timelineStart - targetStart) / targetDuration;
+			pivot = targetPivot;
 			update();
+			if (onzoomend) onzoomend();
 		}
 	};
 	const registerListeners = (element: HTMLElement): void => {
