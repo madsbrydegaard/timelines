@@ -16,6 +16,8 @@ export interface ITimelineOptions {
 	defaultColor?: number[];
 	zoomDuration?: number;
 	easing?: string | ((time: number, start: number, change: number, duration: number) => number);
+	numberOfHighscorePreviews?: number;
+	highscorePreviewDelay?: number;
 	debug?: boolean;
 	classNames?: {
 		timeline?: string;
@@ -66,7 +68,8 @@ interface ITimelineEventDetails extends Required<ITimelineProps> {
 	parentId?: string;
 	levelMatrix: IMatrix;
 	html?: HTMLDivElement;
-	children: ITimelineEventWithDetails[];
+	childrenByStartMinute: ITimelineEventWithDetails[];
+	childrenByScore: ITimelineEventWithDetails[];
 }
 interface ITimelineEventWithDetails extends ITimelineEvent {
 	timelineEventDetails: ITimelineEventDetails;
@@ -163,6 +166,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				defaultColor: [140, 140, 140],
 				zoomDuration: 200,
 				easing: "easeOutCubic",
+				numberOfHighscorePreviews: 5,
+				highscorePreviewDelay: 500,
 				debug: false,
 				classNames: {
 					timeline: "tl",
@@ -228,9 +233,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	};
 	const getViewRatio = (minutes: number): number => {
 		return (minutes - viewStart()) / viewDuration();
-	};
-	const getTimelineRatio = (minutes: number): number => {
-		return (minutes - timelineStart) / timelineDuration();
 	};
 	const setRatio = (direction: Direction, deltaRatio: number): boolean => {
 		let newRatio = ratio - deltaRatio;
@@ -395,6 +397,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		let inDrag = false;
 		let canDrag = true;
 		let canPinch = true;
+		let previewTimer;
 
 		// Drag handlers
 		const drag = (x: number, y: number) => {
@@ -559,10 +562,20 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				zoom(event.detail.timelineEvent);
 			}
 		});
+
+		// Add event click handler
+		element.addEventListener("update.tl.container", () => {
+			if (options.numberOfHighscorePreviews > 0) {
+				clearTimeout(previewTimer);
+				previewTimer = setTimeout(() => {
+					console.log("draw preview");
+				}, options.highscorePreviewDelay);
+			}
+		});
 	};
 	const setupEventsHTML = (parentEvent: ITimelineEventWithDetails): DocumentFragment | undefined => {
 		const eventsFragment = document.createDocumentFragment();
-		for (const timelineEvent of parentEvent.timelineEventDetails.children) {
+		for (const timelineEvent of parentEvent.timelineEventDetails.childrenByStartMinute) {
 			if (!timelineEvent || !timelineEvent.timelineEventDetails) continue;
 			if (timelineEvent.timelineEventDetails.startMinutes >= viewEnd()) continue;
 			if (timelineEvent.timelineEventDetails.endMinutes <= viewStart()) continue;
@@ -925,14 +938,14 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	};
 	const calcStart = (timelineEventWithDetails: ITimelineEventWithDetails): number | undefined => {
 		return timelineEventWithDetails.timelineEventDetails.startMinutes
-			? timelineEventWithDetails.timelineEventDetails.children.length
+			? timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length
 				? Math.min(
 						timelineEventWithDetails.timelineEventDetails.startMinutes,
-						timelineEventWithDetails.timelineEventDetails.children[0].timelineEventDetails.startMinutes
+						timelineEventWithDetails.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes
 				  )
 				: timelineEventWithDetails.timelineEventDetails.startMinutes
-			: timelineEventWithDetails.timelineEventDetails.children.length
-			? timelineEventWithDetails.timelineEventDetails.children[0].timelineEventDetails.startMinutes
+			: timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length
+			? timelineEventWithDetails.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes
 			: undefined;
 	};
 	const calcEnd = (timelineEventWithDetails: ITimelineEventWithDetails): number => {
@@ -940,15 +953,15 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			? timelineEventWithDetails.timelineEventDetails.endMinutes
 			: timelineEventWithDetails.timelineEventDetails.durationMinutes
 			? timelineEventWithDetails.timelineEventDetails.startMinutes + timelineEventWithDetails.timelineEventDetails.durationMinutes
-			: timelineEventWithDetails.timelineEventDetails.children.length
+			: timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length
 			? Math.max.apply(
 					1,
-					timelineEventWithDetails.timelineEventDetails.children.map((child) => child.timelineEventDetails.endMinutes)
+					timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.map((child) => child.timelineEventDetails.endMinutes)
 			  )
 			: timelineEventWithDetails.timelineEventDetails.startMinutes + 1;
 	};
-	const addEvents = (parent: ITimelineEventWithDetails, ...children: ITimelineEvent[]): void => {
-		const parsedSortedChildren = children
+	const addEvents = (parent: ITimelineEventWithDetails, ...childrenByStartMinute: ITimelineEvent[]): void => {
+		const parsedSortedChildren = childrenByStartMinute
 			.map((tl) => parseEvent(tl, parent))
 			.filter((tl) => !!tl)
 			.sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
@@ -978,7 +991,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		};
 		const calcScore = (timelineEvent: ITimelineEventWithDetails): number => {
 			const durationRatio = timelineEvent.timelineEventDetails.durationMinutes / parent.timelineEventDetails.durationMinutes;
-			const score = durationRatio * (Object.keys(timelineEvent.timelineEventDetails.children).length || 1);
+			const score = durationRatio * (Object.keys(timelineEvent.timelineEventDetails.childrenByStartMinute).length || 1);
 			return score;
 		};
 		const createEventNode = (timelineEvent: ITimelineEventWithDetails): HTMLDivElement => {
@@ -1023,9 +1036,12 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			childEvent.timelineEventDetails.html = createEventNode(childEvent);
 		});
 
-		parent.timelineEventDetails.children.push(...parsedSortedChildren);
+		parent.timelineEventDetails.childrenByStartMinute.push(...parsedSortedChildren);
+		parent.timelineEventDetails.childrenByScore.push(
+			...parsedSortedChildren.sort((a, b) => a.timelineEventDetails.score - b.timelineEventDetails.score)
+		);
 
-		// Adjust parent start & end if children changed range
+		// Adjust parent start & end if childrenByStartMinute changed range
 		parent.timelineEventDetails.startMinutes = calcStart(parent);
 		parent.timelineEventDetails.endMinutes = calcEnd(parent);
 		parent.timelineEventDetails.durationMinutes = parent.timelineEventDetails.endMinutes - parent.timelineEventDetails.startMinutes;
@@ -1048,7 +1064,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				step: 0,
 				score: 0,
 				height: 1,
-				children: [],
+				childrenByStartMinute: [],
+				childrenByScore: [],
 				depth: parent ? parent.timelineEventDetails.depth + 1 : 0,
 				parentId: parent?.timelineEventDetails.id,
 				color: timelineEvent.color || options.defaultColor,
@@ -1063,7 +1080,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			addEvents(timelineEventWithDetails, ...timelineEvent.events);
 		}
 
-		// Calculate start date - if children exists take lowest date
+		// Calculate start date - if childrenByStartMinute exists take lowest date
 		timelineEventWithDetails.timelineEventDetails.startMinutes = calcStart(timelineEventWithDetails);
 
 		// // Filter missing requirements

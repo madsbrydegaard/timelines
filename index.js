@@ -104,6 +104,8 @@ var Timeline = (elementIdentifier, settings) => {
       defaultColor: [140, 140, 140],
       zoomDuration: 200,
       easing: "easeOutCubic",
+      numberOfHighscorePreviews: 5,
+      highscorePreviewDelay: 500,
       debug: false,
       classNames: {
         timeline: "tl",
@@ -157,9 +159,6 @@ var Timeline = (elementIdentifier, settings) => {
   };
   const getViewRatio = (minutes) => {
     return (minutes - viewStart()) / viewDuration();
-  };
-  const getTimelineRatio = (minutes) => {
-    return (minutes - timelineStart) / timelineDuration();
   };
   const setRatio = (direction, deltaRatio) => {
     let newRatio = ratio - deltaRatio;
@@ -299,6 +298,7 @@ var Timeline = (elementIdentifier, settings) => {
     let inDrag = false;
     let canDrag = true;
     let canPinch = true;
+    let previewTimer;
     const drag = (x, y) => {
       if (!inDrag || !canDrag) {
         return;
@@ -405,6 +405,14 @@ var Timeline = (elementIdentifier, settings) => {
       }
       if (options.autoZoom) {
         zoom(event.detail.timelineEvent);
+      }
+    });
+    element2.addEventListener("update.tl.container", () => {
+      if (options.numberOfHighscorePreviews > 0) {
+        clearTimeout(previewTimer);
+        previewTimer = setTimeout(() => {
+          console.log("draw preview");
+        }, options.highscorePreviewDelay);
       }
     });
   };
