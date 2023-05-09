@@ -50,9 +50,11 @@
     let labelContainer;
     let dividerContainer;
     let eventsContainer;
+    let previewsContainer;
     let rootTimeline;
     let currentTimeline;
     let hightligtedTimelineId;
+    let visibleEvents;
     const MINUTES_IN_DAY = 1440;
     const MINUTES_IN_WEEK = 10080;
     const MINUTES_IN_YEAR = 525948.766;
@@ -111,10 +113,12 @@
         classNames: {
           timeline: "tl",
           timelineEvent: "tl__event",
+          timelinePreview: "tl__preview",
           timelineEventTitle: "tl__event__title",
           timelineLabels: "tl__labels",
           timelineDividers: "tl__dividers",
           timelineEvents: "tl__events",
+          timelinePreviews: "tl__previews",
           timelineLabel: "tl__label",
           timelineDivider: "tl__divider"
         }
@@ -136,7 +140,7 @@
       const viewDuration2 = viewEnd2 - viewStart2;
       ratio = timelineDuration() / viewDuration2;
       pivot = (timelineStart - viewStart2) / viewDuration2;
-      setupContainerHTML();
+      appendContainerHTML();
       registerListeners(element);
       focus(rootTimeline, false);
     };
@@ -409,17 +413,50 @@
         }
       });
       element2.addEventListener("update.tl.container", () => {
-        if (options.numberOfHighscorePreviews > 0) {
+        appendLabelsHTML();
+        appendEventsHTML();
+        if (options.numberOfHighscorePreviews > 0 && !hightligtedTimelineId) {
           clearTimeout(previewTimer);
           previewTimer = setTimeout(() => {
-            console.log("draw preview");
+            appendPreviewsHTML();
           }, options.highscorePreviewDelay);
         }
       });
     };
-    const setupEventsHTML = (parentEvent) => {
+    const createPreviewsHTML = () => {
       const eventsFragment = document.createDocumentFragment();
-      for (const timelineEvent of parentEvent.timelineEventDetails.children) {
+      const svgContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svgContainer.style.height = "100%";
+      svgContainer.style.width = "100%";
+      svgContainer.style.position = "absolute";
+      eventsFragment.append(svgContainer);
+      const highscores = visibleEvents.sort((a, b) => a.timelineEventDetails.score - b.timelineEventDetails.score).filter((evt) => !!evt.timelineEventDetails.previewNode).slice(0, options.numberOfHighscorePreviews).sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
+      for (const [i, timelineEvent] of highscores.entries()) {
+        const size = 1 / options.numberOfHighscorePreviews;
+        const randomLeftPosition = Math.random() * size + size * i;
+        const randomTopPosition = Math.random() / 2 + 0.05;
+        const createTimelinePreviewHTML = () => {
+          timelineEvent.timelineEventDetails.previewNode.style.left = randomLeftPosition * 100 + "%";
+          timelineEvent.timelineEventDetails.previewNode.style.top = randomTopPosition * 100 + "%";
+          const lineFragment = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          lineFragment.setAttribute("x1", `calc(${randomLeftPosition * 100}% + 25px)`);
+          lineFragment.setAttribute("y1", `calc(${randomTopPosition * 100}% + 50px)`);
+          lineFragment.setAttribute(
+            "x2",
+            timelineEvent.timelineEventDetails.eventNode.offsetLeft + timelineEvent.timelineEventDetails.eventNode.offsetWidth / 2 + "px"
+          );
+          lineFragment.setAttribute("y2", timelineEvent.timelineEventDetails.eventNode.offsetTop + "px");
+          lineFragment.setAttribute("style", `stroke:rgb(${[...timelineEvent.timelineEventDetails.color, 1].join(",")});stroke-width:2`);
+          svgContainer.appendChild(lineFragment);
+          eventsFragment.append(timelineEvent.timelineEventDetails.previewNode);
+        };
+        createTimelinePreviewHTML();
+      }
+      return eventsFragment;
+    };
+    const createEventsHTML = (parentEvent) => {
+      const eventsFragment = document.createDocumentFragment();
+      for (const timelineEvent of parentEvent.timelineEventDetails.childrenByStartMinute) {
         if (!timelineEvent || !timelineEvent.timelineEventDetails)
           continue;
         if (timelineEvent.timelineEventDetails.startMinutes >= viewEnd())
@@ -430,55 +467,29 @@
         const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.timelineEventDetails.startMinutes);
         const widthRatio = viewInside ? 100 : timelineEvent.timelineEventDetails.durationMinutes / viewDuration() * 100;
         const isHighlighted = hightligtedTimelineId === void 0 || hightligtedTimelineId === timelineEvent.timelineEventDetails.id;
-        const createTimelineEventHTML = () => {
-          timelineEvent.timelineEventDetails.html.style.backgroundColor = `rgba(${[
-            ...timelineEvent.timelineEventDetails.color,
-            isHighlighted ? 1 : 0.3
-          ].join(",")})`;
-          timelineEvent.timelineEventDetails.html.style.left = leftRatio * 100 + "%";
-          timelineEvent.timelineEventDetails.html.style.width = widthRatio + "%";
-          timelineEvent.timelineEventDetails.html.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
-          return timelineEvent.timelineEventDetails.html;
-        };
-        const createBackgroundEventHTML = () => {
-          const eventHTML = document.createElement("div");
-          eventHTML.style.left = leftRatio * 100 + "%";
-          eventHTML.style.width = widthRatio + "%";
-          eventHTML.style.position = "absolute";
-          eventHTML.style.minWidth = "5px";
-          eventHTML.style.overflow = "hidden";
-          eventHTML.style.bottom = `0px`;
-          eventHTML.style.minHeight = `100%`;
-          eventHTML.style.backgroundColor = `rgba(${[...timelineEvent.timelineEventDetails.color, 0.1].join(",")})`;
-          eventHTML.classList.add(options.classNames.timelineEvent);
-          eventHTML.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
-          const titleHTML = document.createElement("div");
-          titleHTML.innerText = timelineEvent.title;
-          titleHTML.style.whiteSpace = "nowrap";
-          titleHTML.style.pointerEvents = "none";
-          titleHTML.style.userSelect = "none";
-          titleHTML.classList.add(options.classNames.timelineEventTitle);
-          eventHTML.appendChild(titleHTML);
-          return eventHTML;
-        };
+        timelineEvent.timelineEventDetails.eventNode.style.left = leftRatio * 100 + "%";
+        timelineEvent.timelineEventDetails.eventNode.style.width = widthRatio + "%";
+        timelineEvent.timelineEventDetails.eventNode.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
         switch (timelineEvent.timelineEventDetails.type) {
           case "container": {
-            eventsFragment.append(setupEventsHTML(timelineEvent));
+            eventsFragment.append(createEventsHTML(timelineEvent));
             break;
           }
           case "timeline": {
-            eventsFragment.append(createTimelineEventHTML());
+            timelineEvent.timelineEventDetails.eventNode.style.opacity = isHighlighted ? "1" : "0.3";
+            eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
+            visibleEvents.push(timelineEvent);
             break;
           }
           case "background": {
-            eventsFragment.append(createBackgroundEventHTML());
+            eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
             break;
           }
         }
       }
       return eventsFragment;
     };
-    const setupContainerHTML = () => {
+    const appendContainerHTML = () => {
       element.style.position = "relative";
       element.style.overflow = "hidden";
       element.style.minHeight = "3rem";
@@ -521,6 +532,69 @@
       eventsContainer.style.width = "100%";
       eventsContainer.style.overflowY = "auto";
       eventsContainer.style.overflowX = "hidden";
+      const existingPreviewsContainer = element.querySelector(`.${options.classNames.timelinePreviews}`);
+      previewsContainer = existingPreviewsContainer || document.createElement("div");
+      if (!existingPreviewsContainer)
+        element.appendChild(previewsContainer);
+      previewsContainer.classList.add(options.classNames.timelinePreviews);
+      previewsContainer.style.position = "absolute";
+      previewsContainer.style.bottom = "50px";
+      previewsContainer.style.height = "calc(100% - 50px)";
+      previewsContainer.style.width = "100%";
+      previewsContainer.style.overflowY = "auto";
+      previewsContainer.style.overflowX = "hidden";
+    };
+    const appendLabelsHTML = () => {
+      const currentLevel = Math.floor(ratio);
+      const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
+      const granularity = 1 / (options.labelCount + 1);
+      const timelineViewDifference = viewStart() - timelineStart;
+      const timestampDistance = timelineDuration() * granularity;
+      const currentTimestampDistanceByLevel = timestampDistance / iterator;
+      const integerDifFraction = Math.floor(timelineViewDifference / currentTimestampDistanceByLevel);
+      const currentDif = integerDifFraction * currentTimestampDistanceByLevel;
+      const labels = document.createDocumentFragment();
+      const dividers = document.createDocumentFragment();
+      for (let i = 0; i < options.labelCount + 2; i++) {
+        const labelTime = (i + 1) * currentTimestampDistanceByLevel + timelineStart + currentDif - currentTimestampDistanceByLevel;
+        const dividerTime = labelTime + currentTimestampDistanceByLevel / 2;
+        const labelViewRatio = getViewRatio(labelTime);
+        const labelViewLeftPosition = labelViewRatio * 100;
+        const dividerViewRatio = getViewRatio(dividerTime);
+        const dividerViewLeftPosition = dividerViewRatio * 100;
+        const label = document.createElement("div");
+        label.classList.add(options.classNames.timelineLabel);
+        label.style.left = labelViewLeftPosition + "%";
+        label.style.top = "50%";
+        label.style.transform = "translate(calc(-50%), calc(-50%))";
+        label.style.textAlign = "center";
+        label.style.position = "absolute";
+        label.style.zIndex = "-1";
+        label.style.width = granularity * 100 + "%";
+        label.innerHTML = formatDateLabel(labelTime);
+        labels.appendChild(label);
+        const divider = document.createElement("div");
+        divider.classList.add(options.classNames.timelineDivider);
+        divider.style.left = dividerViewLeftPosition + "%";
+        divider.style.textAlign = "center";
+        divider.style.position = "absolute";
+        divider.style.height = "100%";
+        divider.style.zIndex = "-10";
+        divider.innerHTML = "";
+        dividers.appendChild(divider);
+      }
+      labelContainer.appendChild(labels);
+      dividerContainer.appendChild(dividers);
+    };
+    const appendEventsHTML = () => {
+      const eventsHtml = createEventsHTML(currentTimeline);
+      if (eventsHtml)
+        eventsContainer.appendChild(eventsHtml);
+    };
+    const appendPreviewsHTML = () => {
+      const previewsHtml = createPreviewsHTML();
+      if (previewsHtml)
+        previewsContainer.appendChild(previewsHtml);
     };
     const formatDateLabel = (minutes) => {
       const yearsCount = Math.floor(minutes / MINUTES_IN_YEAR);
@@ -569,52 +643,11 @@
     const update = () => {
       if (!element || !currentTimeline)
         return;
-      const currentLevel = Math.floor(ratio);
-      const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
-      const granularity = 1 / (options.labelCount + 1);
-      const timelineViewDifference = viewStart() - timelineStart;
-      const timestampDistance = timelineDuration() * granularity;
-      const currentTimestampDistanceByLevel = timestampDistance / iterator;
-      const integerDifFraction = Math.floor(timelineViewDifference / currentTimestampDistanceByLevel);
-      const currentDif = integerDifFraction * currentTimestampDistanceByLevel;
-      const labels = document.createDocumentFragment();
-      const dividers = document.createDocumentFragment();
-      for (let i = 0; i < options.labelCount + 2; i++) {
-        const labelTime = (i + 1) * currentTimestampDistanceByLevel + timelineStart + currentDif - currentTimestampDistanceByLevel;
-        const dividerTime = labelTime + currentTimestampDistanceByLevel / 2;
-        const labelViewRatio = getViewRatio(labelTime);
-        const labelViewLeftPosition = labelViewRatio * 100;
-        const dividerViewRatio = getViewRatio(dividerTime);
-        const dividerViewLeftPosition = dividerViewRatio * 100;
-        const label = document.createElement("div");
-        label.classList.add(options.classNames.timelineLabel);
-        label.style.left = labelViewLeftPosition + "%";
-        label.style.top = "50%";
-        label.style.transform = "translate(calc(-50%), calc(-50%))";
-        label.style.textAlign = "center";
-        label.style.position = "absolute";
-        label.style.zIndex = "-1";
-        label.style.width = granularity * 100 + "%";
-        label.innerHTML = formatDateLabel(labelTime);
-        labels.appendChild(label);
-        const divider = document.createElement("div");
-        divider.classList.add(options.classNames.timelineDivider);
-        divider.style.left = dividerViewLeftPosition + "%";
-        divider.style.textAlign = "center";
-        divider.style.position = "absolute";
-        divider.style.height = "100%";
-        divider.style.zIndex = "-10";
-        divider.innerHTML = "";
-        dividers.appendChild(divider);
-      }
-      labelContainer.innerHTML = "";
-      labelContainer.appendChild(labels);
       dividerContainer.innerHTML = "";
-      dividerContainer.appendChild(dividers);
-      const eventsHtml = setupEventsHTML(currentTimeline);
+      labelContainer.innerHTML = "";
       eventsContainer.innerHTML = "";
-      if (eventsHtml)
-        eventsContainer.appendChild(eventsHtml);
+      previewsContainer.innerHTML = "";
+      visibleEvents = [];
       fire("update.tl.container");
     };
     const parseDateToMinutes = (input) => {
@@ -729,19 +762,19 @@
       return void 0;
     };
     const calcStart = (timelineEventWithDetails) => {
-      return timelineEventWithDetails.timelineEventDetails.startMinutes ? timelineEventWithDetails.timelineEventDetails.children.length ? Math.min(
+      return timelineEventWithDetails.timelineEventDetails.startMinutes ? timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? Math.min(
         timelineEventWithDetails.timelineEventDetails.startMinutes,
-        timelineEventWithDetails.timelineEventDetails.children[0].timelineEventDetails.startMinutes
-      ) : timelineEventWithDetails.timelineEventDetails.startMinutes : timelineEventWithDetails.timelineEventDetails.children.length ? timelineEventWithDetails.timelineEventDetails.children[0].timelineEventDetails.startMinutes : void 0;
+        timelineEventWithDetails.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes
+      ) : timelineEventWithDetails.timelineEventDetails.startMinutes : timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? timelineEventWithDetails.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes : void 0;
     };
     const calcEnd = (timelineEventWithDetails) => {
-      return timelineEventWithDetails.timelineEventDetails.endMinutes ? timelineEventWithDetails.timelineEventDetails.endMinutes : timelineEventWithDetails.timelineEventDetails.durationMinutes ? timelineEventWithDetails.timelineEventDetails.startMinutes + timelineEventWithDetails.timelineEventDetails.durationMinutes : timelineEventWithDetails.timelineEventDetails.children.length ? Math.max.apply(
+      return timelineEventWithDetails.timelineEventDetails.endMinutes ? timelineEventWithDetails.timelineEventDetails.endMinutes : timelineEventWithDetails.timelineEventDetails.durationMinutes ? timelineEventWithDetails.timelineEventDetails.startMinutes + timelineEventWithDetails.timelineEventDetails.durationMinutes : timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? Math.max.apply(
         1,
-        timelineEventWithDetails.timelineEventDetails.children.map((child) => child.timelineEventDetails.endMinutes)
+        timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.map((child) => child.timelineEventDetails.endMinutes)
       ) : timelineEventWithDetails.timelineEventDetails.startMinutes + 1;
     };
-    const addEvents = (parent, ...children) => {
-      const parsedSortedChildren = children.map((tl) => parseEvent(tl, parent)).filter((tl) => !!tl).sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
+    const addEvents = (parent, ...childrenByStartMinute) => {
+      const parsedSortedChildren = childrenByStartMinute.map((tl) => parseEvent(tl, parent)).filter((tl) => !!tl).sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
       const calcLevel = (timelineEvent) => {
         let level = 0;
         for (const eventLevel in parent.timelineEventDetails.levelMatrix) {
@@ -767,42 +800,86 @@
       };
       const calcScore = (timelineEvent) => {
         const durationRatio = timelineEvent.timelineEventDetails.durationMinutes / parent.timelineEventDetails.durationMinutes;
-        const score = durationRatio * (Object.keys(timelineEvent.timelineEventDetails.children).length || 1);
+        const score = durationRatio * (Object.keys(timelineEvent.timelineEventDetails.childrenByStartMinute).length || 1);
         return score;
       };
       const createEventNode = (timelineEvent) => {
-        const spaceFactor = timelineEvent.timelineEventDetails.level * options.eventSpacing;
-        const heightFactor = (timelineEvent.timelineEventDetails.level - 1) * options.eventHeight;
         const eventHTML = document.createElement("div");
-        eventHTML.style.bottom = `${spaceFactor + heightFactor}px`;
-        eventHTML.style.height = `${options.eventHeight}px`;
-        eventHTML.style.borderRadius = "5px";
+        switch (timelineEvent.timelineEventDetails.type) {
+          case "timeline":
+            {
+              const spaceFactor = timelineEvent.timelineEventDetails.level * options.eventSpacing;
+              const heightFactor = (timelineEvent.timelineEventDetails.level - 1) * options.eventHeight;
+              eventHTML.style.bottom = `${spaceFactor + heightFactor}px`;
+              eventHTML.style.minHeight = `${options.eventHeight}px`;
+              eventHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
+              eventHTML.style.cursor = "pointer";
+              eventHTML.style.borderRadius = "5px";
+              eventHTML.style.backgroundColor = `rgba(${[...timelineEvent.timelineEventDetails.color, 1].join(",")})`;
+              eventHTML.title = timelineEvent.title;
+              eventHTML.addEventListener("click", (e) => fire("click.tl.event", timelineEvent));
+              eventHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.event", timelineEvent));
+              eventHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.event", timelineEvent));
+              eventHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.event", timelineEvent));
+            }
+            break;
+          case "background":
+            {
+              eventHTML.style.bottom = `0px`;
+              eventHTML.style.minHeight = `100%`;
+              eventHTML.style.backgroundColor = `rgba(${[...timelineEvent.timelineEventDetails.color, 0.1].join(",")})`;
+              if (!timelineEvent.renderEventNode) {
+                timelineEvent.renderEventNode = (timelineEvent2) => {
+                  const titleHTML = document.createElement("div");
+                  titleHTML.innerText = timelineEvent2.title;
+                  titleHTML.style.whiteSpace = "nowrap";
+                  titleHTML.style.pointerEvents = "none";
+                  titleHTML.style.userSelect = "none";
+                  titleHTML.classList.add(options.classNames.timelineEventTitle);
+                  return titleHTML;
+                };
+              }
+            }
+            break;
+          default:
+        }
         eventHTML.style.boxSizing = "border-box";
-        eventHTML.style.cursor = "pointer";
-        eventHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
         eventHTML.style.position = "absolute";
         eventHTML.style.minWidth = "5px";
         eventHTML.style.overflow = "hidden";
-        eventHTML.title = timelineEvent.title;
         eventHTML.classList.add(options.classNames.timelineEvent);
         eventHTML.setAttribute("level", timelineEvent.timelineEventDetails.level.toString());
         eventHTML.setAttribute("depth", timelineEvent.timelineEventDetails.depth.toString());
         eventHTML.setAttribute("height", timelineEvent.timelineEventDetails.height.toString());
-        if (timelineEvent.render) {
-          eventHTML.append(timelineEvent.render(timelineEvent));
+        if (timelineEvent.renderEventNode) {
+          eventHTML.append(timelineEvent.renderEventNode(timelineEvent));
         }
-        eventHTML.addEventListener("click", (e) => fire("click.tl.event", timelineEvent));
-        eventHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.event", timelineEvent));
-        eventHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.event", timelineEvent));
-        eventHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.event", timelineEvent));
         return eventHTML;
+      };
+      const createPreviewNode = (timelineEvent) => {
+        const previewHTML = document.createElement("div");
+        previewHTML.style.boxSizing = "border-box";
+        previewHTML.style.cursor = "pointer";
+        previewHTML.style.position = "absolute";
+        previewHTML.style.overflow = "hidden";
+        previewHTML.title = timelineEvent.title;
+        previewHTML.classList.add(options.classNames.timelinePreview);
+        previewHTML.append(timelineEvent.renderPreviewNode(timelineEvent));
+        previewHTML.addEventListener("click", (e) => fire("click.tl.preview", timelineEvent));
+        previewHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.preview", timelineEvent));
+        previewHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.preview", timelineEvent));
+        previewHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.preview", timelineEvent));
+        return previewHTML;
       };
       parsedSortedChildren.forEach((childEvent, i) => {
         childEvent.timelineEventDetails.score = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcScore(childEvent) : 0;
         childEvent.timelineEventDetails.level = ["timeline", "container"].includes(childEvent.timelineEventDetails.type) ? calcLevel(childEvent) : 0;
-        childEvent.timelineEventDetails.html = createEventNode(childEvent);
+        childEvent.timelineEventDetails.eventNode = createEventNode(childEvent);
+        if (childEvent.renderPreviewNode) {
+          childEvent.timelineEventDetails.previewNode = createPreviewNode(childEvent);
+        }
       });
-      parent.timelineEventDetails.children.push(...parsedSortedChildren);
+      parent.timelineEventDetails.childrenByStartMinute.push(...parsedSortedChildren);
       parent.timelineEventDetails.startMinutes = calcStart(parent);
       parent.timelineEventDetails.endMinutes = calcEnd(parent);
       parent.timelineEventDetails.durationMinutes = parent.timelineEventDetails.endMinutes - parent.timelineEventDetails.startMinutes;
@@ -816,15 +893,16 @@
         timelineEventDetails: {
           id: crypto.randomUUID(),
           type: timelineEvent.type || "timeline",
-          open: timelineEvent.open || false,
           level: 1,
           step: 0,
           score: 0,
           height: 1,
-          children: [],
+          childrenByStartMinute: [],
+          childrenByScore: [],
           depth: parent ? parent.timelineEventDetails.depth + 1 : 0,
           parentId: parent == null ? void 0 : parent.timelineEventDetails.id,
-          color: timelineEvent.color || options.defaultColor,
+          color: (timelineEvent.color || options.defaultColor).slice(0, 3),
+          highlightedColor: (timelineEvent.highlightedColor || options.defaultColor).slice(0, 3),
           startMinutes: parseDateToMinutes(timelineEvent.start),
           endMinutes: parseDateToMinutes(timelineEvent.end),
           durationMinutes: parseNumberToMinutes(timelineEvent.duration) || 0,

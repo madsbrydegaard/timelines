@@ -17,16 +17,18 @@ declare module "timeline.io" {
         defaultColor?: number[];
         zoomDuration?: number;
         easing?: string | ((time: number, start: number, change: number, duration: number) => number);
-        numberOfHighscorePreviews: number;
-        highscorePreviewDelay: number;
+        numberOfHighscorePreviews?: number;
+        highscorePreviewDelay?: number;
         debug?: boolean;
         classNames?: {
             timeline?: string;
             timelineEvent?: string;
+            timelinePreview?: string;
             timelineEventTitle?: string;
             timelineLabels?: string;
             timelineDividers?: string;
             timelineEvents?: string;
+            timelinePreviews?: string;
             timelineLabel?: string;
             timelineDivider?: string;
         };
@@ -49,17 +51,18 @@ declare module "timeline.io" {
     }
     interface ITimelineBase {
         title: string;
-        render?: (timelineEvent: ITimelineEventWithDetails) => HTMLDivElement;
+        renderEventNode?: (timelineEvent: ITimelineEventWithDetails) => HTMLDivElement;
+        renderPreviewNode?: (timelineEvent: ITimelineEventWithDetails) => HTMLDivElement;
     }
     interface ITimelineProps {
         type?: string;
         color?: number[];
-        open?: boolean;
+        highlightedColor?: number[];
     }
     interface ITimelineEventDetails extends Required<ITimelineProps> {
         id: string;
-        startMinutes?: number;
-        endMinutes?: number;
+        startMinutes: number;
+        endMinutes: number;
         durationMinutes: number;
         level: number;
         step: number;
@@ -68,8 +71,9 @@ declare module "timeline.io" {
         score: number;
         parentId?: string;
         levelMatrix: IMatrix;
-        html?: HTMLDivElement;
-        children: ITimelineEventWithDetails[];
+        eventNode?: HTMLDivElement;
+        previewNode?: HTMLDivElement;
+        childrenByStartMinute: ITimelineEventWithDetails[];
     }
     interface ITimelineEventWithDetails extends ITimelineEvent {
         timelineEventDetails: ITimelineEventDetails;
