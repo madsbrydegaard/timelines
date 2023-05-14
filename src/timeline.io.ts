@@ -435,14 +435,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			fire("endpan.tl.container");
 		};
 		const pinch = (offsetX: number, direction: Direction) => {
-			if (!canPinch) {
-				return;
-			}
-			canPinch = false;
 			const mouseX2view = offsetX / viewWidth();
 			const mouseX2timeline = (mouseX2view - pivot) / ratio;
 			onzoom(direction, mouseX2timeline);
-			setTimeout(() => (canPinch = true), 10); // Throttle drag for performance reasons
 			fire("pinch.tl.container");
 		};
 
@@ -526,7 +521,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
 					const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
 					const diff = diff1 - diff2;
-					const offsetX = event.targetTouches[0].clientX + diff2 / 2;
+					const offsetX = Math.min(event.targetTouches[0].clientX, event.targetTouches[1].clientX) + diff2 / 2;
 					// Decide whether zoom is IN (-) or OUT (+)
 					var direction = Math.sign(diff) as Direction;
 					pinch(offsetX, direction);
@@ -576,6 +571,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		element.addEventListener("update.tl.container", () => {
 			appendLabelsHTML();
 			appendEventsHTML();
+
+			console.log(1);
 
 			if (options.numberOfHighscorePreviews > 0 && !hightligtedTimelineId) {
 				clearTimeout(previewTimer); // Throttle by $options.highscorePreviewDelay
@@ -1056,34 +1053,21 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 						eventHTML.style.borderRadius = "5px";
 						eventHTML.style.backgroundColor = `rgba(${[...timelineEvent.timelineEventDetails.color, 1].join(",")})`;
 						eventHTML.title = timelineEvent.title;
-
-						eventHTML.addEventListener("click", (e) => fire("click.tl.event", timelineEvent));
-						eventHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.event", timelineEvent));
-						eventHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.event", timelineEvent));
-						eventHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.event", timelineEvent));
 					}
 					break;
 				case "background":
 					{
-						eventHTML.style.bottom = `0px`;
-						eventHTML.style.minHeight = `100%`;
-						eventHTML.style.backgroundColor = `rgba(${[...timelineEvent.timelineEventDetails.color, 0.1].join(",")})`;
-
-						if (!timelineEvent.renderEventNode) {
-							timelineEvent.renderEventNode = (timelineEvent: ITimelineEventWithDetails) => {
-								const titleHTML = document.createElement("div");
-								titleHTML.innerText = timelineEvent.title;
-								titleHTML.style.whiteSpace = "nowrap";
-								titleHTML.style.pointerEvents = "none";
-								titleHTML.style.userSelect = "none";
-								titleHTML.classList.add(options.classNames.timelineEventTitle);
-								return titleHTML;
-							};
-						}
+						eventHTML.style.bottom = `0`;
+						eventHTML.style.top = `0`;
 					}
 					break;
 				default:
 			}
+
+			eventHTML.addEventListener("click", (e) => fire("click.tl.event", timelineEvent));
+			eventHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.event", timelineEvent));
+			eventHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.event", timelineEvent));
+			eventHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.event", timelineEvent));
 
 			eventHTML.style.boxSizing = "border-box";
 			eventHTML.style.position = "absolute";

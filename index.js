@@ -327,14 +327,9 @@ var Timeline = (elementIdentifier, settings) => {
       fire("endpan.tl.container");
     };
     const pinch = (offsetX, direction) => {
-      if (!canPinch) {
-        return;
-      }
-      canPinch = false;
       const mouseX2view = offsetX / viewWidth();
       const mouseX2timeline = (mouseX2view - pivot) / ratio;
       onzoom(direction, mouseX2timeline);
-      setTimeout(() => canPinch = true, 10);
       fire("pinch.tl.container");
     };
     window.addEventListener("resize", (event) => {
@@ -376,7 +371,7 @@ var Timeline = (elementIdentifier, settings) => {
           const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
           const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
           const diff = diff1 - diff2;
-          const offsetX = event.targetTouches[0].clientX + diff2 / 2;
+          const offsetX = Math.min(event.targetTouches[0].clientX, event.targetTouches[1].clientX) + diff2 / 2;
           var direction = Math.sign(diff);
           pinch(offsetX, direction);
           fire("touchmove.tl.container");
@@ -414,6 +409,7 @@ var Timeline = (elementIdentifier, settings) => {
     element2.addEventListener("update.tl.container", () => {
       appendLabelsHTML();
       appendEventsHTML();
+      console.log(1);
       if (options.numberOfHighscorePreviews > 0 && !hightligtedTimelineId) {
         clearTimeout(previewTimer);
         previewTimer = setTimeout(() => {
@@ -816,32 +812,20 @@ var Timeline = (elementIdentifier, settings) => {
             eventHTML.style.borderRadius = "5px";
             eventHTML.style.backgroundColor = `rgba(${[...timelineEvent.timelineEventDetails.color, 1].join(",")})`;
             eventHTML.title = timelineEvent.title;
-            eventHTML.addEventListener("click", (e) => fire("click.tl.event", timelineEvent));
-            eventHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.event", timelineEvent));
-            eventHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.event", timelineEvent));
-            eventHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.event", timelineEvent));
           }
           break;
         case "background":
           {
-            eventHTML.style.bottom = `0px`;
-            eventHTML.style.minHeight = `100%`;
-            eventHTML.style.backgroundColor = `rgba(${[...timelineEvent.timelineEventDetails.color, 0.1].join(",")})`;
-            if (!timelineEvent.renderEventNode) {
-              timelineEvent.renderEventNode = (timelineEvent2) => {
-                const titleHTML = document.createElement("div");
-                titleHTML.innerText = timelineEvent2.title;
-                titleHTML.style.whiteSpace = "nowrap";
-                titleHTML.style.pointerEvents = "none";
-                titleHTML.style.userSelect = "none";
-                titleHTML.classList.add(options.classNames.timelineEventTitle);
-                return titleHTML;
-              };
-            }
+            eventHTML.style.bottom = `0`;
+            eventHTML.style.top = `0`;
           }
           break;
         default:
       }
+      eventHTML.addEventListener("click", (e) => fire("click.tl.event", timelineEvent));
+      eventHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.event", timelineEvent));
+      eventHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.event", timelineEvent));
+      eventHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.event", timelineEvent));
       eventHTML.style.boxSizing = "border-box";
       eventHTML.style.position = "absolute";
       eventHTML.style.minWidth = "5px";
