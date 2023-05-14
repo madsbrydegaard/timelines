@@ -305,16 +305,11 @@
       let canPinch = true;
       let previewTimer;
       const drag = (x, y) => {
-        if (!inDrag || !canDrag) {
-          return;
-        }
-        canDrag = false;
         const deltaScrollLeft = x - dragStartX;
         if (deltaScrollLeft)
           onmove(deltaScrollLeft);
         dragStartX = x;
         dragStartY = y;
-        setTimeout(() => canDrag = true, 10);
         fire("drag.tl.container");
       };
       const startDrag = (x, y) => {
@@ -410,7 +405,6 @@
       element2.addEventListener("update.tl.container", () => {
         appendLabelsHTML();
         appendEventsHTML();
-        console.log(1);
         if (options.numberOfHighscorePreviews > 0 && !hightligtedTimelineId) {
           clearTimeout(previewTimer);
           previewTimer = setTimeout(() => {

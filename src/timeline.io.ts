@@ -410,16 +410,16 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 
 		// Drag handlers
 		const drag = (x: number, y: number) => {
-			if (!inDrag || !canDrag) {
-				return;
-			}
-			canDrag = false;
+			// if (!inDrag) {
+			// 	return;
+			// }
+			//canDrag = false;
 			const deltaScrollLeft = x - dragStartX;
 			//const deltaScrollTop = (e.pageY - dragStartY);
 			if (deltaScrollLeft) onmove(deltaScrollLeft);
 			dragStartX = x;
 			dragStartY = y;
-			setTimeout(() => (canDrag = true), 10); // Throttle drag for performance reasons
+			//setTimeout(() => (canDrag = true), 10); // Throttle drag for performance reasons
 			fire("drag.tl.container");
 		};
 		const startDrag = (x: number, y: number) => {
@@ -454,7 +454,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			event.preventDefault();
 			// Decide whether zoom is IN (-) or OUT (+)
 			var direction = Math.sign(event.deltaY) as Direction;
-			// console.log('wheel', direction, event)
 			// Adjust width of timeline for zooming effect
 			const leftRatio = (event.target as HTMLElement).attributes["starttime"]
 				? getViewRatio((event.target as HTMLElement).attributes["starttime"])
@@ -571,8 +570,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		element.addEventListener("update.tl.container", () => {
 			appendLabelsHTML();
 			appendEventsHTML();
-
-			console.log(1);
 
 			if (options.numberOfHighscorePreviews > 0 && !hightligtedTimelineId) {
 				clearTimeout(previewTimer); // Throttle by $options.highscorePreviewDelay
