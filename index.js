@@ -54,6 +54,7 @@ var Timeline = (elementIdentifier, settings) => {
   let currentTimeline;
   let hightligtedTimelineId;
   let visibleEvents;
+  let previewTimer;
   const MINUTES_IN_DAY = 1440;
   const MINUTES_IN_WEEK = 10080;
   const MINUTES_IN_YEAR = 525948.766;
@@ -102,6 +103,7 @@ var Timeline = (elementIdentifier, settings) => {
       eventHeight: 5,
       eventSpacing: 3,
       autoZoom: false,
+      zoomMargin: 0.1,
       autoHighlight: false,
       defaultColor: [140, 140, 140],
       zoomDuration: 200,
@@ -250,7 +252,7 @@ var Timeline = (elementIdentifier, settings) => {
     if (!endMinutes) {
       throw "second argument 'endMinutes' of method 'zoomto' must be a number";
     }
-    const targetDurationExtension = (endMinutes - startMinutes) * 0.05;
+    const targetDurationExtension = (endMinutes - startMinutes) * options.zoomMargin;
     const targetStart = startMinutes - targetDurationExtension;
     const targetEnd = endMinutes + targetDurationExtension;
     const targetDuration = targetEnd - targetStart;
@@ -300,10 +302,12 @@ var Timeline = (elementIdentifier, settings) => {
     let tpCache = [];
     let dragStartX, dragStartY;
     let inDrag = false;
-    let canDrag = true;
+    let canDrag = false;
     let canPinch = true;
-    let previewTimer;
     const drag = (x, y) => {
+      if (!inDrag && !canDrag) {
+        return;
+      }
       const deltaScrollLeft = x - dragStartX;
       if (deltaScrollLeft)
         onmove(deltaScrollLeft);
@@ -322,10 +326,21 @@ var Timeline = (elementIdentifier, settings) => {
       fire("endpan.tl.container");
     };
     const pinch = (offsetX, direction) => {
+      if (!canPinch) {
+        return;
+      }
       const mouseX2view = offsetX / viewWidth();
       const mouseX2timeline = (mouseX2view - pivot) / ratio;
       onzoom(direction, mouseX2timeline);
       fire("pinch.tl.container");
+    };
+    const onEventClick = (event) => {
+      if (options.autoHighlight) {
+        highlight(event.detail.timelineEvent);
+      }
+      if (options.autoZoom) {
+        zoom(event.detail.timelineEvent);
+      }
     };
     window.addEventListener("resize", (event) => {
       update();
@@ -393,24 +408,9 @@ var Timeline = (elementIdentifier, settings) => {
       endDrag();
       fire("mouseup.tl.container");
     });
-    element2.addEventListener("click.tl.event", (event) => {
-      if (options.autoHighlight) {
-        highlight(event.detail.timelineEvent);
-      }
-      if (options.autoZoom) {
-        zoom(event.detail.timelineEvent);
-      }
-    });
-    element2.addEventListener("update.tl.container", () => {
-      appendLabelsHTML();
-      appendEventsHTML();
-      if (options.numberOfHighscorePreviews > 0 && !hightligtedTimelineId) {
-        clearTimeout(previewTimer);
-        previewTimer = setTimeout(() => {
-          appendPreviewsHTML();
-        }, options.highscorePreviewDelay);
-      }
-    });
+    element2.addEventListener("click.tl.event", onEventClick);
+    element2.addEventListener("click.tl.preview", onEventClick);
+    element2.addEventListener("update.tl.container", onUpdate);
   };
   const createPreviewsHTML = () => {
     const eventsFragment = document.createDocumentFragment();
@@ -419,7 +419,7 @@ var Timeline = (elementIdentifier, settings) => {
     svgContainer.style.width = "100%";
     svgContainer.style.position = "absolute";
     eventsFragment.append(svgContainer);
-    const highscores = visibleEvents.sort((a, b) => a.timelineEventDetails.score - b.timelineEventDetails.score).filter((evt) => !!evt.timelineEventDetails.previewNode).slice(0, options.numberOfHighscorePreviews).sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
+    const highscores = visibleEvents.sort((a, b) => b.timelineEventDetails.score - a.timelineEventDetails.score).filter((evt) => !!evt.timelineEventDetails.previewNode).slice(0, options.numberOfHighscorePreviews).sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
     for (const [i, timelineEvent] of highscores.entries()) {
       const size = 1 / options.numberOfHighscorePreviews;
       const randomLeftPosition = Math.random() * size + size * i;
@@ -532,6 +532,12 @@ var Timeline = (elementIdentifier, settings) => {
     previewsContainer.style.width = "100%";
     previewsContainer.style.overflowY = "auto";
     previewsContainer.style.overflowX = "hidden";
+    const ioContainer = document.createElement("div");
+    element.appendChild(ioContainer);
+    ioContainer.style.position = "absolute";
+    ioContainer.style.bottom = "0";
+    ioContainer.style.top = "0";
+    ioContainer.style.width = "100%";
   };
   const appendLabelsHTML = () => {
     const currentLevel = Math.floor(ratio);
@@ -638,6 +644,16 @@ var Timeline = (elementIdentifier, settings) => {
     previewsContainer.innerHTML = "";
     visibleEvents = [];
     fire("update.tl.container");
+  };
+  const onUpdate = () => {
+    appendLabelsHTML();
+    appendEventsHTML();
+    if (options.numberOfHighscorePreviews > 0 && !hightligtedTimelineId) {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(() => {
+        appendPreviewsHTML();
+      }, options.highscorePreviewDelay);
+    }
   };
   const parseDateToMinutes = (input) => {
     if (input === void 0)
@@ -789,7 +805,7 @@ var Timeline = (elementIdentifier, settings) => {
     };
     const calcScore = (timelineEvent) => {
       const durationRatio = timelineEvent.timelineEventDetails.durationMinutes / parent.timelineEventDetails.durationMinutes;
-      const score = durationRatio * (Object.keys(timelineEvent.timelineEventDetails.childrenByStartMinute).length || 1);
+      const score = durationRatio * (timelineEvent.timelineEventDetails.childrenByStartMinute.length + 1);
       return score;
     };
     const createEventNode = (timelineEvent) => {
@@ -827,7 +843,7 @@ var Timeline = (elementIdentifier, settings) => {
       eventHTML.classList.add(options.classNames.timelineEvent);
       eventHTML.setAttribute("level", timelineEvent.timelineEventDetails.level.toString());
       eventHTML.setAttribute("depth", timelineEvent.timelineEventDetails.depth.toString());
-      eventHTML.setAttribute("height", timelineEvent.timelineEventDetails.height.toString());
+      eventHTML.setAttribute("score", timelineEvent.timelineEventDetails.score.toString());
       if (timelineEvent.renderEventNode) {
         eventHTML.append(timelineEvent.renderEventNode(timelineEvent));
       }
@@ -839,27 +855,31 @@ var Timeline = (elementIdentifier, settings) => {
       previewHTML.style.cursor = "pointer";
       previewHTML.style.position = "absolute";
       previewHTML.style.overflow = "hidden";
+      previewHTML.style.cursor = "pointer";
+      previewHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
       previewHTML.title = timelineEvent.title;
       previewHTML.classList.add(options.classNames.timelinePreview);
-      previewHTML.append(timelineEvent.renderPreviewNode(timelineEvent));
       previewHTML.addEventListener("click", (e) => fire("click.tl.preview", timelineEvent));
       previewHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.preview", timelineEvent));
       previewHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.preview", timelineEvent));
       previewHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.preview", timelineEvent));
+      if (timelineEvent.renderPreviewNode) {
+        previewHTML.append(timelineEvent.renderPreviewNode(timelineEvent));
+      }
       return previewHTML;
     };
-    parsedSortedChildren.forEach((childEvent, i) => {
+    parent.timelineEventDetails.childrenByStartMinute.push(...parsedSortedChildren);
+    parent.timelineEventDetails.startMinutes = calcStart(parent);
+    parent.timelineEventDetails.endMinutes = calcEnd(parent);
+    parent.timelineEventDetails.durationMinutes = parent.timelineEventDetails.endMinutes - parent.timelineEventDetails.startMinutes;
+    parent.timelineEventDetails.childrenByStartMinute.forEach((childEvent, i) => {
       childEvent.timelineEventDetails.score = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcScore(childEvent) : 0;
-      childEvent.timelineEventDetails.level = ["timeline", "container"].includes(childEvent.timelineEventDetails.type) ? calcLevel(childEvent) : 0;
+      childEvent.timelineEventDetails.level = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcLevel(childEvent) : 0;
       childEvent.timelineEventDetails.eventNode = createEventNode(childEvent);
       if (childEvent.renderPreviewNode) {
         childEvent.timelineEventDetails.previewNode = createPreviewNode(childEvent);
       }
     });
-    parent.timelineEventDetails.childrenByStartMinute.push(...parsedSortedChildren);
-    parent.timelineEventDetails.startMinutes = calcStart(parent);
-    parent.timelineEventDetails.endMinutes = calcEnd(parent);
-    parent.timelineEventDetails.durationMinutes = parent.timelineEventDetails.endMinutes - parent.timelineEventDetails.startMinutes;
   };
   const parseEvent = (timelineEvent, parent) => {
     if (!timelineEvent) {
