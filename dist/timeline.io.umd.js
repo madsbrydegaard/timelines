@@ -461,7 +461,7 @@
         timelineEvent.timelineEventDetails.eventNode.style.width = widthRatio + "%";
         timelineEvent.timelineEventDetails.eventNode.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
         switch (timelineEvent.timelineEventDetails.type) {
-          case "container": {
+          default: {
             eventsFragment.append(createEventsHTML(timelineEvent));
             break;
           }
@@ -874,7 +874,7 @@
       parent.timelineEventDetails.endMinutes = calcEnd(parent);
       parent.timelineEventDetails.durationMinutes = parent.timelineEventDetails.endMinutes - parent.timelineEventDetails.startMinutes;
       parent.timelineEventDetails.childrenByStartMinute.forEach((childEvent, i) => {
-        childEvent.timelineEventDetails.score = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcScore(childEvent) : 0;
+        childEvent.timelineEventDetails.score = ["timeline"].includes(childEvent.timelineEventDetails.type) ? calcScore(childEvent) : 0;
         childEvent.timelineEventDetails.level = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcLevel(childEvent) : 0;
         childEvent.timelineEventDetails.eventNode = createEventNode(childEvent);
         if (childEvent.renderPreviewNode) {

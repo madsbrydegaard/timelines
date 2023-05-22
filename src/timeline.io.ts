@@ -642,7 +642,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				: timelineEvent.timelineEventDetails.startMinutes;
 
 			switch (timelineEvent.timelineEventDetails.type) {
-				case "container": {
+				default: {
 					eventsFragment.append(createEventsHTML(timelineEvent));
 					break;
 				}
@@ -1134,7 +1134,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 
 		parent.timelineEventDetails.childrenByStartMinute.forEach((childEvent, i) => {
 			// Add score to result in order to sort by importance
-			childEvent.timelineEventDetails.score = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcScore(childEvent) : 0;
+			childEvent.timelineEventDetails.score = ["timeline"].includes(childEvent.timelineEventDetails.type) ? calcScore(childEvent) : 0;
 
 			// Add level
 			childEvent.timelineEventDetails.level = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcLevel(childEvent) : 0;
