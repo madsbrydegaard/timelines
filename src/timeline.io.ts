@@ -1101,7 +1101,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 
 			return eventHTML;
 		};
-		const createPreviewNode = (timelineEvent: ITimelineEventWithDetails): HTMLDivElement => {
+		const createPreviewNode = (timelineEvent: ITimelineEventWithDetails): HTMLDivElement | undefined => {
+			if (!timelineEvent.renderPreviewNode) return undefined;
 			const previewHTML = document.createElement("div");
 			previewHTML.style.boxSizing = "border-box";
 			previewHTML.style.cursor = "pointer";
@@ -1117,9 +1118,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			previewHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.preview", timelineEvent));
 			previewHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.preview", timelineEvent));
 
-			if (timelineEvent.renderPreviewNode) {
-				previewHTML.append(timelineEvent.renderPreviewNode(timelineEvent));
-			}
+			previewHTML.append(timelineEvent.renderPreviewNode(timelineEvent));
 
 			return previewHTML;
 		};
@@ -1143,12 +1142,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			childEvent.timelineEventDetails.eventNode = createEventNode(childEvent);
 
 			// Create Preview HTML Node
-			if (childEvent.renderPreviewNode) {
-				childEvent.timelineEventDetails.previewNode = createPreviewNode(childEvent);
-			}
+			childEvent.timelineEventDetails.previewNode = createPreviewNode(childEvent);
 		});
-
-		//parent.timelineEventDetails.height = parsedChildren.length ? Math.max(...parsedChildren.map((child) => child.timelineEventDetails.level)) : 1;
 	};
 	const parseEvent = (timelineEvent: ITimelineEvent, parent?: ITimelineEventWithDetails): ITimelineEventWithDetails | undefined => {
 		if (!timelineEvent) {
@@ -1160,7 +1155,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			...timelineEvent,
 			timelineEventDetails: {
 				id: crypto.randomUUID(),
-				type: timelineEvent.type || "timeline",
+				type: timelineEvent.type || timelineEvent.start ? timelineEvent.type || "timeline" : "wrapper",
 				level: 1,
 				step: 0,
 				score: 0,
@@ -1177,6 +1172,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				levelMatrix: { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } },
 			} as ITimelineEventDetails,
 		};
+
+		if (timelineEventWithDetails.timelineEventDetails.type === "timeline" && parent.timelineEventDetails.type === "wrapper")
+			parent.timelineEventDetails.type = "container";
 
 		if (timelineEvent.events && timelineEvent.events.length) {
 			addEvents(timelineEventWithDetails, ...timelineEvent.events);

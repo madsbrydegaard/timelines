@@ -851,6 +851,8 @@
         return eventHTML;
       };
       const createPreviewNode = (timelineEvent) => {
+        if (!timelineEvent.renderPreviewNode)
+          return void 0;
         const previewHTML = document.createElement("div");
         previewHTML.style.boxSizing = "border-box";
         previewHTML.style.cursor = "pointer";
@@ -864,9 +866,7 @@
         previewHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.preview", timelineEvent));
         previewHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.preview", timelineEvent));
         previewHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.preview", timelineEvent));
-        if (timelineEvent.renderPreviewNode) {
-          previewHTML.append(timelineEvent.renderPreviewNode(timelineEvent));
-        }
+        previewHTML.append(timelineEvent.renderPreviewNode(timelineEvent));
         return previewHTML;
       };
       parent.timelineEventDetails.childrenByStartMinute.push(...parsedSortedChildren);
@@ -877,9 +877,7 @@
         childEvent.timelineEventDetails.score = ["timeline"].includes(childEvent.timelineEventDetails.type) ? calcScore(childEvent) : 0;
         childEvent.timelineEventDetails.level = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcLevel(childEvent) : 0;
         childEvent.timelineEventDetails.eventNode = createEventNode(childEvent);
-        if (childEvent.renderPreviewNode) {
-          childEvent.timelineEventDetails.previewNode = createPreviewNode(childEvent);
-        }
+        childEvent.timelineEventDetails.previewNode = createPreviewNode(childEvent);
       });
     };
     const parseEvent = (timelineEvent, parent) => {
@@ -890,7 +888,7 @@
       const timelineEventWithDetails = __spreadProps(__spreadValues({}, timelineEvent), {
         timelineEventDetails: {
           id: crypto.randomUUID(),
-          type: timelineEvent.type || "timeline",
+          type: timelineEvent.type || timelineEvent.start ? timelineEvent.type || "timeline" : "wrapper",
           level: 1,
           step: 0,
           score: 0,
@@ -907,6 +905,8 @@
           levelMatrix: { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } }
         }
       });
+      if (timelineEventWithDetails.timelineEventDetails.type === "timeline" && parent.timelineEventDetails.type === "wrapper")
+        parent.timelineEventDetails.type = "container";
       if (timelineEvent.events && timelineEvent.events.length) {
         addEvents(timelineEventWithDetails, ...timelineEvent.events);
       }
