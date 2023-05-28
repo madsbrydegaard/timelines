@@ -18,26 +18,6 @@
     return a;
   };
   var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
-  var __async = (__this, __arguments, generator) => {
-    return new Promise((resolve, reject) => {
-      var fulfilled = (value) => {
-        try {
-          step(generator.next(value));
-        } catch (e) {
-          reject(e);
-        }
-      };
-      var rejected = (value) => {
-        try {
-          step(generator.throw(value));
-        } catch (e) {
-          reject(e);
-        }
-      };
-      var step = (x) => x.done ? resolve(x.value) : Promise.resolve(x.value).then(fulfilled, rejected);
-      step((generator = generator.apply(__this, __arguments)).next());
-    });
-  };
 
   // src/timeline.io.ts
   var Timeline = (elementIdentifier, settings) => {
@@ -64,11 +44,6 @@
     const SHOW_DAY_DURATION = MINUTES_IN_WEEK * 6;
     const SHOW_TIME_DURATION = MINUTES_IN_DAY * 4;
     const isITimelineEventWithDetails = (timelineEvent) => "timelineEventDetails" in timelineEvent;
-    const load = (loader) => __async(void 0, null, function* () {
-      if (!loader)
-        throw new Error(`Argument is empty. Please provide a loader function as first arg`);
-      add(yield loader());
-    });
     const add = (...timelineEvents) => {
       if (!timelineEvents)
         throw new Error(`Event argument is empty. Please provide Timeline event(s) as input`);
@@ -422,9 +397,9 @@
       eventsFragment.append(svgContainer);
       const highscores = visibleEvents.sort((a, b) => b.timelineEventDetails.score - a.timelineEventDetails.score).filter((evt) => !!evt.timelineEventDetails.previewNode).slice(0, options.numberOfHighscorePreviews).sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
       for (const [i, timelineEvent] of highscores.entries()) {
-        const size = 1 / options.numberOfHighscorePreviews;
-        const randomLeftPosition = Math.random() * size + size * i;
-        const randomTopPosition = Math.random() / 2 + 0.05;
+        const fraction = 1 / options.numberOfHighscorePreviews;
+        const randomLeftPosition = fraction * i + fraction / 4;
+        const randomTopPosition = Math.random() / 3 + 0.08;
         const createTimelinePreviewHTML = () => {
           timelineEvent.timelineEventDetails.previewNode.style.left = randomLeftPosition * 100 + "%";
           timelineEvent.timelineEventDetails.previewNode.style.top = randomTopPosition * 100 + "%";
@@ -795,7 +770,7 @@
             return level;
           }
         }
-        level++;
+        level += 1;
         for (let i = 0; i < timelineEvent.timelineEventDetails.height; i++) {
           parent.timelineEventDetails.levelMatrix[(level + i).toString()] = {
             height: timelineEvent.timelineEventDetails.height,
@@ -846,7 +821,9 @@
         eventHTML.setAttribute("depth", timelineEvent.timelineEventDetails.depth.toString());
         eventHTML.setAttribute("score", timelineEvent.timelineEventDetails.score.toString());
         if (timelineEvent.renderEventNode) {
-          eventHTML.append(timelineEvent.renderEventNode(timelineEvent));
+          const elementToAppend = timelineEvent.renderEventNode(timelineEvent);
+          elementToAppend.style.display = "contents";
+          eventHTML.append(elementToAppend);
         }
         return eventHTML;
       };
@@ -879,6 +856,7 @@
         childEvent.timelineEventDetails.eventNode = createEventNode(childEvent);
         childEvent.timelineEventDetails.previewNode = createPreviewNode(childEvent);
       });
+      parent.timelineEventDetails.height = Object.entries(parent.timelineEventDetails.levelMatrix).length;
     };
     const parseEvent = (timelineEvent, parent) => {
       if (!timelineEvent) {
@@ -889,7 +867,7 @@
         timelineEventDetails: {
           id: crypto.randomUUID(),
           type: timelineEvent.type || timelineEvent.start ? timelineEvent.type || "timeline" : "wrapper",
-          level: 1,
+          level: 0,
           step: 0,
           score: 0,
           height: 1,
@@ -958,7 +936,6 @@
     return {
       focus,
       zoom,
-      load,
       add,
       reset,
       highlight

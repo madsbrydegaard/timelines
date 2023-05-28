@@ -87,8 +87,7 @@ export interface ITimelineEvent extends ITimelineBase, ITimelineProps {
 	events?: ITimelineEvent[];
 }
 export interface ITimelineContainer {
-	load: (loader: () => Promise<ITimelineEvent>) => Promise<void>;
-	add: (timelineEvent: ITimelineEvent) => void;
+	add: (...timelineEvents: ITimelineEvent[]) => void;
 	zoom: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onzoomend?: (timelineEvent: ITimelineEvent) => void) => void;
 	focus: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
 	reset: () => void;
@@ -127,10 +126,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	// ITimelineEventWithDetails guard
 	const isITimelineEventWithDetails = (timelineEvent: ITimelineEvent): timelineEvent is ITimelineEventWithDetails =>
 		"timelineEventDetails" in timelineEvent;
-	const load = async (loader: () => Promise<ITimelineEvent>): Promise<void> => {
-		if (!loader) throw new Error(`Argument is empty. Please provide a loader function as first arg`);
-		add(await loader());
-	};
 	const add = (...timelineEvents: ITimelineEvent[]): void => {
 		if (!timelineEvents) throw new Error(`Event argument is empty. Please provide Timeline event(s) as input`);
 
@@ -596,9 +591,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			.sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
 
 		for (const [i, timelineEvent] of highscores.entries()) {
-			const size = 1 / options.numberOfHighscorePreviews;
-			const randomLeftPosition = Math.random() * size + size * i;
-			const randomTopPosition = Math.random() / 2 + 0.05;
+			const fraction = 1 / options.numberOfHighscorePreviews;
+			const randomLeftPosition = fraction * i + fraction / 4;
+			const randomTopPosition = Math.random() / 3 + 0.08;
 
 			const createTimelinePreviewHTML = (): void => {
 				timelineEvent.timelineEventDetails.previewNode.style.left = randomLeftPosition * 100 + "%";
@@ -1042,7 +1037,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					return level;
 				}
 			}
-			level++;
+			level += 1;
 			for (let i = 0; i < timelineEvent.timelineEventDetails.height; i++) {
 				parent.timelineEventDetails.levelMatrix[(level + i).toString()] = {
 					height: timelineEvent.timelineEventDetails.height,
@@ -1096,7 +1091,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			eventHTML.setAttribute("score", timelineEvent.timelineEventDetails.score.toString());
 
 			if (timelineEvent.renderEventNode) {
-				eventHTML.append(timelineEvent.renderEventNode(timelineEvent));
+				const elementToAppend = timelineEvent.renderEventNode(timelineEvent);
+				elementToAppend.style.display = "contents";
+				eventHTML.append(elementToAppend);
 			}
 
 			return eventHTML;
@@ -1144,6 +1141,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			// Create Preview HTML Node
 			childEvent.timelineEventDetails.previewNode = createPreviewNode(childEvent);
 		});
+
+		parent.timelineEventDetails.height = Object.entries(parent.timelineEventDetails.levelMatrix).length;
 	};
 	const parseEvent = (timelineEvent: ITimelineEvent, parent?: ITimelineEventWithDetails): ITimelineEventWithDetails | undefined => {
 		if (!timelineEvent) {
@@ -1156,7 +1155,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			timelineEventDetails: {
 				id: crypto.randomUUID(),
 				type: timelineEvent.type || timelineEvent.start ? timelineEvent.type || "timeline" : "wrapper",
-				level: 1,
+				level: 0,
 				step: 0,
 				score: 0,
 				height: 1,
@@ -1239,7 +1238,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	return {
 		focus,
 		zoom,
-		load,
 		add,
 		reset,
 		highlight,
