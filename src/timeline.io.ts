@@ -1092,7 +1092,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 
 			if (timelineEvent.renderEventNode) {
 				const elementToAppend = timelineEvent.renderEventNode(timelineEvent);
-				elementToAppend.style.display = "contents";
+				elementToAppend.style.display = "contents"; // Ignore wrapping div in DOM so custom styling takes preceedence
 				eventHTML.append(elementToAppend);
 			}
 
