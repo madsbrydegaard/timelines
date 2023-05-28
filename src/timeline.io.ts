@@ -19,7 +19,6 @@ export interface ITimelineOptions {
 	easing?: string | ((time: number, start: number, change: number, duration: number) => number);
 	numberOfHighscorePreviews?: number;
 	highscorePreviewDelay?: number;
-	debug?: boolean;
 	classNames?: {
 		timeline?: string;
 		timelineEvent?: string;
@@ -173,7 +172,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				easing: "easeOutCubic",
 				numberOfHighscorePreviews: 5,
 				highscorePreviewDelay: 500,
-				debug: false,
 				classNames: {
 					timeline: "tl",
 					timelineEvent: "tl__event",

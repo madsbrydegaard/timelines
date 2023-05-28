@@ -86,7 +86,6 @@
         easing: "easeOutCubic",
         numberOfHighscorePreviews: 5,
         highscorePreviewDelay: 500,
-        debug: false,
         classNames: {
           timeline: "tl",
           timelineEvent: "tl__event",

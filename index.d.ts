@@ -20,7 +20,6 @@ declare module "timeline.io" {
         easing?: string | ((time: number, start: number, change: number, duration: number) => number);
         numberOfHighscorePreviews?: number;
         highscorePreviewDelay?: number;
-        debug?: boolean;
         classNames?: {
             timeline?: string;
             timelineEvent?: string;
