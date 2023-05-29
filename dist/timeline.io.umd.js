@@ -33,7 +33,7 @@
     let previewsContainer;
     let rootTimeline;
     let currentTimeline;
-    let hightligtedTimelineId;
+    let selectedTimelineId;
     let visibleEvents;
     let previewTimer;
     const MINUTES_IN_DAY = 1440;
@@ -80,7 +80,7 @@
         eventSpacing: 3,
         autoZoom: false,
         zoomMargin: 0.1,
-        autoHighlight: false,
+        autoSelect: false,
         defaultColor: [140, 140, 140],
         zoomDuration: 200,
         easing: "easeOutCubic",
@@ -181,7 +181,7 @@
         throw "first argument 'timelineEvent' of method 'zoom' must be an object of type ITimelineEventWithDetails";
       }
       currentTimeline = timelineEvent;
-      highlight();
+      select();
       zoomto(currentTimeline.timelineEventDetails.startMinutes, currentTimeline.timelineEventDetails.endMinutes, useAnimation, () => {
         fire("focus.tl.event");
         if (onfocused)
@@ -194,17 +194,34 @@
         options.start ? parseDateToMinutes(options.start) : currentTimeline.timelineEventDetails.startMinutes,
         options.end ? parseDateToMinutes(options.end) : currentTimeline.timelineEventDetails.endMinutes
       );
-      if (options.autoHighlight) {
-        highlight();
+      if (options.autoSelect) {
+        select();
       }
     };
-    const highlight = (timelineEvent) => {
-      if (!timelineEvent) {
-        hightligtedTimelineId = void 0;
-      } else if (typeof timelineEvent === "string") {
-        hightligtedTimelineId = timelineEvent;
-      } else if (isITimelineEventWithDetails(timelineEvent)) {
-        hightligtedTimelineId = timelineEvent.timelineEventDetails.id;
+    const findFirstEvent = (timelineEventIdentifier, parent) => {
+      let result = void 0;
+      for (const child of (parent || rootTimeline).timelineEventDetails.childrenByStartMinute) {
+        if (child.title === timelineEventIdentifier || child.timelineEventDetails.id === timelineEventIdentifier) {
+          result = child;
+          break;
+        } else {
+          result = findFirstEvent(timelineEventIdentifier, child);
+          if (result)
+            break;
+        }
+      }
+      return result;
+    };
+    const select = (timelineEventIdentifier) => {
+      if (!timelineEventIdentifier) {
+        selectedTimelineId = void 0;
+        fire("selected.tl.event");
+      } else if (typeof timelineEventIdentifier === "string") {
+        const result = findFirstEvent(timelineEventIdentifier);
+        if (!result)
+          throw `Cannot find ${timelineEventIdentifier} by title nor timelineEventDetails.id`;
+        selectedTimelineId = result.timelineEventDetails.id;
+        fire("selected.tl.event", result);
       }
       update();
     };
@@ -311,10 +328,12 @@
         fire("pinch.tl.container");
       };
       const onEventClick = (event) => {
-        if (options.autoHighlight) {
-          highlight(event.detail.timelineEvent);
+        if (options.autoSelect && event.detail.timelineEvent) {
+          select(event.detail.timelineEvent.title);
         }
-        if (options.autoZoom) {
+      };
+      const onEventSelected = (event) => {
+        if (options.autoZoom && event.detail.timelineEvent) {
           zoom(event.detail.timelineEvent);
         }
       };
@@ -386,6 +405,7 @@
       });
       element2.addEventListener("click.tl.event", onEventClick);
       element2.addEventListener("click.tl.preview", onEventClick);
+      element2.addEventListener("selected.tl.event", onEventSelected);
       element2.addEventListener("update.tl.container", onUpdate);
     };
     const createPreviewHTML = () => {
@@ -404,7 +424,6 @@
           timelineEvent.timelineEventDetails.previewNode.style.left = randomLeftPosition * 100 + "%";
           timelineEvent.timelineEventDetails.previewNode.style.top = randomTopPosition * 100 + "%";
           let x2 = getViewRatio(timelineEvent.timelineEventDetails.startMinutes + timelineEvent.timelineEventDetails.durationMinutes / 2);
-          console.log(timelineEvent.title, x2);
           if (x2 > 1) {
             x2 = getViewRatio(timelineEvent.timelineEventDetails.startMinutes + (viewEnd() - timelineEvent.timelineEventDetails.startMinutes) / 2);
           }
@@ -436,7 +455,7 @@
         const viewInside = isViewInside(timelineEvent);
         const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.timelineEventDetails.startMinutes);
         const widthRatio = viewInside ? 100 : timelineEvent.timelineEventDetails.durationMinutes / viewDuration() * 100;
-        const isHighlighted = hightligtedTimelineId === void 0 || hightligtedTimelineId === timelineEvent.timelineEventDetails.id;
+        const isHighlighted = selectedTimelineId === void 0 || selectedTimelineId === timelineEvent.timelineEventDetails.id;
         timelineEvent.timelineEventDetails.eventNode.style.left = leftRatio * 100 + "%";
         timelineEvent.timelineEventDetails.eventNode.style.width = widthRatio + "%";
         timelineEvent.timelineEventDetails.eventNode.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
@@ -629,7 +648,7 @@
     const onUpdate = () => {
       appendLabelHTML();
       appendEventHTML();
-      if (options.numberOfHighscorePreviews > 0 && !hightligtedTimelineId) {
+      if (options.numberOfHighscorePreviews > 0 && !selectedTimelineId) {
         clearTimeout(previewTimer);
         previewTimer = setTimeout(() => {
           appendPreviewHTML();
@@ -860,8 +879,8 @@
         childEvent.timelineEventDetails.level = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcLevel(childEvent) : 0;
         childEvent.timelineEventDetails.eventNode = createEventNode(childEvent);
         childEvent.timelineEventDetails.previewNode = createPreviewNode(childEvent);
-        childEvent.timelineEventDetails.next = parent.timelineEventDetails.childrenByStartMinute.length > i + 1 ? parent.timelineEventDetails.childrenByStartMinute[i + 1].timelineEventDetails.id : void 0;
-        childEvent.timelineEventDetails.previous = i > 0 ? parent.timelineEventDetails.childrenByStartMinute[i - 1].timelineEventDetails.id : void 0;
+        childEvent.next = parent.timelineEventDetails.childrenByStartMinute.length > i + 1 ? parent.timelineEventDetails.childrenByStartMinute[i + 1].title : void 0;
+        childEvent.previous = i > 0 ? parent.timelineEventDetails.childrenByStartMinute[i - 1].title : void 0;
       });
       parent.timelineEventDetails.height = Object.entries(parent.timelineEventDetails.levelMatrix).length;
     };
@@ -945,7 +964,7 @@
       zoom,
       add,
       reset,
-      highlight
+      select
     };
   };
 

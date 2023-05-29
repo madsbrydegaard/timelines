@@ -14,7 +14,7 @@ declare module "timeline.io" {
         eventSpacing?: number;
         autoZoom?: boolean;
         zoomMargin?: number;
-        autoHighlight?: boolean;
+        autoSelect?: boolean;
         defaultColor?: number[];
         zoomDuration?: number;
         easing?: string | ((time: number, start: number, change: number, duration: number) => number);
@@ -74,8 +74,6 @@ declare module "timeline.io" {
         eventNode?: HTMLDivElement;
         previewNode?: HTMLDivElement;
         childrenByStartMinute: ITimelineEventWithDetails[];
-        next?: string;
-        previous?: string;
     }
     interface ITimelineEventWithDetails extends ITimelineEvent {
         timelineEventDetails: ITimelineEventDetails;
@@ -85,13 +83,15 @@ declare module "timeline.io" {
         end?: number[] | string | number | Date;
         duration?: number | string;
         events?: ITimelineEvent[];
+        next?: string;
+        previous?: string;
     }
     export interface ITimelineContainer {
         add: (...timelineEvents: ITimelineEvent[]) => void;
         zoom: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onzoomend?: (timelineEvent: ITimelineEvent) => void) => void;
         focus: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
         reset: () => void;
-        highlight: (timelineEvent?: ITimelineEvent | string) => void;
+        select: (timelineEventIdentifier?: string) => void;
     }
     export const Timeline: (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions) => ITimelineContainer;
 }

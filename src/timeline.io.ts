@@ -13,7 +13,7 @@ export interface ITimelineOptions {
 	eventSpacing?: number;
 	autoZoom?: boolean;
 	zoomMargin?: number;
-	autoHighlight?: boolean;
+	autoSelect?: boolean;
 	defaultColor?: number[];
 	zoomDuration?: number;
 	easing?: string | ((time: number, start: number, change: number, duration: number) => number);
@@ -73,8 +73,6 @@ interface ITimelineEventDetails extends Required<ITimelineProps> {
 	eventNode?: HTMLDivElement;
 	previewNode?: HTMLDivElement;
 	childrenByStartMinute: ITimelineEventWithDetails[];
-	next?: string;
-	previous?: string;
 }
 interface ITimelineEventWithDetails extends ITimelineEvent {
 	timelineEventDetails: ITimelineEventDetails;
@@ -84,13 +82,15 @@ export interface ITimelineEvent extends ITimelineBase, ITimelineProps {
 	end?: number[] | string | number | Date;
 	duration?: number | string;
 	events?: ITimelineEvent[];
+	next?: string;
+	previous?: string;
 }
 export interface ITimelineContainer {
 	add: (...timelineEvents: ITimelineEvent[]) => void;
 	zoom: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onzoomend?: (timelineEvent: ITimelineEvent) => void) => void;
 	focus: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
 	reset: () => void;
-	highlight: (timelineEvent?: ITimelineEvent | string) => void;
+	select: (timelineEventIdentifier?: string) => void;
 }
 enum Direction {
 	In = -1,
@@ -110,7 +110,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	let previewsContainer: HTMLDivElement;
 	let rootTimeline: ITimelineEventWithDetails;
 	let currentTimeline: ITimelineEventWithDetails;
-	let hightligtedTimelineId: string;
+	let selectedTimelineId: string;
 	let visibleEvents: ITimelineEventWithDetails[];
 	let previewTimer: NodeJS.Timeout;
 
@@ -166,7 +166,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				eventSpacing: 3,
 				autoZoom: false,
 				zoomMargin: 0.1,
-				autoHighlight: false,
+				autoSelect: false,
 				defaultColor: [140, 140, 140],
 				zoomDuration: 200,
 				easing: "easeOutCubic",
@@ -293,7 +293,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		}
 
 		currentTimeline = timelineEvent;
-		highlight();
+		select();
 
 		zoomto(currentTimeline.timelineEventDetails.startMinutes, currentTimeline.timelineEventDetails.endMinutes, useAnimation, () => {
 			fire("focus.tl.event");
@@ -306,17 +306,32 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			options.start ? parseDateToMinutes(options.start) : currentTimeline.timelineEventDetails.startMinutes,
 			options.end ? parseDateToMinutes(options.end) : currentTimeline.timelineEventDetails.endMinutes
 		);
-		if (options.autoHighlight) {
-			highlight();
+		if (options.autoSelect) {
+			select();
 		}
 	};
-	const highlight = (timelineEvent?: ITimelineEvent | string): void => {
-		if (!timelineEvent) {
-			hightligtedTimelineId = undefined;
-		} else if (typeof timelineEvent === "string") {
-			hightligtedTimelineId = timelineEvent;
-		} else if (isITimelineEventWithDetails(timelineEvent)) {
-			hightligtedTimelineId = timelineEvent.timelineEventDetails.id;
+	const findFirstEvent = (timelineEventIdentifier: string, parent?: ITimelineEventWithDetails): ITimelineEventWithDetails | undefined => {
+		let result = undefined;
+		for (const child of (parent || rootTimeline).timelineEventDetails.childrenByStartMinute) {
+			if (child.title === timelineEventIdentifier || child.timelineEventDetails.id === timelineEventIdentifier) {
+				result = child;
+				break;
+			} else {
+				result = findFirstEvent(timelineEventIdentifier, child);
+				if (result) break;
+			}
+		}
+		return result;
+	};
+	const select = (timelineEventIdentifier?: string): void => {
+		if (!timelineEventIdentifier) {
+			selectedTimelineId = undefined;
+			fire("selected.tl.event");
+		} else if (typeof timelineEventIdentifier === "string") {
+			const result = findFirstEvent(timelineEventIdentifier);
+			if (!result) throw `Cannot find ${timelineEventIdentifier} by title nor timelineEventDetails.id`;
+			selectedTimelineId = result.timelineEventDetails.id;
+			fire("selected.tl.event", result);
 		}
 
 		update();
@@ -443,10 +458,12 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			fire("pinch.tl.container");
 		};
 		const onEventClick = (event: CustomEvent<ITimelineCustomEventDetails>) => {
-			if (options.autoHighlight) {
-				highlight(event.detail.timelineEvent);
+			if (options.autoSelect && event.detail.timelineEvent) {
+				select(event.detail.timelineEvent.title);
 			}
-			if (options.autoZoom) {
+		};
+		const onEventSelected = (event: CustomEvent<ITimelineCustomEventDetails>) => {
+			if (options.autoZoom && event.detail.timelineEvent) {
 				zoom(event.detail.timelineEvent);
 			}
 		};
@@ -476,7 +493,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			fire("wheel.tl.container");
 		});
 
-		// TODO: Solve left or right finder first problem
 		element.addEventListener("touchstart", (event: TouchEvent) => {
 			// If the user makes simultaneous touches, the browser will fire a
 			// separate touchstart event for each touch point. Thus if there are
@@ -570,6 +586,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		// Add event click handler
 		element.addEventListener("click.tl.event", onEventClick);
 		element.addEventListener("click.tl.preview", onEventClick);
+		element.addEventListener("selected.tl.event", onEventSelected);
 
 		// update.tl.container event handler
 		element.addEventListener("update.tl.container", onUpdate);
@@ -632,7 +649,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			const viewInside = isViewInside(timelineEvent);
 			const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.timelineEventDetails.startMinutes);
 			const widthRatio = viewInside ? 100 : (timelineEvent.timelineEventDetails.durationMinutes / viewDuration()) * 100;
-			const isHighlighted = hightligtedTimelineId === undefined || hightligtedTimelineId === timelineEvent.timelineEventDetails.id;
+			const isHighlighted = selectedTimelineId === undefined || selectedTimelineId === timelineEvent.timelineEventDetails.id;
 
 			timelineEvent.timelineEventDetails.eventNode.style.left = leftRatio * 100 + "%";
 			timelineEvent.timelineEventDetails.eventNode.style.width = widthRatio + "%";
@@ -859,7 +876,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		appendLabelHTML();
 		appendEventHTML();
 
-		if (options.numberOfHighscorePreviews > 0 && !hightligtedTimelineId) {
+		if (options.numberOfHighscorePreviews > 0 && !selectedTimelineId) {
 			clearTimeout(previewTimer); // Throttle by $options.highscorePreviewDelay
 			previewTimer = setTimeout(() => {
 				appendPreviewHTML();
@@ -1145,12 +1162,10 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			// Create Preview HTML Node
 			childEvent.timelineEventDetails.previewNode = createPreviewNode(childEvent);
 
-			// Assign neighbor Id's
-			childEvent.timelineEventDetails.next =
-				parent.timelineEventDetails.childrenByStartMinute.length > i + 1
-					? parent.timelineEventDetails.childrenByStartMinute[i + 1].timelineEventDetails.id
-					: undefined;
-			childEvent.timelineEventDetails.previous = i > 0 ? parent.timelineEventDetails.childrenByStartMinute[i - 1].timelineEventDetails.id : undefined;
+			// Assign neighbor titles
+			childEvent.next =
+				parent.timelineEventDetails.childrenByStartMinute.length > i + 1 ? parent.timelineEventDetails.childrenByStartMinute[i + 1].title : undefined;
+			childEvent.previous = i > 0 ? parent.timelineEventDetails.childrenByStartMinute[i - 1].title : undefined;
 		});
 
 		parent.timelineEventDetails.height = Object.entries(parent.timelineEventDetails.levelMatrix).length;
@@ -1251,6 +1266,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		zoom,
 		add,
 		reset,
-		highlight,
+		select,
 	};
 };
