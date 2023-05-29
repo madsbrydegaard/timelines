@@ -200,8 +200,9 @@ var Timeline = (elementIdentifier, settings) => {
   const highlight = (timelineEvent) => {
     if (!timelineEvent) {
       hightligtedTimelineId = void 0;
-    }
-    if (timelineEvent && isITimelineEventWithDetails(timelineEvent)) {
+    } else if (typeof timelineEvent === "string") {
+      hightligtedTimelineId = timelineEvent;
+    } else if (isITimelineEventWithDetails(timelineEvent)) {
       hightligtedTimelineId = timelineEvent.timelineEventDetails.id;
     }
     update();
@@ -386,28 +387,33 @@ var Timeline = (elementIdentifier, settings) => {
     element2.addEventListener("click.tl.preview", onEventClick);
     element2.addEventListener("update.tl.container", onUpdate);
   };
-  const createPreviewsHTML = () => {
+  const createPreviewHTML = () => {
     const eventsFragment = document.createDocumentFragment();
     const svgContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     svgContainer.style.height = "100%";
     svgContainer.style.width = "100%";
     svgContainer.style.position = "absolute";
     eventsFragment.append(svgContainer);
-    const highscores = visibleEvents.sort((a, b) => b.timelineEventDetails.score - a.timelineEventDetails.score).filter((evt) => !!evt.timelineEventDetails.previewNode).slice(0, options.numberOfHighscorePreviews).sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
+    const highscores = visibleEvents.filter((evt) => !!evt.timelineEventDetails.previewNode).sort((a, b) => b.timelineEventDetails.score - a.timelineEventDetails.score).slice(0, options.numberOfHighscorePreviews).sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
     for (const [i, timelineEvent] of highscores.entries()) {
-      const fraction = 1 / options.numberOfHighscorePreviews;
+      const fraction = 1 / highscores.length;
       const randomLeftPosition = fraction * i + fraction / 4;
       const randomTopPosition = Math.random() / 3 + 0.08;
       const createTimelinePreviewHTML = () => {
         timelineEvent.timelineEventDetails.previewNode.style.left = randomLeftPosition * 100 + "%";
         timelineEvent.timelineEventDetails.previewNode.style.top = randomTopPosition * 100 + "%";
+        let x2 = getViewRatio(timelineEvent.timelineEventDetails.startMinutes + timelineEvent.timelineEventDetails.durationMinutes / 2);
+        console.log(timelineEvent.title, x2);
+        if (x2 > 1) {
+          x2 = getViewRatio(timelineEvent.timelineEventDetails.startMinutes + (viewEnd() - timelineEvent.timelineEventDetails.startMinutes) / 2);
+        }
+        if (x2 < 0) {
+          x2 = getViewRatio((viewStart() + timelineEvent.timelineEventDetails.endMinutes) / 2);
+        }
         const lineFragment = document.createElementNS("http://www.w3.org/2000/svg", "line");
         lineFragment.setAttribute("x1", `calc(${randomLeftPosition * 100}% + 25px)`);
         lineFragment.setAttribute("y1", `calc(${randomTopPosition * 100}% + 50px)`);
-        lineFragment.setAttribute(
-          "x2",
-          timelineEvent.timelineEventDetails.eventNode.offsetLeft + timelineEvent.timelineEventDetails.eventNode.offsetWidth / 2 + "px"
-        );
+        lineFragment.setAttribute("x2", x2 * 100 + "%");
         lineFragment.setAttribute("y2", timelineEvent.timelineEventDetails.eventNode.offsetTop + "px");
         lineFragment.setAttribute("style", `stroke:rgb(${[...timelineEvent.timelineEventDetails.color, 1].join(",")});stroke-width:2`);
         svgContainer.appendChild(lineFragment);
@@ -417,7 +423,7 @@ var Timeline = (elementIdentifier, settings) => {
     }
     return eventsFragment;
   };
-  const createEventsHTML = (parentEvent) => {
+  const createEventHTML = (parentEvent) => {
     const eventsFragment = document.createDocumentFragment();
     for (const timelineEvent of parentEvent.timelineEventDetails.childrenByStartMinute) {
       if (!timelineEvent || !timelineEvent.timelineEventDetails)
@@ -435,7 +441,7 @@ var Timeline = (elementIdentifier, settings) => {
       timelineEvent.timelineEventDetails.eventNode.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
       switch (timelineEvent.timelineEventDetails.type) {
         default: {
-          eventsFragment.append(createEventsHTML(timelineEvent));
+          eventsFragment.append(createEventHTML(timelineEvent));
           break;
         }
         case "timeline": {
@@ -513,7 +519,7 @@ var Timeline = (elementIdentifier, settings) => {
     ioContainer.style.top = "0";
     ioContainer.style.width = "100%";
   };
-  const appendLabelsHTML = () => {
+  const appendLabelHTML = () => {
     const currentLevel = Math.floor(ratio);
     const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
     const granularity = 1 / (options.labelCount + 1);
@@ -555,13 +561,13 @@ var Timeline = (elementIdentifier, settings) => {
     labelContainer.appendChild(labels);
     dividerContainer.appendChild(dividers);
   };
-  const appendEventsHTML = () => {
-    const eventsHtml = createEventsHTML(currentTimeline);
+  const appendEventHTML = () => {
+    const eventsHtml = createEventHTML(currentTimeline);
     if (eventsHtml)
       eventsContainer.appendChild(eventsHtml);
   };
-  const appendPreviewsHTML = () => {
-    const previewsHtml = createPreviewsHTML();
+  const appendPreviewHTML = () => {
+    const previewsHtml = createPreviewHTML();
     if (previewsHtml)
       previewsContainer.appendChild(previewsHtml);
   };
@@ -620,12 +626,12 @@ var Timeline = (elementIdentifier, settings) => {
     fire("update.tl.container");
   };
   const onUpdate = () => {
-    appendLabelsHTML();
-    appendEventsHTML();
+    appendLabelHTML();
+    appendEventHTML();
     if (options.numberOfHighscorePreviews > 0 && !hightligtedTimelineId) {
       clearTimeout(previewTimer);
       previewTimer = setTimeout(() => {
-        appendPreviewsHTML();
+        appendPreviewHTML();
       }, options.highscorePreviewDelay);
     }
   };
@@ -853,6 +859,8 @@ var Timeline = (elementIdentifier, settings) => {
       childEvent.timelineEventDetails.level = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcLevel(childEvent) : 0;
       childEvent.timelineEventDetails.eventNode = createEventNode(childEvent);
       childEvent.timelineEventDetails.previewNode = createPreviewNode(childEvent);
+      childEvent.timelineEventDetails.next = parent.timelineEventDetails.childrenByStartMinute.length > i + 1 ? parent.timelineEventDetails.childrenByStartMinute[i + 1].timelineEventDetails.id : void 0;
+      childEvent.timelineEventDetails.previous = i > 0 ? parent.timelineEventDetails.childrenByStartMinute[i - 1].timelineEventDetails.id : void 0;
     });
     parent.timelineEventDetails.height = Object.entries(parent.timelineEventDetails.levelMatrix).length;
   };
