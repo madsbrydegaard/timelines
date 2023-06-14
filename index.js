@@ -365,7 +365,6 @@ var Timeline = (elementIdentifier, settings) => {
     element2.addEventListener(
       "touchmove",
       (event) => {
-        inDrag = true;
         if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
           const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
           const touch2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
@@ -383,11 +382,15 @@ var Timeline = (elementIdentifier, settings) => {
           if (touch1 >= 0) {
             const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
             const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
-            drag(diffX, diffY);
+            if (diffX > 0) {
+              inDrag = true;
+              drag(diffX, diffY);
+            }
           }
         }
         tpCache = [];
         tpCache.push(...event.targetTouches);
+        fire("touchmove.tl.container");
       },
       { passive: true }
     );

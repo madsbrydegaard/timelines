@@ -524,8 +524,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				// targetTouches length of one, the second event will have a length
 				// of two, and so on.
 
-				inDrag = true;
-
 				if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
 					// Check if the two target touches are the same ones that started
 					// the 2-touch
@@ -552,12 +550,17 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 						// Calculate the difference between the start and move coordinates
 						const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
 						const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
-						drag(diffX, diffY);
+						if (diffX > 0) {
+							inDrag = true;
+							drag(diffX, diffY);
+						}
 					}
 				}
 
 				tpCache = [];
 				tpCache.push(...event.targetTouches);
+
+				fire("touchmove.tl.container");
 			},
 			{ passive: true }
 		);
