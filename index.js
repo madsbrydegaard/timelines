@@ -351,6 +351,7 @@ var Timeline = (elementIdentifier, settings) => {
     element2.addEventListener(
       "touchmove",
       (event) => {
+        event.preventDefault();
         if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
           const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
           const touch2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);

@@ -514,6 +514,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				// targetTouches length of one, the second event will have a length
 				// of two, and so on.
 
+				// Prevent to not zoom screen on mobile
+				event.preventDefault();
+
 				if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
 					// Check if the two target touches are the same ones that started
 					// the 2-touch
