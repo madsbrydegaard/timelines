@@ -28,6 +28,7 @@ export interface ITimelineOptions {
 		timelineDividers?: string;
 		timelineEvents?: string;
 		timelinePreviews?: string;
+		timelineIo?: string;
 		timelineLabel?: string;
 		timelineDivider?: string;
 	};
@@ -108,6 +109,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 	let dividerContainer: HTMLDivElement;
 	let eventsContainer: HTMLDivElement;
 	let previewsContainer: HTMLDivElement;
+	let ioContainer: HTMLDivElement;
 	let rootTimeline: ITimelineEventWithDetails;
 	let currentTimeline: ITimelineEventWithDetails;
 	let selectedTimelineId: string;
@@ -181,6 +183,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					timelineDividers: "tl__dividers",
 					timelineEvents: "tl__events",
 					timelinePreviews: "tl__previews",
+					timelineIo: "tl__io",
 					timelineLabel: "tl__label",
 					timelineDivider: "tl__divider",
 				},
@@ -455,26 +458,22 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		});
 
 		// Add zoom event handler
-		element.addEventListener(
-			"wheel",
-			(event: WheelEvent) => {
-				if (event.defaultPrevented) return;
-				event.preventDefault();
-				// Decide whether zoom is IN (-) or OUT (+)
-				var direction = Math.sign(event.deltaY) as Direction;
+		element.addEventListener("wheel", (event: WheelEvent) => {
+			if (event.defaultPrevented) return;
+			event.preventDefault();
+			// Decide whether zoom is IN (-) or OUT (+)
+			var direction = Math.sign(event.deltaY) as Direction;
 
-				// Adjust width of timeline for zooming effect
-				const leftRatio = (event.target as HTMLElement).attributes["starttime"]
-					? getViewRatio((event.target as HTMLElement).attributes["starttime"])
-					: 0;
+			// Adjust width of timeline for zooming effect
+			const leftRatio = (event.target as HTMLElement).attributes["starttime"]
+				? getViewRatio((event.target as HTMLElement).attributes["starttime"])
+				: 0;
 
-				const offsetX = leftRatio * viewWidth() + event.offsetX;
-				pinch(offsetX, direction);
+			const offsetX = leftRatio * viewWidth() + event.offsetX;
+			pinch(offsetX, direction);
 
-				fire("wheel.tl.container");
-			},
-			{ passive: true }
-		);
+			fire("wheel.tl.container");
+		});
 
 		element.addEventListener(
 			"touchstart",
@@ -489,11 +488,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				//
 				inDrag = true;
 
-				//
 				tpCache = [];
-				for (let i = 0; i < event.targetTouches.length; i++) {
-					tpCache.push(event.targetTouches[i]);
-				}
+				tpCache.push(...event.targetTouches);
 
 				fire("touchstart.tl.container");
 			},
@@ -508,7 +504,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				// three simultaneous touches, the first touchstart event will have
 				// targetTouches length of one, the second event will have a length
 				// of two, and so on.
-				console.log(event);
+
 				if (inDrag) {
 					inDrag = false;
 				} else {
@@ -530,6 +526,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				// three simultaneous touches, the first touchstart event will have
 				// targetTouches length of one, the second event will have a length
 				// of two, and so on.
+
+				//event.stopPropagation();
+				//event.preventDefault();
 
 				if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
 					// Check if the two target touches are the same ones that started
@@ -561,44 +560,60 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					}
 				}
 
-				console.log(event);
 				tpCache = [];
 				tpCache.push(...event.targetTouches);
-				// for (let i = 0; i < event.targetTouches.length; i++) {
-				// 	tpCache.push(event.targetTouches[i]);
-				// }
 			},
 			{ passive: true }
 		);
 
-		element.addEventListener("mousedown", (event) => {
-			dragStartX = event.clientX;
-			dragStartY = event.clientY;
-			//
-			inDrag = true;
+		element.addEventListener(
+			"mousedown",
+			(event) => {
+				dragStartX = event.clientX;
+				dragStartY = event.clientY;
+				//
+				inDrag = true;
 
-			fire("mousedown.tl.container");
-		});
+				fire("mousedown.tl.container");
+			},
+			{ passive: true }
+		);
 
 		// Add move handler
-		element.addEventListener("mousemove", (event) => {
-			const offsetX = event.clientX - dragStartX;
-			const offsetY = event.clientY - dragStartY;
-			drag(offsetX, offsetY);
-			dragStartX = event.clientX;
-			dragStartY = event.clientY;
-			fire("mousemove.tl.container");
-		});
+		element.addEventListener(
+			"mousemove",
+			(event) => {
+				const offsetX = event.clientX - dragStartX;
+				const offsetY = event.clientY - dragStartY;
+				drag(offsetX, offsetY);
+				dragStartX = event.clientX;
+				dragStartY = event.clientY;
+				fire("mousemove.tl.container");
+			},
+			{ passive: true }
+		);
 
 		// Add mouse up handler
-		element.addEventListener("mouseup", (event) => {
-			if (inDrag) {
+		element.addEventListener(
+			"mouseup",
+			(event) => {
 				inDrag = false;
-			} else {
-				fire("click.tl.container");
-				//fire("click.tl.preview", event.currentTarget)
+				fire("mouseup.tl.container");
+			},
+			{ passive: true }
+		);
+
+		element.addEventListener("click", (e) => {
+			const clickedElements = document.elementsFromPoint(e.clientX, e.clientY);
+			let clickedEvent = clickedElements.find((element) => {
+				return element.hasAttribute("eventid");
+			});
+			if (!clickedEvent) return;
+			const eventid = clickedEvent.getAttribute("eventid");
+			const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
+			if (timelineEvent) {
+				fire(`click.tl.event`, timelineEvent);
 			}
-			fire("mouseup.tl.container");
 		});
 
 		// Add event click handler
@@ -701,9 +716,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		element.style.minHeight = "3rem";
 
 		// Initialize labels
-		const existingLabelContainer = element.querySelector(`.${options.classNames.timelineLabels}`) as HTMLDivElement;
-		labelContainer = existingLabelContainer || document.createElement("div");
-		if (!existingLabelContainer) element.appendChild(labelContainer);
+		labelContainer = document.createElement("div");
+		element.appendChild(labelContainer);
 
 		labelContainer.classList.add(options.classNames.timelineLabels);
 		labelContainer.style.width = "100%";
@@ -725,9 +739,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		}
 
 		// Initialize dividers
-		const existingDividerContainer = element.querySelector(`.${options.classNames.timelineDividers}`) as HTMLDivElement;
-		dividerContainer = existingDividerContainer || document.createElement("div");
-		if (!existingDividerContainer) element.appendChild(dividerContainer);
+		dividerContainer = document.createElement("div");
+		element.appendChild(dividerContainer);
 
 		dividerContainer.classList.add(options.classNames.timelineDividers);
 		dividerContainer.style.width = "100%";
@@ -737,9 +750,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		dividerContainer.style.bottom = "0";
 
 		// Initialize events container
-		const existingEventsContainer = element.querySelector(`.${options.classNames.timelineEvents}`) as HTMLDivElement;
-		eventsContainer = existingEventsContainer || document.createElement("div");
-		if (!existingEventsContainer) element.appendChild(eventsContainer);
+		eventsContainer = document.createElement("div");
+		element.appendChild(eventsContainer);
 		eventsContainer.classList.add(options.classNames.timelineEvents);
 		eventsContainer.style.position = "absolute";
 		eventsContainer.style.bottom = "50px";
@@ -749,9 +761,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		eventsContainer.style.overflowX = "hidden";
 
 		// Initialize previews container
-		const existingPreviewsContainer = element.querySelector(`.${options.classNames.timelinePreviews}`) as HTMLDivElement;
-		previewsContainer = existingPreviewsContainer || document.createElement("div");
-		if (!existingPreviewsContainer) element.appendChild(previewsContainer);
+		previewsContainer = document.createElement("div");
+		element.appendChild(previewsContainer);
 		previewsContainer.classList.add(options.classNames.timelinePreviews);
 		previewsContainer.style.position = "absolute";
 		previewsContainer.style.bottom = "50px";
@@ -761,8 +772,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		previewsContainer.style.overflowX = "hidden";
 
 		// Initialize User I/O container
-		const ioContainer = document.createElement("div");
+		ioContainer = document.createElement("div");
 		element.appendChild(ioContainer);
+		ioContainer.classList.add(options.classNames.timelineIo);
 		ioContainer.style.position = "absolute";
 		ioContainer.style.bottom = "0";
 		ioContainer.style.top = "0";
@@ -1099,7 +1111,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 						const heightFactor = (timelineEvent.timelineEventDetails.level - 1) * options.eventHeight;
 						eventHTML.style.bottom = `${spaceFactor + heightFactor}px`;
 						eventHTML.style.minHeight = `${options.eventHeight}px`;
-						eventHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
+						//eventHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
 						eventHTML.style.cursor = "pointer";
 						eventHTML.style.borderRadius = "5px";
 						eventHTML.style.backgroundColor = `rgba(${[...timelineEvent.timelineEventDetails.color, 1].join(",")})`;
@@ -1115,12 +1127,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				default:
 			}
 
-			//eventHTML.addEventListener("touchend", (e) => fire("touchend.tl.event", timelineEvent));
-			eventHTML.addEventListener("click", (e) => fire("click.tl.event", timelineEvent));
-			eventHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.event", timelineEvent));
-			eventHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.event", timelineEvent));
-			eventHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.event", timelineEvent));
-
 			eventHTML.style.boxSizing = "border-box";
 			eventHTML.style.position = "absolute";
 			eventHTML.style.minWidth = "5px";
@@ -1129,6 +1135,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			eventHTML.setAttribute("level", timelineEvent.timelineEventDetails.level.toString());
 			eventHTML.setAttribute("depth", timelineEvent.timelineEventDetails.depth.toString());
 			eventHTML.setAttribute("score", timelineEvent.timelineEventDetails.score.toString());
+			eventHTML.setAttribute("eventid", timelineEvent.timelineEventDetails.id);
 
 			if (timelineEvent.renderEventNode) {
 				const elementToAppend = timelineEvent.renderEventNode(timelineEvent);
@@ -1146,15 +1153,10 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			previewHTML.style.position = "absolute";
 			previewHTML.style.overflow = "hidden";
 			previewHTML.style.cursor = "pointer";
-			previewHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
+			//previewHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
 			previewHTML.title = timelineEvent.title;
 			previewHTML.classList.add(options.classNames.timelinePreview);
-
-			//previewHTML.addEventListener("touchend", (e) => fire("touchend.tl.preview", timelineEvent));
-			previewHTML.addEventListener("click", (e) => fire("click.tl.preview", timelineEvent));
-			previewHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.preview", timelineEvent));
-			previewHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.preview", timelineEvent));
-			previewHTML.addEventListener("dblclick", (e) => fire("dblclick.tl.preview", timelineEvent));
+			previewHTML.setAttribute("eventid", timelineEvent.timelineEventDetails.id);
 
 			previewHTML.append(timelineEvent.renderPreviewNode(timelineEvent));
 

@@ -29,6 +29,7 @@ declare module "timeline.io" {
             timelineDividers?: string;
             timelineEvents?: string;
             timelinePreviews?: string;
+            timelineIo?: string;
             timelineLabel?: string;
             timelineDivider?: string;
         };

@@ -29,22 +29,7 @@
 			let log = [];
 			const timelineContainer = document.querySelector("#timeline");
 			const logElement = document.querySelector("#log");
-			const events = [
-				"pinch.tl.container",
-				"wheel.tl.container",
-				"drag.tl.container",
-				"touchstart.tl.container",
-				"touchmove.tl.container",
-				"touchend.tl.container",
-				"touchend.tl.preview",
-				"touchend.tl.event",
-				"mousedown.tl.container",
-				"click.tl.event",
-				"click.tl.preview",
-				"mouseup.tl.container",
-				"tab.tl.container",
-				"zoom.tl.event",
-			];
+			const events = ["pinch.tl.container", "wheel.tl.container", "drag.tl.container", "click.tl.event"];
 
 			events.forEach((eventName) => {
 				timelineContainer.addEventListener(eventName, (timelineEvent) => {
