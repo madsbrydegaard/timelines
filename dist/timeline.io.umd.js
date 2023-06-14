@@ -322,59 +322,74 @@
         update();
         fire("resize.tl.container");
       });
-      element2.addEventListener("wheel", (event) => {
-        if (event.defaultPrevented)
-          return;
-        event.preventDefault();
-        var direction = Math.sign(event.deltaY);
-        const leftRatio = event.target.attributes["starttime"] ? getViewRatio(event.target.attributes["starttime"]) : 0;
-        const offsetX = leftRatio * viewWidth() + event.offsetX;
-        pinch(offsetX, direction);
-        fire("wheel.tl.container");
-      });
-      element2.addEventListener("touchstart", (event) => {
-        event.preventDefault();
-        inDrag = true;
-        tpCache = [];
-        for (let i = 0; i < event.targetTouches.length; i++) {
-          tpCache.push(event.targetTouches[i]);
-        }
-        fire("touchstart.tl.container");
-      });
-      element2.addEventListener("touchend", (event) => {
-        console.log(event);
-        if (inDrag) {
-          inDrag = false;
-        } else {
-          fire("tab.tl.container");
-        }
-        fire("touchend.tl.container");
-      });
-      element2.addEventListener("touchmove", (event) => {
-        if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
-          const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
-          const touch2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
-          if (touch1 >= 0 && touch2 >= 0) {
-            const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
-            const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
-            const diff = diff1 - diff2;
-            const offsetX = Math.min(event.targetTouches[0].clientX, event.targetTouches[1].clientX) + diff2 / 2;
-            var direction = Math.sign(diff);
-            pinch(offsetX, direction);
+      element2.addEventListener(
+        "wheel",
+        (event) => {
+          if (event.defaultPrevented)
+            return;
+          event.preventDefault();
+          var direction = Math.sign(event.deltaY);
+          const leftRatio = event.target.attributes["starttime"] ? getViewRatio(event.target.attributes["starttime"]) : 0;
+          const offsetX = leftRatio * viewWidth() + event.offsetX;
+          pinch(offsetX, direction);
+          fire("wheel.tl.container");
+        },
+        { passive: true }
+      );
+      element2.addEventListener(
+        "touchstart",
+        (event) => {
+          inDrag = true;
+          tpCache = [];
+          for (let i = 0; i < event.targetTouches.length; i++) {
+            tpCache.push(event.targetTouches[i]);
           }
-        }
-        if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
-          const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
-          if (touch1 >= 0) {
-            const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
-            const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
-            drag(diffX, diffY);
+          fire("touchstart.tl.container");
+        },
+        { passive: true }
+      );
+      element2.addEventListener(
+        "touchend",
+        (event) => {
+          console.log(event);
+          if (inDrag) {
+            inDrag = false;
+          } else {
+            fire("tab.tl.container");
           }
-        }
-        console.log(event);
-        tpCache = [];
-        tpCache.push(...event.targetTouches);
-      });
+          fire("touchend.tl.container");
+        },
+        { passive: true }
+      );
+      element2.addEventListener(
+        "touchmove",
+        (event) => {
+          if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
+            const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
+            const touch2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
+            if (touch1 >= 0 && touch2 >= 0) {
+              const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
+              const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
+              const diff = diff1 - diff2;
+              const offsetX = Math.min(event.targetTouches[0].clientX, event.targetTouches[1].clientX) + diff2 / 2;
+              var direction = Math.sign(diff);
+              pinch(offsetX, direction);
+            }
+          }
+          if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
+            const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
+            if (touch1 >= 0) {
+              const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
+              const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
+              drag(diffX, diffY);
+            }
+          }
+          console.log(event);
+          tpCache = [];
+          tpCache.push(...event.targetTouches);
+        },
+        { passive: true }
+      );
       element2.addEventListener("mousedown", (event) => {
         dragStartX = event.clientX;
         dragStartY = event.clientY;
@@ -826,7 +841,6 @@
             break;
           default:
         }
-        eventHTML.addEventListener("touchend", (e) => fire("touchend.tl.event", timelineEvent));
         eventHTML.addEventListener("click", (e) => fire("click.tl.event", timelineEvent));
         eventHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.event", timelineEvent));
         eventHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.event", timelineEvent));
@@ -858,7 +872,6 @@
         previewHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
         previewHTML.title = timelineEvent.title;
         previewHTML.classList.add(options.classNames.timelinePreview);
-        previewHTML.addEventListener("touchend", (e) => fire("touchend.tl.preview", timelineEvent));
         previewHTML.addEventListener("click", (e) => fire("click.tl.preview", timelineEvent));
         previewHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.preview", timelineEvent));
         previewHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.preview", timelineEvent));

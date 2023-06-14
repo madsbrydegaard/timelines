@@ -455,105 +455,121 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		});
 
 		// Add zoom event handler
-		element.addEventListener("wheel", (event: WheelEvent) => {
-			if (event.defaultPrevented) return;
-			event.preventDefault();
-			// Decide whether zoom is IN (-) or OUT (+)
-			var direction = Math.sign(event.deltaY) as Direction;
+		element.addEventListener(
+			"wheel",
+			(event: WheelEvent) => {
+				if (event.defaultPrevented) return;
+				event.preventDefault();
+				// Decide whether zoom is IN (-) or OUT (+)
+				var direction = Math.sign(event.deltaY) as Direction;
 
-			// Adjust width of timeline for zooming effect
-			const leftRatio = (event.target as HTMLElement).attributes["starttime"]
-				? getViewRatio((event.target as HTMLElement).attributes["starttime"])
-				: 0;
+				// Adjust width of timeline for zooming effect
+				const leftRatio = (event.target as HTMLElement).attributes["starttime"]
+					? getViewRatio((event.target as HTMLElement).attributes["starttime"])
+					: 0;
 
-			const offsetX = leftRatio * viewWidth() + event.offsetX;
-			pinch(offsetX, direction);
+				const offsetX = leftRatio * viewWidth() + event.offsetX;
+				pinch(offsetX, direction);
 
-			fire("wheel.tl.container");
-		});
+				fire("wheel.tl.container");
+			},
+			{ passive: true }
+		);
 
-		element.addEventListener("touchstart", (event: TouchEvent) => {
-			// If the user makes simultaneous touches, the browser will fire a
-			// separate touchstart event for each touch point. Thus if there are
-			// three simultaneous touches, the first touchstart event will have
-			// targetTouches length of one, the second event will have a length
-			// of two, and so on.
-			event.preventDefault();
+		element.addEventListener(
+			"touchstart",
+			(event: TouchEvent) => {
+				// If the user makes simultaneous touches, the browser will fire a
+				// separate touchstart event for each touch point. Thus if there are
+				// three simultaneous touches, the first touchstart event will have
+				// targetTouches length of one, the second event will have a length
+				// of two, and so on.
+				//event.preventDefault();
 
-			//
-			inDrag = true;
+				//
+				inDrag = true;
 
-			//
-			tpCache = [];
-			for (let i = 0; i < event.targetTouches.length; i++) {
-				tpCache.push(event.targetTouches[i]);
-			}
+				//
+				tpCache = [];
+				for (let i = 0; i < event.targetTouches.length; i++) {
+					tpCache.push(event.targetTouches[i]);
+				}
 
-			fire("touchstart.tl.container");
-		});
+				fire("touchstart.tl.container");
+			},
+			{ passive: true }
+		);
 
-		element.addEventListener("touchend", (event: TouchEvent) => {
-			// If the user makes simultaneous touches, the browser will fire a
-			// separate touchstart event for each touch point. Thus if there are
-			// three simultaneous touches, the first touchstart event will have
-			// targetTouches length of one, the second event will have a length
-			// of two, and so on.
-			console.log(event);
-			if (inDrag) {
-				inDrag = false;
-			} else {
-				fire("tab.tl.container");
-				//fire("click.tl.preview", event.currentTarget)
-			}
-			fire("touchend.tl.container");
-		});
+		element.addEventListener(
+			"touchend",
+			(event: TouchEvent) => {
+				// If the user makes simultaneous touches, the browser will fire a
+				// separate touchstart event for each touch point. Thus if there are
+				// three simultaneous touches, the first touchstart event will have
+				// targetTouches length of one, the second event will have a length
+				// of two, and so on.
+				console.log(event);
+				if (inDrag) {
+					inDrag = false;
+				} else {
+					fire("tab.tl.container");
+					//fire("click.tl.preview", event.currentTarget)
+				}
+				fire("touchend.tl.container");
+			},
+			{ passive: true }
+		);
 
 		// This is a very basic 2-touch move/pinch/zoom handler that does not include
 		// error handling, only handles horizontal moves, etc.
-		element.addEventListener("touchmove", (event: TouchEvent) => {
-			// If the user makes simultaneous touches, the browser will fire a
-			// separate touchstart event for each touch point. Thus if there are
-			// three simultaneous touches, the first touchstart event will have
-			// targetTouches length of one, the second event will have a length
-			// of two, and so on.
+		element.addEventListener(
+			"touchmove",
+			(event: TouchEvent) => {
+				// If the user makes simultaneous touches, the browser will fire a
+				// separate touchstart event for each touch point. Thus if there are
+				// three simultaneous touches, the first touchstart event will have
+				// targetTouches length of one, the second event will have a length
+				// of two, and so on.
 
-			if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
-				// Check if the two target touches are the same ones that started
-				// the 2-touch
-				const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
-				const touch2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
-				// const target = event.target as HTMLDivElement;
+				if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
+					// Check if the two target touches are the same ones that started
+					// the 2-touch
+					const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
+					const touch2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
+					// const target = event.target as HTMLDivElement;
 
-				if (touch1 >= 0 && touch2 >= 0) {
-					// Calculate the difference between the start and move coordinates
-					const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
-					const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
-					const diff = diff1 - diff2;
-					const offsetX = Math.min(event.targetTouches[0].clientX, event.targetTouches[1].clientX) + diff2 / 2;
-					// Decide whether zoom is IN (-) or OUT (+)
-					var direction = Math.sign(diff) as Direction;
-					pinch(offsetX, direction);
+					if (touch1 >= 0 && touch2 >= 0) {
+						// Calculate the difference between the start and move coordinates
+						const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
+						const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
+						const diff = diff1 - diff2;
+						const offsetX = Math.min(event.targetTouches[0].clientX, event.targetTouches[1].clientX) + diff2 / 2;
+						// Decide whether zoom is IN (-) or OUT (+)
+						var direction = Math.sign(diff) as Direction;
+						pinch(offsetX, direction);
+					}
 				}
-			}
 
-			if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
-				// Check if the target touches are the same one that started
-				const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
-				if (touch1 >= 0) {
-					// Calculate the difference between the start and move coordinates
-					const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
-					const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
-					drag(diffX, diffY);
+				if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
+					// Check if the target touches are the same one that started
+					const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
+					if (touch1 >= 0) {
+						// Calculate the difference between the start and move coordinates
+						const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
+						const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
+						drag(diffX, diffY);
+					}
 				}
-			}
 
-			console.log(event);
-			tpCache = [];
-			tpCache.push(...event.targetTouches);
-			// for (let i = 0; i < event.targetTouches.length; i++) {
-			// 	tpCache.push(event.targetTouches[i]);
-			// }
-		});
+				console.log(event);
+				tpCache = [];
+				tpCache.push(...event.targetTouches);
+				// for (let i = 0; i < event.targetTouches.length; i++) {
+				// 	tpCache.push(event.targetTouches[i]);
+				// }
+			},
+			{ passive: true }
+		);
 
 		element.addEventListener("mousedown", (event) => {
 			dragStartX = event.clientX;
@@ -1099,7 +1115,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				default:
 			}
 
-			eventHTML.addEventListener("touchend", (e) => fire("touchend.tl.event", timelineEvent));
+			//eventHTML.addEventListener("touchend", (e) => fire("touchend.tl.event", timelineEvent));
 			eventHTML.addEventListener("click", (e) => fire("click.tl.event", timelineEvent));
 			eventHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.event", timelineEvent));
 			eventHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.event", timelineEvent));
@@ -1134,7 +1150,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			previewHTML.title = timelineEvent.title;
 			previewHTML.classList.add(options.classNames.timelinePreview);
 
-			previewHTML.addEventListener("touchend", (e) => fire("touchend.tl.preview", timelineEvent));
+			//previewHTML.addEventListener("touchend", (e) => fire("touchend.tl.preview", timelineEvent));
 			previewHTML.addEventListener("click", (e) => fire("click.tl.preview", timelineEvent));
 			previewHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.preview", timelineEvent));
 			previewHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.preview", timelineEvent));
