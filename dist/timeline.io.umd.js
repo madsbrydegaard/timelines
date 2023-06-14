@@ -320,6 +320,19 @@
           zoom(event.detail.timelineEvent);
         }
       };
+      const click = (clientX, clientY) => {
+        const clickedElements = document.elementsFromPoint(clientX, clientY);
+        let clickedEvent = clickedElements.find((element3) => {
+          return element3.hasAttribute("eventid");
+        });
+        if (!clickedEvent)
+          return;
+        const eventid = clickedEvent.getAttribute("eventid");
+        const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
+        if (timelineEvent) {
+          fire(`click.tl.event`, timelineEvent);
+        }
+      };
       window.addEventListener("resize", (event) => {
         update();
         fire("resize.tl.container");
@@ -336,7 +349,6 @@
       });
       element2.addEventListener("touchstart", (event) => {
         event.preventDefault();
-        inDrag = true;
         tpCache = [];
         tpCache.push(...event.targetTouches);
         fire("touchstart.tl.container");
@@ -344,6 +356,8 @@
       element2.addEventListener(
         "touchend",
         (event) => {
+          if (!inDrag)
+            click(tpCache[0].clientX, tpCache[0].clientY);
           inDrag = false;
           fire("touchend.tl.container");
         },
@@ -352,7 +366,7 @@
       element2.addEventListener(
         "touchmove",
         (event) => {
-          event.preventDefault();
+          inDrag = true;
           if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
             const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
             const touch2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
@@ -408,19 +422,7 @@
         },
         { passive: true }
       );
-      element2.addEventListener("click", (e) => {
-        const clickedElements = document.elementsFromPoint(e.clientX, e.clientY);
-        let clickedEvent = clickedElements.find((element3) => {
-          return element3.hasAttribute("eventid");
-        });
-        if (!clickedEvent)
-          return;
-        const eventid = clickedEvent.getAttribute("eventid");
-        const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
-        if (timelineEvent) {
-          fire(`click.tl.event`, timelineEvent);
-        }
-      });
+      element2.addEventListener("click", (e) => click(e.clientX, e.clientY));
       element2.addEventListener("click.tl.event", onEventClick);
       element2.addEventListener("click.tl.preview", onEventClick);
       element2.addEventListener("selected.tl.event", onEventSelected);

@@ -449,6 +449,18 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				zoom(event.detail.timelineEvent);
 			}
 		};
+		const click = (clientX: number, clientY: number) => {
+			const clickedElements = document.elementsFromPoint(clientX, clientY);
+			let clickedEvent = clickedElements.find((element) => {
+				return element.hasAttribute("eventid");
+			});
+			if (!clickedEvent) return;
+			const eventid = clickedEvent.getAttribute("eventid");
+			const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
+			if (timelineEvent) {
+				fire(`click.tl.event`, timelineEvent);
+			}
+		};
 
 		// Add resize handler
 		window.addEventListener("resize", (event) => {
@@ -485,9 +497,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			// Prevent to not zoom screen on mobile
 			event.preventDefault();
 
-			//
-			inDrag = true;
-
 			tpCache = [];
 			tpCache.push(...event.targetTouches);
 
@@ -497,6 +506,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		element.addEventListener(
 			"touchend",
 			(event: TouchEvent) => {
+				if (!inDrag) click(tpCache[0].clientX, tpCache[0].clientY);
 				inDrag = false;
 				fire("touchend.tl.container");
 			},
@@ -514,8 +524,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				// targetTouches length of one, the second event will have a length
 				// of two, and so on.
 
-				// Prevent to not zoom screen on mobile
-				event.preventDefault();
+				inDrag = true;
 
 				if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
 					// Check if the two target touches are the same ones that started
@@ -590,18 +599,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			{ passive: true }
 		);
 
-		element.addEventListener("click", (e) => {
-			const clickedElements = document.elementsFromPoint(e.clientX, e.clientY);
-			let clickedEvent = clickedElements.find((element) => {
-				return element.hasAttribute("eventid");
-			});
-			if (!clickedEvent) return;
-			const eventid = clickedEvent.getAttribute("eventid");
-			const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
-			if (timelineEvent) {
-				fire(`click.tl.event`, timelineEvent);
-			}
-		});
+		element.addEventListener("click", (e) => click(e.clientX, e.clientY));
 
 		// Add event click handler
 		element.addEventListener("click.tl.event", onEventClick);
@@ -635,7 +633,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				timelineEvent.timelineEventDetails.previewNode.style.top = randomTopPosition * 100 + "%";
 
 				let x2 = getViewRatio(timelineEvent.timelineEventDetails.startMinutes + timelineEvent.timelineEventDetails.durationMinutes / 2);
-				//console.log(timelineEvent.title, x2);
 				if (x2 > 1) {
 					x2 = getViewRatio(timelineEvent.timelineEventDetails.startMinutes + (viewEnd() - timelineEvent.timelineEventDetails.startMinutes) / 2);
 				}
