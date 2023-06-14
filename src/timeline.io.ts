@@ -475,42 +475,29 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			fire("wheel.tl.container");
 		});
 
-		element.addEventListener(
-			"touchstart",
-			(event: TouchEvent) => {
-				// If the user makes simultaneous touches, the browser will fire a
-				// separate touchstart event for each touch point. Thus if there are
-				// three simultaneous touches, the first touchstart event will have
-				// targetTouches length of one, the second event will have a length
-				// of two, and so on.
-				//event.preventDefault();
+		element.addEventListener("touchstart", (event: TouchEvent) => {
+			// If the user makes simultaneous touches, the browser will fire a
+			// separate touchstart event for each touch point. Thus if there are
+			// three simultaneous touches, the first touchstart event will have
+			// targetTouches length of one, the second event will have a length
+			// of two, and so on.
 
-				//
-				inDrag = true;
+			// Prevent to not zoom screen on mobile
+			event.preventDefault();
 
-				tpCache = [];
-				tpCache.push(...event.targetTouches);
+			//
+			inDrag = true;
 
-				fire("touchstart.tl.container");
-			},
-			{ passive: true }
-		);
+			tpCache = [];
+			tpCache.push(...event.targetTouches);
+
+			fire("touchstart.tl.container");
+		});
 
 		element.addEventListener(
 			"touchend",
 			(event: TouchEvent) => {
-				// If the user makes simultaneous touches, the browser will fire a
-				// separate touchstart event for each touch point. Thus if there are
-				// three simultaneous touches, the first touchstart event will have
-				// targetTouches length of one, the second event will have a length
-				// of two, and so on.
-
-				if (inDrag) {
-					inDrag = false;
-				} else {
-					fire("tab.tl.container");
-					//fire("click.tl.preview", event.currentTarget)
-				}
+				inDrag = false;
 				fire("touchend.tl.container");
 			},
 			{ passive: true }
@@ -526,9 +513,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				// three simultaneous touches, the first touchstart event will have
 				// targetTouches length of one, the second event will have a length
 				// of two, and so on.
-
-				//event.stopPropagation();
-				//event.preventDefault();
 
 				if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
 					// Check if the two target touches are the same ones that started

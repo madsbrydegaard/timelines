@@ -333,24 +333,17 @@ var Timeline = (elementIdentifier, settings) => {
       pinch(offsetX, direction);
       fire("wheel.tl.container");
     });
-    element2.addEventListener(
-      "touchstart",
-      (event) => {
-        inDrag = true;
-        tpCache = [];
-        tpCache.push(...event.targetTouches);
-        fire("touchstart.tl.container");
-      },
-      { passive: true }
-    );
+    element2.addEventListener("touchstart", (event) => {
+      event.preventDefault();
+      inDrag = true;
+      tpCache = [];
+      tpCache.push(...event.targetTouches);
+      fire("touchstart.tl.container");
+    });
     element2.addEventListener(
       "touchend",
       (event) => {
-        if (inDrag) {
-          inDrag = false;
-        } else {
-          fire("tab.tl.container");
-        }
+        inDrag = false;
         fire("touchend.tl.container");
       },
       { passive: true }
