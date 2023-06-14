@@ -294,33 +294,14 @@ var Timeline = (elementIdentifier, settings) => {
     let tpCache = [];
     let dragStartX, dragStartY;
     let inDrag = false;
-    let canDrag = false;
-    let canPinch = true;
-    const drag = (x, y) => {
-      if (!inDrag && !canDrag) {
+    const drag = (offsetX, offsetY) => {
+      if (!inDrag)
         return;
-      }
-      const deltaScrollLeft = x - dragStartX;
-      if (deltaScrollLeft)
-        onmove(deltaScrollLeft);
-      dragStartX = x;
-      dragStartY = y;
+      if (offsetX)
+        onmove(offsetX);
       fire("drag.tl.container");
     };
-    const startDrag = (x, y) => {
-      inDrag = true;
-      dragStartX = x;
-      dragStartY = y;
-      fire("startpan.tl.container");
-    };
-    const endDrag = () => {
-      inDrag = false;
-      fire("endpan.tl.container");
-    };
     const pinch = (offsetX, direction) => {
-      if (!canPinch) {
-        return;
-      }
       const mouseX2view = offsetX / viewWidth();
       const mouseX2timeline = (mouseX2view - pivot) / ratio;
       onzoom(direction, mouseX2timeline);
@@ -352,19 +333,20 @@ var Timeline = (elementIdentifier, settings) => {
     });
     element2.addEventListener("touchstart", (event) => {
       event.preventDefault();
-      if (event.targetTouches.length === 2) {
-        tpCache = [];
-        for (let i = 0; i < event.targetTouches.length; i++) {
-          tpCache.push(event.targetTouches[i]);
-        }
-      }
-      if (event.targetTouches.length === 1) {
-        startDrag(event.targetTouches[0].clientX, event.targetTouches[0].clientY);
+      inDrag = true;
+      tpCache = [];
+      for (let i = 0; i < event.targetTouches.length; i++) {
+        tpCache.push(event.targetTouches[i]);
       }
       fire("touchstart.tl.container");
     });
     element2.addEventListener("touchend", (event) => {
-      endDrag();
+      console.log(event);
+      if (inDrag) {
+        inDrag = false;
+      } else {
+        fire("tab.tl.container");
+      }
       fire("touchend.tl.container");
     });
     element2.addEventListener("touchmove", (event) => {
@@ -378,28 +360,40 @@ var Timeline = (elementIdentifier, settings) => {
           const offsetX = Math.min(event.targetTouches[0].clientX, event.targetTouches[1].clientX) + diff2 / 2;
           var direction = Math.sign(diff);
           pinch(offsetX, direction);
-          fire("touchmove.tl.container");
-        }
-        tpCache = [];
-        for (let i = 0; i < event.targetTouches.length; i++) {
-          tpCache.push(event.targetTouches[i]);
         }
       }
       if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
-        drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
-        fire("touchmove.tl.container");
+        const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
+        if (touch1 >= 0) {
+          const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
+          const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
+          drag(diffX, diffY);
+        }
       }
+      console.log(event);
+      tpCache = [];
+      tpCache.push(...event.targetTouches);
     });
     element2.addEventListener("mousedown", (event) => {
-      startDrag(event.clientX, event.clientY);
+      dragStartX = event.clientX;
+      dragStartY = event.clientY;
+      inDrag = true;
       fire("mousedown.tl.container");
     });
     element2.addEventListener("mousemove", (event) => {
-      drag(event.clientX, event.clientY);
+      const offsetX = event.clientX - dragStartX;
+      const offsetY = event.clientY - dragStartY;
+      drag(offsetX, offsetY);
+      dragStartX = event.clientX;
+      dragStartY = event.clientY;
       fire("mousemove.tl.container");
     });
     element2.addEventListener("mouseup", (event) => {
-      endDrag();
+      if (inDrag) {
+        inDrag = false;
+      } else {
+        fire("click.tl.container");
+      }
       fire("mouseup.tl.container");
     });
     element2.addEventListener("click.tl.event", onEventClick);
@@ -831,6 +825,7 @@ var Timeline = (elementIdentifier, settings) => {
           break;
         default:
       }
+      eventHTML.addEventListener("touchend", (e) => fire("touchend.tl.event", timelineEvent));
       eventHTML.addEventListener("click", (e) => fire("click.tl.event", timelineEvent));
       eventHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.event", timelineEvent));
       eventHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.event", timelineEvent));
@@ -862,6 +857,7 @@ var Timeline = (elementIdentifier, settings) => {
       previewHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
       previewHTML.title = timelineEvent.title;
       previewHTML.classList.add(options.classNames.timelinePreview);
+      previewHTML.addEventListener("touchend", (e) => fire("touchend.tl.preview", timelineEvent));
       previewHTML.addEventListener("click", (e) => fire("click.tl.preview", timelineEvent));
       previewHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.preview", timelineEvent));
       previewHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.preview", timelineEvent));

@@ -417,39 +417,18 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		// Add drag event handler
 		let dragStartX: number, dragStartY: number;
 		let inDrag = false;
-		let canDrag = false;
-		let canPinch = true;
 
 		// Drag handlers
-		const drag = (x: number, y: number) => {
-			if (!inDrag && !canDrag) {
-				return;
-			}
+		const drag = (offsetX: number, offsetY: number) => {
+			if (!inDrag) return;
 			//canDrag = false;
-			const deltaScrollLeft = x - dragStartX;
+			//const deltaScrollLeft = x - dragStartX;
 			//const deltaScrollTop = (e.pageY - dragStartY);
-			if (deltaScrollLeft) onmove(deltaScrollLeft);
-			dragStartX = x;
-			dragStartY = y;
+			if (offsetX) onmove(offsetX);
 			//setTimeout(() => (canDrag = true), 10); // Throttle drag for performance reasons
 			fire("drag.tl.container");
 		};
-		const startDrag = (x: number, y: number) => {
-			inDrag = true;
-			dragStartX = x;
-			dragStartY = y;
-
-			fire("startpan.tl.container");
-		};
-		const endDrag = () => {
-			inDrag = false;
-
-			fire("endpan.tl.container");
-		};
 		const pinch = (offsetX: number, direction: Direction) => {
-			if (!canPinch) {
-				return;
-			}
 			//canPinch = false;
 			const mouseX2view = offsetX / viewWidth();
 			const mouseX2timeline = (mouseX2view - pivot) / ratio;
@@ -502,15 +481,12 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			event.preventDefault();
 
 			//
-			if (event.targetTouches.length === 2) {
-				tpCache = [];
-				for (let i = 0; i < event.targetTouches.length; i++) {
-					tpCache.push(event.targetTouches[i]);
-				}
-			}
+			inDrag = true;
 
-			if (event.targetTouches.length === 1) {
-				startDrag(event.targetTouches[0].clientX, event.targetTouches[0].clientY);
+			//
+			tpCache = [];
+			for (let i = 0; i < event.targetTouches.length; i++) {
+				tpCache.push(event.targetTouches[i]);
 			}
 
 			fire("touchstart.tl.container");
@@ -522,7 +498,13 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			// three simultaneous touches, the first touchstart event will have
 			// targetTouches length of one, the second event will have a length
 			// of two, and so on.
-			endDrag();
+			console.log(event);
+			if (inDrag) {
+				inDrag = false;
+			} else {
+				fire("tab.tl.container");
+				//fire("click.tl.preview", event.currentTarget)
+			}
 			fire("touchend.tl.container");
 		});
 
@@ -551,35 +533,55 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					// Decide whether zoom is IN (-) or OUT (+)
 					var direction = Math.sign(diff) as Direction;
 					pinch(offsetX, direction);
-					fire("touchmove.tl.container");
-				}
-
-				tpCache = [];
-				for (let i = 0; i < event.targetTouches.length; i++) {
-					tpCache.push(event.targetTouches[i]);
 				}
 			}
 
 			if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
-				drag(event.changedTouches[0].clientX, event.changedTouches[0].clientY);
-				fire("touchmove.tl.container");
+				// Check if the target touches are the same one that started
+				const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
+				if (touch1 >= 0) {
+					// Calculate the difference between the start and move coordinates
+					const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
+					const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
+					drag(diffX, diffY);
+				}
 			}
+
+			console.log(event);
+			tpCache = [];
+			tpCache.push(...event.targetTouches);
+			// for (let i = 0; i < event.targetTouches.length; i++) {
+			// 	tpCache.push(event.targetTouches[i]);
+			// }
 		});
 
 		element.addEventListener("mousedown", (event) => {
-			startDrag(event.clientX, event.clientY);
+			dragStartX = event.clientX;
+			dragStartY = event.clientY;
+			//
+			inDrag = true;
+
 			fire("mousedown.tl.container");
 		});
 
 		// Add move handler
 		element.addEventListener("mousemove", (event) => {
-			drag(event.clientX, event.clientY);
+			const offsetX = event.clientX - dragStartX;
+			const offsetY = event.clientY - dragStartY;
+			drag(offsetX, offsetY);
+			dragStartX = event.clientX;
+			dragStartY = event.clientY;
 			fire("mousemove.tl.container");
 		});
 
 		// Add mouse up handler
 		element.addEventListener("mouseup", (event) => {
-			endDrag();
+			if (inDrag) {
+				inDrag = false;
+			} else {
+				fire("click.tl.container");
+				//fire("click.tl.preview", event.currentTarget)
+			}
 			fire("mouseup.tl.container");
 		});
 
@@ -1097,6 +1099,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				default:
 			}
 
+			eventHTML.addEventListener("touchend", (e) => fire("touchend.tl.event", timelineEvent));
 			eventHTML.addEventListener("click", (e) => fire("click.tl.event", timelineEvent));
 			eventHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.event", timelineEvent));
 			eventHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.event", timelineEvent));
@@ -1131,6 +1134,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			previewHTML.title = timelineEvent.title;
 			previewHTML.classList.add(options.classNames.timelinePreview);
 
+			previewHTML.addEventListener("touchend", (e) => fire("touchend.tl.preview", timelineEvent));
 			previewHTML.addEventListener("click", (e) => fire("click.tl.preview", timelineEvent));
 			previewHTML.addEventListener("mouseenter", (e) => fire("mouseenter.tl.preview", timelineEvent));
 			previewHTML.addEventListener("mouseleave", (e) => fire("mouseleave.tl.preview", timelineEvent));
