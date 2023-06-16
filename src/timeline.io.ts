@@ -550,7 +550,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 						// Calculate the difference between the start and move coordinates
 						const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
 						const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
-						if (diffX > 0) {
+						if (diffX !== 0) {
 							inDrag = true;
 							drag(diffX, diffY);
 						}

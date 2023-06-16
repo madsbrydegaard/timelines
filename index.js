@@ -382,7 +382,7 @@ var Timeline = (elementIdentifier, settings) => {
           if (touch1 >= 0) {
             const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
             const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
-            if (diffX > 0) {
+            if (diffX !== 0) {
               inDrag = true;
               drag(diffX, diffY);
             }
