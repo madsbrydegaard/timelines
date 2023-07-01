@@ -297,12 +297,36 @@
       let tpCache = [];
       let dragStartX, dragStartY;
       let inDrag = false;
+      const move = (clientX, clientY) => {
+        if (inDrag) {
+          const offsetX = clientX - dragStartX;
+          const offsetY = clientY - dragStartY;
+          drag(offsetX, offsetY);
+          dragStartX = clientX;
+          dragStartY = clientY;
+        } else
+          hover(clientX, clientY);
+      };
       const drag = (offsetX, offsetY) => {
-        if (!inDrag)
-          return;
         if (offsetX)
           onmove(offsetX);
         fire("drag.tl.container");
+      };
+      const hover = (clientX, clientY) => {
+        const clickedElements = document.elementsFromPoint(clientX, clientY);
+        let clickedEvent = clickedElements.find((element3) => {
+          return element3.hasAttribute("eventid");
+        });
+        if (!clickedEvent) {
+          element2.style.cursor = "";
+          return;
+        }
+        element2.style.cursor = "pointer";
+        const eventid = clickedEvent.getAttribute("eventid");
+        const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
+        if (timelineEvent) {
+          fire(`hover.tl.event`, timelineEvent);
+        }
       };
       const pinch = (offsetX, direction) => {
         const mouseX2view = offsetX / viewWidth();
@@ -319,6 +343,8 @@
         if (options.autoZoom && event.detail.timelineEvent) {
           zoom(event.detail.timelineEvent);
         }
+      };
+      const onEventHover = (event) => {
       };
       const click = (clientX, clientY) => {
         const clickedElements = document.elementsFromPoint(clientX, clientY);
@@ -382,10 +408,11 @@
             const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
             if (touch1 >= 0) {
               const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
-              const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
               if (diffX !== 0) {
                 inDrag = true;
-                drag(diffX, diffY);
+                dragStartX = tpCache[touch1].clientX;
+                dragStartY = tpCache[touch1].clientY;
+                move(event.targetTouches[0].clientX, event.targetTouches[0].clientY);
               }
             }
           }
@@ -408,11 +435,7 @@
       element2.addEventListener(
         "mousemove",
         (event) => {
-          const offsetX = event.clientX - dragStartX;
-          const offsetY = event.clientY - dragStartY;
-          drag(offsetX, offsetY);
-          dragStartX = event.clientX;
-          dragStartY = event.clientY;
+          move(event.clientX, event.clientY);
           fire("mousemove.tl.container");
         },
         { passive: true }
@@ -429,6 +452,7 @@
       element2.addEventListener("click.tl.event", onEventClick);
       element2.addEventListener("click.tl.preview", onEventClick);
       element2.addEventListener("selected.tl.event", onEventSelected);
+      element2.addEventListener("hover.tl.event", onEventHover);
       element2.addEventListener("update.tl.container", onUpdate);
     };
     const createPreviewHTML = () => {

@@ -421,15 +421,35 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		let dragStartX: number, dragStartY: number;
 		let inDrag = false;
 
-		// Drag handlers
+		// Move handlers
+		const move = (clientX: number, clientY: number) => {
+			if (inDrag) {
+				const offsetX = clientX - dragStartX;
+				const offsetY = clientY - dragStartY;
+				drag(offsetX, offsetY);
+				dragStartX = clientX;
+				dragStartY = clientY;
+			} else hover(clientX, clientY);
+		};
 		const drag = (offsetX: number, offsetY: number) => {
-			if (!inDrag) return;
-			//canDrag = false;
-			//const deltaScrollLeft = x - dragStartX;
-			//const deltaScrollTop = (e.pageY - dragStartY);
 			if (offsetX) onmove(offsetX);
-			//setTimeout(() => (canDrag = true), 10); // Throttle drag for performance reasons
 			fire("drag.tl.container");
+		};
+		const hover = (clientX: number, clientY: number) => {
+			const clickedElements = document.elementsFromPoint(clientX, clientY);
+			let clickedEvent = clickedElements.find((element) => {
+				return element.hasAttribute("eventid");
+			});
+			if (!clickedEvent) {
+				element.style.cursor = "";
+				return;
+			}
+			element.style.cursor = "pointer";
+			const eventid = clickedEvent.getAttribute("eventid");
+			const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
+			if (timelineEvent) {
+				fire(`hover.tl.event`, timelineEvent);
+			}
 		};
 		const pinch = (offsetX: number, direction: Direction) => {
 			//canPinch = false;
@@ -448,6 +468,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			if (options.autoZoom && event.detail.timelineEvent) {
 				zoom(event.detail.timelineEvent);
 			}
+		};
+		const onEventHover = (event: CustomEvent<ITimelineCustomEventDetails>) => {
+			//
 		};
 		const click = (clientX: number, clientY: number) => {
 			const clickedElements = document.elementsFromPoint(clientX, clientY);
@@ -549,10 +572,12 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					if (touch1 >= 0) {
 						// Calculate the difference between the start and move coordinates
 						const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
-						const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
+						//const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
 						if (diffX !== 0) {
 							inDrag = true;
-							drag(diffX, diffY);
+							dragStartX = tpCache[touch1].clientX;
+							dragStartY = tpCache[touch1].clientY;
+							move(event.targetTouches[0].clientX, event.targetTouches[0].clientY);
 						}
 					}
 				}
@@ -582,11 +607,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		element.addEventListener(
 			"mousemove",
 			(event) => {
-				const offsetX = event.clientX - dragStartX;
-				const offsetY = event.clientY - dragStartY;
-				drag(offsetX, offsetY);
-				dragStartX = event.clientX;
-				dragStartY = event.clientY;
+				move(event.clientX, event.clientY);
 				fire("mousemove.tl.container");
 			},
 			{ passive: true }
@@ -608,6 +629,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		element.addEventListener("click.tl.event", onEventClick);
 		element.addEventListener("click.tl.preview", onEventClick);
 		element.addEventListener("selected.tl.event", onEventSelected);
+		element.addEventListener("hover.tl.event", onEventHover);
 
 		// update.tl.container event handler
 		element.addEventListener("update.tl.container", onUpdate);
