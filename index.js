@@ -343,8 +343,6 @@ var Timeline = (elementIdentifier, settings) => {
         zoom(event.detail.timelineEvent);
       }
     };
-    const onEventHover = (event) => {
-    };
     const click = (clientX, clientY) => {
       const clickedElements = document.elementsFromPoint(clientX, clientY);
       let clickedEvent = clickedElements.find((element3) => {
@@ -451,7 +449,6 @@ var Timeline = (elementIdentifier, settings) => {
     element2.addEventListener("click.tl.event", onEventClick);
     element2.addEventListener("click.tl.preview", onEventClick);
     element2.addEventListener("selected.tl.event", onEventSelected);
-    element2.addEventListener("hover.tl.event", onEventHover);
     element2.addEventListener("update.tl.container", onUpdate);
   };
   const createPreviewHTML = () => {

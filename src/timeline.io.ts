@@ -470,9 +470,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				zoom(event.detail.timelineEvent);
 			}
 		};
-		const onEventHover = (event: CustomEvent<ITimelineCustomEventDetails>) => {
-			//
-		};
 		const click = (clientX: number, clientY: number) => {
 			const clickedElements = document.elementsFromPoint(clientX, clientY);
 			let clickedEvent = clickedElements.find((element) => {
@@ -630,7 +627,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 		element.addEventListener("click.tl.event", onEventClick);
 		element.addEventListener("click.tl.preview", onEventClick);
 		element.addEventListener("selected.tl.event", onEventSelected);
-		element.addEventListener("hover.tl.event", onEventHover);
 
 		// update.tl.container event handler
 		element.addEventListener("update.tl.container", onUpdate);
