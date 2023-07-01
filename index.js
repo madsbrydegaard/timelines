@@ -303,8 +303,8 @@ var Timeline = (elementIdentifier, settings) => {
         drag(offsetX, offsetY);
         dragStartX = clientX;
         dragStartY = clientY;
-      } else
-        hover(clientX, clientY);
+      }
+      hover(clientX, clientY);
     };
     const drag = (offsetX, offsetY) => {
       if (offsetX)
@@ -312,16 +312,16 @@ var Timeline = (elementIdentifier, settings) => {
       fire("drag.tl.container");
     };
     const hover = (clientX, clientY) => {
-      const clickedElements = document.elementsFromPoint(clientX, clientY);
-      let clickedEvent = clickedElements.find((element3) => {
+      const hoverElements = document.elementsFromPoint(clientX, clientY);
+      let hoverEvent = hoverElements.find((element3) => {
         return element3.hasAttribute("eventid");
       });
-      if (!clickedEvent) {
+      if (!hoverEvent) {
         element2.style.cursor = "";
         return;
       }
       element2.style.cursor = "pointer";
-      const eventid = clickedEvent.getAttribute("eventid");
+      const eventid = hoverEvent.getAttribute("eventid");
       const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
       if (timelineEvent) {
         fire(`hover.tl.event`, timelineEvent);

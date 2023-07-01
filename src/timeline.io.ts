@@ -429,23 +429,24 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				drag(offsetX, offsetY);
 				dragStartX = clientX;
 				dragStartY = clientY;
-			} else hover(clientX, clientY);
+			}
+			hover(clientX, clientY);
 		};
 		const drag = (offsetX: number, offsetY: number) => {
 			if (offsetX) onmove(offsetX);
 			fire("drag.tl.container");
 		};
 		const hover = (clientX: number, clientY: number) => {
-			const clickedElements = document.elementsFromPoint(clientX, clientY);
-			let clickedEvent = clickedElements.find((element) => {
+			const hoverElements = document.elementsFromPoint(clientX, clientY);
+			let hoverEvent = hoverElements.find((element) => {
 				return element.hasAttribute("eventid");
 			});
-			if (!clickedEvent) {
+			if (!hoverEvent) {
 				element.style.cursor = "";
 				return;
 			}
 			element.style.cursor = "pointer";
-			const eventid = clickedEvent.getAttribute("eventid");
+			const eventid = hoverEvent.getAttribute("eventid");
 			const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
 			if (timelineEvent) {
 				fire(`hover.tl.event`, timelineEvent);
