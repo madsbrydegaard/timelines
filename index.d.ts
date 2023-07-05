@@ -72,7 +72,8 @@ declare module "timeline.io" {
         height: number;
         score: number;
         parentId?: string;
-        levelMatrix: IMatrix;
+        timelineLevelMatrix: IMatrix;
+        backgroundLevelMatrix: IMatrix;
         eventNode?: HTMLDivElement;
         previewNode?: HTMLDivElement;
         childrenByStartMinute: ITimelineEventWithDetails[];

@@ -71,7 +71,8 @@ interface ITimelineEventDetails extends Required<ITimelineProps> {
 	height: number;
 	score: number;
 	parentId?: string;
-	levelMatrix: IMatrix;
+	timelineLevelMatrix: IMatrix;
+	backgroundLevelMatrix: IMatrix;
 	eventNode?: HTMLDivElement;
 	previewNode?: HTMLDivElement;
 	childrenByStartMinute: ITimelineEventWithDetails[];
@@ -448,12 +449,15 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				element.title = "";
 				return;
 			}
-			element.style.cursor = "pointer";
 			const eventid = hoverEvent.getAttribute("eventid");
 			const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
-			if (timelineEvent) {
-				element.title = timelineEvent.title;
+			if (timelineEvent && timelineEvent.timelineEventDetails.type === "timeline") {
 				fire(`hover.tl.event`, timelineEvent);
+				element.style.cursor = "pointer";
+				element.title = timelineEvent.title;
+			} else {
+				element.style.cursor = "";
+				element.title = "";
 			}
 		};
 		const pinch = (offsetX: number, direction: Direction) => {
@@ -713,6 +717,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					break;
 				}
 				case "background": {
+					timelineEvent.timelineEventDetails.eventNode.style.zIndex = "-1";
 					eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
 					break;
 				}
@@ -1085,13 +1090,13 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			.filter((tl) => !!tl)
 			.sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
 
-		const calcLevel = (timelineEvent: ITimelineEventWithDetails): number => {
+		const calcTimelineLevel = (timelineEvent: ITimelineEventWithDetails): number => {
 			let level = 0;
-			for (const eventLevel in parent.timelineEventDetails.levelMatrix) {
+			for (const eventLevel in parent.timelineEventDetails.timelineLevelMatrix) {
 				level = Number(eventLevel);
-				if (timelineEvent.timelineEventDetails.startMinutes > parent.timelineEventDetails.levelMatrix[eventLevel].time) {
+				if (timelineEvent.timelineEventDetails.startMinutes > parent.timelineEventDetails.timelineLevelMatrix[eventLevel].time) {
 					for (let i = 0; i < timelineEvent.timelineEventDetails.height; i++) {
-						parent.timelineEventDetails.levelMatrix[(level + i).toString()] = {
+						parent.timelineEventDetails.timelineLevelMatrix[(level + i).toString()] = {
 							height: timelineEvent.timelineEventDetails.height,
 							time: timelineEvent.timelineEventDetails.endMinutes,
 						};
@@ -1101,11 +1106,30 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			}
 			level += 1;
 			for (let i = 0; i < timelineEvent.timelineEventDetails.height; i++) {
-				parent.timelineEventDetails.levelMatrix[(level + i).toString()] = {
+				parent.timelineEventDetails.timelineLevelMatrix[(level + i).toString()] = {
 					height: timelineEvent.timelineEventDetails.height,
 					time: timelineEvent.timelineEventDetails.endMinutes,
 				};
 			}
+			return level;
+		};
+		const calcBackgroundLevel = (timelineEvent: ITimelineEventWithDetails): number => {
+			let level = 0;
+			for (const eventLevel in currentTimeline.timelineEventDetails.backgroundLevelMatrix) {
+				level = Number(eventLevel);
+				if (timelineEvent.timelineEventDetails.startMinutes >= currentTimeline.timelineEventDetails.backgroundLevelMatrix[eventLevel].time) {
+					currentTimeline.timelineEventDetails.backgroundLevelMatrix[level.toString()] = {
+						height: timelineEvent.timelineEventDetails.height,
+						time: timelineEvent.timelineEventDetails.endMinutes,
+					};
+					return level;
+				}
+			}
+			level += 1;
+			currentTimeline.timelineEventDetails.backgroundLevelMatrix[level.toString()] = {
+				height: timelineEvent.timelineEventDetails.height,
+				time: timelineEvent.timelineEventDetails.endMinutes,
+			};
 			return level;
 		};
 		const calcScore = (timelineEvent: ITimelineEventWithDetails): number => {
@@ -1131,8 +1155,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 					break;
 				case "background":
 					{
+						const topFactor = (timelineEvent.timelineEventDetails.level - 1) * 25;
 						eventHTML.style.bottom = `0`;
-						eventHTML.style.top = `0`;
+						eventHTML.style.top = `${topFactor}px`;
 					}
 					break;
 				default:
@@ -1186,7 +1211,17 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			childEvent.timelineEventDetails.score = ["timeline"].includes(childEvent.timelineEventDetails.type) ? calcScore(childEvent) : 0;
 
 			// Add level
-			childEvent.timelineEventDetails.level = ["container", "timeline"].includes(childEvent.timelineEventDetails.type) ? calcLevel(childEvent) : 0;
+			switch (childEvent.timelineEventDetails.type) {
+				case "container":
+				case "timeline":
+					childEvent.timelineEventDetails.level = calcTimelineLevel(childEvent);
+					break;
+				case "background":
+					childEvent.timelineEventDetails.level = calcBackgroundLevel(childEvent);
+					break;
+				default:
+					childEvent.timelineEventDetails.level = 0;
+			}
 
 			// Create Event HTML Node
 			childEvent.timelineEventDetails.eventNode = createEventNode(childEvent);
@@ -1200,7 +1235,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			childEvent.previous = i > 0 ? parent.timelineEventDetails.childrenByStartMinute[i - 1].title : undefined;
 		});
 
-		parent.timelineEventDetails.height = Object.entries(parent.timelineEventDetails.levelMatrix).length;
+		parent.timelineEventDetails.height = Object.entries(parent.timelineEventDetails.timelineLevelMatrix).length;
 	};
 	const parseEvent = (timelineEvent: ITimelineEvent, parent?: ITimelineEventWithDetails): ITimelineEventWithDetails | undefined => {
 		if (!timelineEvent) {
@@ -1226,11 +1261,12 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				startMinutes: parseDateToMinutes(timelineEvent.start),
 				endMinutes: parseDateToMinutes(timelineEvent.end),
 				durationMinutes: parseNumberToMinutes(timelineEvent.duration) || 0,
-				levelMatrix: { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } },
+				timelineLevelMatrix: { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } },
+				backgroundLevelMatrix: { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } },
 			} as ITimelineEventDetails,
 		};
 
-		if (timelineEventWithDetails.timelineEventDetails.type === "timeline" && parent.timelineEventDetails.type === "wrapper")
+		if (parent && timelineEventWithDetails.timelineEventDetails.type === "timeline" && parent.timelineEventDetails.type === "wrapper")
 			parent.timelineEventDetails.type = "container";
 
 		if (timelineEvent.events && timelineEvent.events.length) {
