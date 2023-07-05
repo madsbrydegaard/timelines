@@ -38,7 +38,8 @@
 					logElement.innerHTML = log.join("\n");
 				});
 			});
-			const image = new Image(100, 150);
+
+			const image = new Image();
 			image.src = "docs/100px-Gorm-the-old.jpg";
 			const data = {
 				name: "Den danske kongerække",
@@ -60,7 +61,7 @@
 				events: data.events.map((item) => ({
 					...item,
 					id: crypto.randomUUID(),
-					identifier: "timelines/den_danske_kongeraekke",
+					//identifier: "timelines/den_danske_kongeraekke",
 					description: item.desc,
 					type: "timeline",
 					imageUrl: "timelines/den_danske_kongeraekke/" + item.image,

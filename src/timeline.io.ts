@@ -19,6 +19,7 @@ export interface ITimelineOptions {
 	easing?: string | ((time: number, start: number, change: number, duration: number) => number);
 	numberOfHighscorePreviews?: number;
 	highscorePreviewDelay?: number;
+	highscorePreviewWidth?: number;
 	classNames?: {
 		timeline?: string;
 		timelineEvent?: string;
@@ -174,6 +175,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				easing: "easeOutCubic",
 				numberOfHighscorePreviews: 5,
 				highscorePreviewDelay: 500,
+				highscorePreviewWidth: 100,
 				classNames: {
 					timeline: "tl",
 					timelineEvent: "tl__event",
@@ -443,12 +445,14 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			});
 			if (!hoverEvent) {
 				element.style.cursor = "";
+				element.title = "";
 				return;
 			}
 			element.style.cursor = "pointer";
 			const eventid = hoverEvent.getAttribute("eventid");
 			const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
 			if (timelineEvent) {
+				element.title = timelineEvent.title;
 				fire(`hover.tl.event`, timelineEvent);
 			}
 		};
@@ -647,7 +651,8 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 
 		for (const [i, timelineEvent] of highscores.entries()) {
 			const fraction = 1 / highscores.length;
-			const randomLeftPosition = fraction * i + fraction / 4;
+			const previewWidthFactor = options.highscorePreviewWidth / viewWidth();
+			const randomLeftPosition = fraction * i + fraction / 2 - previewWidthFactor / 2;
 			const randomTopPosition = Math.random() / 3 + 0.08;
 
 			const createTimelinePreviewHTML = (): void => {
@@ -663,7 +668,7 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 				}
 
 				const lineFragment = document.createElementNS("http://www.w3.org/2000/svg", "line");
-				lineFragment.setAttribute("x1", `calc(${randomLeftPosition * 100}% + 25px)`);
+				lineFragment.setAttribute("x1", `calc(${(randomLeftPosition + previewWidthFactor / 2) * 100}%)`);
 				lineFragment.setAttribute("y1", `calc(${randomTopPosition * 100}% + 50px)`);
 				lineFragment.setAttribute("x2", x2 * 100 + "%");
 				lineFragment.setAttribute("y2", timelineEvent.timelineEventDetails.eventNode.offsetTop + "px");
@@ -1155,10 +1160,9 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 			if (!timelineEvent.renderPreviewNode) return undefined;
 			const previewHTML = document.createElement("div");
 			previewHTML.style.boxSizing = "border-box";
-			previewHTML.style.cursor = "pointer";
 			previewHTML.style.position = "absolute";
 			previewHTML.style.overflow = "hidden";
-			previewHTML.style.cursor = "pointer";
+			previewHTML.style.width = options.highscorePreviewWidth + "px";
 			//previewHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
 			previewHTML.title = timelineEvent.title;
 			previewHTML.classList.add(options.classNames.timelinePreview);
