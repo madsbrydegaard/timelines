@@ -17,6 +17,9 @@
   "keywords": [],
   "author": "Mads Brydegaard <mb@vidcore.com>",
   "license": "ISC",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
   "devDependencies": {
     "esbuild": "^0.14.50",
     "typescript": "^4.9.5"
