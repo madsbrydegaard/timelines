@@ -1,6 +1,6 @@
 {
-  "name": "timeline.io",
-  "version": "1.0.4",
+  "name": "@madsbrydegaard/timeline.io",
+  "version": "1.0.0",
   "description": "Timeline wrapper with support for zoom and pan",
   "main": "index.js",
   "types": "index.d.ts",
