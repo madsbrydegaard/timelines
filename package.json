@@ -1,6 +1,6 @@
 {
   "name": "@madsbrydegaard/timelines",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Timeline(s) wrapper with support for zoom and pan",
   "main": "index.js",
   "types": "index.d.ts",
