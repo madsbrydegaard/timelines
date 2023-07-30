@@ -1,7 +1,7 @@
 {
-  "name": "@madsbrydegaard/timeline.io",
+  "name": "@madsbrydegaard/timelines",
   "version": "1.0.0",
-  "description": "Timeline wrapper with support for zoom and pan",
+  "description": "Timeline(s) wrapper with support for zoom and pan",
   "main": "index.js",
   "types": "index.d.ts",
   "scripts": {
@@ -9,17 +9,14 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "type": "module",
-  "homepage": "https://github.com/madsbrydegaard/timeline.io",
+  "homepage": "https://github.com/madsbrydegaard/timelines",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/madsbrydegaard/timeline.io.git"
+    "url": "git+https://github.com/madsbrydegaard/timelines.git"
   },
   "keywords": [],
   "author": "Mads Brydegaard <mb@vidcore.com>",
   "license": "ISC",
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "devDependencies": {
     "esbuild": "^0.14.50",
     "typescript": "^4.9.5"
