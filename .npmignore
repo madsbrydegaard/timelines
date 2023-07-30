@@ -1,2 +1,6 @@
 docs
+src
 .github
+esbuild.js
+tsconfig.json
+index.html
