@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Timeline Demo</title>
+		<title>Timelines Demo</title>
 		<style>
 			.tl__labels {
 				box-sizing: border-box;
@@ -19,7 +19,7 @@
 		<div id="timeline" style="height: 300px"></div>
 		<pre><code id="log"></code></pre>
 		<script type="module">
-			import { Timeline } from "../index.js";
+			import { TimelineContainer } from "../index.js";
 
 			const timelineContainer = document.querySelector("#timeline");
 			const log = document.querySelector("#log");
@@ -28,7 +28,7 @@
 				log.innerHTML = JSON.stringify(timelineEvent.detail, undefined, 2);
 			});
 
-			const timeline = Timeline(timelineContainer, { start: "100bc", end: "100ad" });
+			const timeline = TimelineContainer(timelineContainer, { start: "100bc", end: "100ad" });
 		</script>
 	</body>
 </html>

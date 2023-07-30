@@ -53,7 +53,7 @@
 					},
 				],
 			};
-			const timeline = Timeline(timelineContainer, { start: "100bc", end: "now" });
+			const timeline = TimelineContainer(timelineContainer, { start: "100bc", end: "now" });
 			timeline.add({
 				id: crypto.randomUUID(),
 				events: data.events.map((item) => ({

@@ -96,5 +96,5 @@ declare module "timelines" {
         reset: () => void;
         select: (timelineEventIdentifier?: string) => void;
     }
-    export const Timeline: (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions) => ITimelineContainer;
+    export const TimelineContainer: (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions) => ITimelineContainer;
 }

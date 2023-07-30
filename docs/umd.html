@@ -3,7 +3,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Timeline Demo</title>
+		<title>Timelines Demo</title>
 		<style>
 			.tl__labels {
 				box-sizing: border-box;
@@ -18,7 +18,7 @@
 	<body>
 		<div id="timeline" style="height: 300px"></div>
 		<pre><code id="log"></code></pre>
-		<script src="../dist/timeline.io.umd.js"></script>
+		<script src="../dist/timelines.umd.js"></script>
 		<script>
 			const timelineContainer = document.querySelector("#timeline");
 			const log = document.querySelector("#log");
@@ -27,7 +27,7 @@
 				log.innerHTML = JSON.stringify(timelineEvent.detail, undefined, 2);
 			});
 
-			const timeline = Timeline(timelineContainer, { start: "100bc", end: "100ad" });
+			const timeline = TimelineContainer(timelineContainer, { start: "100bc", end: "100ad" });
 		</script>
 	</body>
 </html>

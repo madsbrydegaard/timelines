@@ -100,7 +100,7 @@ enum Direction {
 	Out = 1,
 }
 
-export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions): ITimelineContainer => {
+export const TimelineContainer = (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions): ITimelineContainer => {
 	let ratio: number;
 	let pivot: number;
 	let timelineStart: number;
@@ -645,7 +645,6 @@ export const Timeline = (elementIdentifier: HTMLElement | string, settings?: ITi
 
 		// Add event click handler
 		element.addEventListener("click.tl.event", onEventClick);
-		element.addEventListener("click.tl.preview", onEventClick);
 		element.addEventListener("selected.tl.event", onEventSelected);
 
 		// update.tl.container event handler

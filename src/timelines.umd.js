@@ -1,2 +1,2 @@
-import { Timeline } from "./timelines";
-window["Timeline"] = Timeline;
+import { TimelineContainer } from "./timelines";
+window["TimelineContainer"] = TimelineContainer;
