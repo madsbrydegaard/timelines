@@ -7,13 +7,13 @@ const shared = {
 
 build({
 	...shared,
-	entryPoints: ["src/timelines.ts"],
-	outfile: "index.js",
+	entryPoints: ["src/index.ts"],
+	outfile: "dist/index.js",
 	format: "esm",
 });
 
 build({
 	...shared,
-	entryPoints: ["src/timelines.umd.js"],
-	outfile: "dist/timelines.umd.js",
+	entryPoints: ["src/index.umd.js"],
+	outfile: "dist/index.umd.js",
 });

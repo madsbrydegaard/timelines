@@ -1,12 +1,12 @@
 {
-  "include": ["src/timelines.ts"],
+  "include": ["src/index.ts"],
   "compilerOptions": {
     "declaration": true,
     "emitDeclarationOnly": true,
     "target": "ES6",
     "esModuleInterop": true,
     "noImplicitAny": false,
-    "outFile": "index.d.ts",
     "moduleResolution":"node",
+    "outDir": "dist"
   }
 }
