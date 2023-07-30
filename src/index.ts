@@ -338,12 +338,12 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 				const result = findFirstEvent(selectedTimelineId);
 				if (!result) throw `No timeline selected`;
 				selectedTimelineId = result.timelineEventDetails.next;
-				fire("selected.tl.event", result);
+				fire("selected.tl.event", findFirstEvent(selectedTimelineId));
 			} else if (timelineEventIdentifier === "previous") {
 				const result = findFirstEvent(selectedTimelineId);
 				if (!result) throw `No timeline selected`;
 				selectedTimelineId = result.timelineEventDetails.previous;
-				fire("selected.tl.event", result);
+				fire("selected.tl.event", findFirstEvent(selectedTimelineId));
 			} else {
 				const result = findFirstEvent(timelineEventIdentifier);
 				if (!result) throw `Cannot find ${timelineEventIdentifier} by title nor timelineEventDetails.id`;
