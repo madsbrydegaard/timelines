@@ -1,5 +1,5 @@
 {
-  "include": ["src/timeline.io.ts"],
+  "include": ["src/timelines.ts"],
   "compilerOptions": {
     "declaration": true,
     "emitDeclarationOnly": true,

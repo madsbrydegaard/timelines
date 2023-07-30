@@ -14,7 +14,10 @@
     "type": "git",
     "url": "git+https://github.com/madsbrydegaard/timelines.git"
   },
-  "keywords": [],
+  "keywords": [
+    "timeline",
+    "history"
+  ],
   "author": "Mads Brydegaard <mb@vidcore.com>",
   "license": "ISC",
   "devDependencies": {

@@ -1,12 +1,10 @@
-# Timeline.io
+# @madsbrydegaard/timelines
 
 Timeline engine for creating robust and flexible timelines with zoom and pan.
 
-The project is designed to act as the main engine in web projects that visualize earth´s and human history.
+The project is designed to act as the main engine for web projects that can visualize historic events.
 
 Code re-calculates points in time on every frame using minutes as timescale. The engine does not depent on expanding divs or any other HTML elements which is why it can zoom past browser limits and span 14B years of history.
-
-Dates and timestamps are re-calculated manually based on minutes since javascript Date object is limited by ECMA-262 (that is, April 20, 271821 BCE ~ September 13, 275760 CE). Hence it can currently span ±8,640,000,000,000,000 milliseconds with zero (0) being unix time 0 (Jan 1 1970).
 
 ## How to use:
 
@@ -15,7 +13,7 @@ Module supports both ESM and UMD - please check demos.
 Install ESM Module:
 
 ```
-npm i timeline.io
+npm i @madsbrydegaard/timelines
 ```
 
 ESM Setup:
@@ -23,7 +21,7 @@ ESM Setup:
 ```
 <div id="timeline"></div>
 <script type="module">
-    import { Timeline } from "timeline.io";
+    import { Timeline } from "@madsbrydegaard/timelines";
 
 	const timeline = Timeline("#timeline", {
         start: "100bc",

@@ -24,7 +24,7 @@
 	<body>
 		<div id="timeline" style="height: 100%; max-height: 400px"></div>
 		<pre><code id="log" style="height: 300px; overflow: auto; display: block;"></code></pre>
-		<script src="dist/timeline.io.umd.js"></script>
+		<script src="dist/timelines.umd.js"></script>
 		<script>
 			let log = [];
 			const timelineContainer = document.querySelector("#timeline");
@@ -43,15 +43,13 @@
 			image.src = "docs/100px-Gorm-the-old.jpg";
 			const data = {
 				name: "Den danske kongerække",
-				desc: "",
 				events: [
 					{
 						start: [936],
 						end: [958],
-						title: "Gorm den gamle 123",
-						abstract: "Nævnt 936, d. ca. 958",
-						desc: "Gorm den Gamle (antagelig født mellem 908 og 918, død ca. 958), formodentlig søn af Jellingdynastiets grundlægger, Knud 1. Hardeknud Svendsen, der kort efter 900 tog magten i Vestdanmark. Gorm omtales første gang som konge i skriftlige kilder fra 936. Da han døde omkring 958, begravedes han i nordhøjen i Jelling, men blev senere genbegravet i den første trækirke i Jelling. Ifølge indskriften på den lille Jellingesten var han gift med Thyra (Dannebod), og på den store omtales han som Harald 1. Blåtands fader.",
-						image: "img/100px-Gorm-the-old.jpg",
+						title: "Gorm den gamle",
+						description:
+							"Gorm den Gamle (antagelig født mellem 908 og 918, død ca. 958), formodentlig søn af Jellingdynastiets grundlægger, Knud 1. Hardeknud Svendsen, der kort efter 900 tog magten i Vestdanmark. Gorm omtales første gang som konge i skriftlige kilder fra 936. Da han døde omkring 958, begravedes han i nordhøjen i Jelling, men blev senere genbegravet i den første trækirke i Jelling. Ifølge indskriften på den lille Jellingesten var han gift med Thyra (Dannebod), og på den store omtales han som Harald 1. Blåtands fader.",
 					},
 				],
 			};
@@ -60,11 +58,7 @@
 				id: crypto.randomUUID(),
 				events: data.events.map((item) => ({
 					...item,
-					id: crypto.randomUUID(),
-					//identifier: "timelines/den_danske_kongeraekke",
-					description: item.desc,
 					type: "timeline",
-					imageUrl: "timelines/den_danske_kongeraekke/" + item.image,
 					renderPreviewNode: (event) => image,
 				})),
 			});

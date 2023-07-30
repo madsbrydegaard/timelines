@@ -1,4 +1,4 @@
-declare module "timeline.io" {
+declare module "timelines" {
     export interface ITimelineOptions {
         labelCount?: number;
         zoomSpeed?: number;
@@ -77,6 +77,8 @@ declare module "timeline.io" {
         eventNode?: HTMLDivElement;
         previewNode?: HTMLDivElement;
         childrenByStartMinute: ITimelineEventWithDetails[];
+        next?: string;
+        previous?: string;
     }
     interface ITimelineEventWithDetails extends ITimelineEvent {
         timelineEventDetails: ITimelineEventDetails;
@@ -86,8 +88,6 @@ declare module "timeline.io" {
         end?: number[] | string | number | Date;
         duration?: number | string;
         events?: ITimelineEvent[];
-        next?: string;
-        previous?: string;
     }
     export interface ITimelineContainer {
         add: (...timelineEvents: ITimelineEvent[]) => void;
