@@ -221,16 +221,22 @@ Default configuration looks like this:
     // Whether events are automatically selected on mouse click
     autoSelect: false,
     // Default color for each timeline event
-    defaultColor: [140, 140, 140],
+    defaultColor: "#aaa",
+    // Default color for each timeline event when selected
+    defaultHighlightedColor: "#444",
+    // Default color for each timeline background event
+    defaultBackgroundColor: "#0000",
+    // Default color for each timeline background event when selected
+    defaultBackgroundHightligtedColor: "#eee7",
     // Duration in ms when auto zoom is enabled
     zoomDuration: 200,
     // Auto zoom easing. "easeOutCubic" | "easeOutExpo" | "easeLinear"
 	easing: "easeOutCubic",
     // How many previews to display
 	numberOfHighscorePreviews: 5,
-    // Delay befort displaying previews
+    // Delay befort displaying previews in ms
 	highscorePreviewDelay: 500,
-    // Preview width
+    // Preview width in px
 	highscorePreviewWidth: 100,
     // Default classnames for generated HTML Elements
     classNames: {
@@ -335,6 +341,8 @@ Complete IO event list:
 	duration?: number | string;
     // Child events
 	events?: ITimelineEvent[];
+    // Prevents preview rendering on next frame
+    preventNextPreviewRender?: boolean;
 }
 ```
 
@@ -352,5 +360,7 @@ Complete IO event list:
 	reset: () => void;
     // select specific event
 	select: (timelineEventIdentifier?: string) => void;
+    // Prevents global preview rendering on next frame
+	preventNextPreviewRender: () => void;
 }
 ```
