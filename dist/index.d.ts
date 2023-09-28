@@ -14,7 +14,10 @@ export interface ITimelineOptions {
     autoZoom?: boolean;
     zoomMargin?: number;
     autoSelect?: boolean;
-    defaultColor?: number[];
+    defaultColor?: string;
+    defaultHighlightedColor?: string;
+    defaultBackgroundColor?: string;
+    defaultBackgroundHightligtedColor?: string;
     zoomDuration?: number;
     easing?: string | ((time: number, start: number, change: number, duration: number) => number);
     numberOfHighscorePreviews?: number;
@@ -57,10 +60,11 @@ interface ITimelineBase {
 }
 interface ITimelineProps {
     type?: string;
-    color?: number[];
-    highlightedColor?: number[];
+    color?: string;
+    highlightedColor?: string;
+    preventNextPreviewRender?: boolean;
 }
-interface ITimelineEventDetails extends Required<ITimelineProps> {
+interface ITimelineEventDetails {
     id: string;
     startMinutes: number;
     endMinutes: number;
@@ -94,6 +98,7 @@ export interface ITimelineContainer {
     focus: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
     reset: () => void;
     select: (timelineEventIdentifier?: string) => void;
+    preventNextPreviewRender: () => void;
 }
 export declare const TimelineContainer: (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions) => ITimelineContainer;
 export {};

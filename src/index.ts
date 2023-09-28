@@ -14,7 +14,10 @@ export interface ITimelineOptions {
 	autoZoom?: boolean;
 	zoomMargin?: number;
 	autoSelect?: boolean;
-	defaultColor?: number[];
+	defaultColor?: string;
+	defaultHighlightedColor?: string;
+	defaultBackgroundColor?: string;
+	defaultBackgroundHightligtedColor?: string;
 	zoomDuration?: number;
 	easing?: string | ((time: number, start: number, change: number, duration: number) => number);
 	numberOfHighscorePreviews?: number;
@@ -57,10 +60,11 @@ interface ITimelineBase {
 }
 interface ITimelineProps {
 	type?: string;
-	color?: number[];
-	highlightedColor?: number[];
+	color?: string;
+	highlightedColor?: string;
+	preventNextPreviewRender?: boolean;
 }
-interface ITimelineEventDetails extends Required<ITimelineProps> {
+interface ITimelineEventDetails {
 	id: string;
 	startMinutes: number;
 	endMinutes: number;
@@ -94,6 +98,7 @@ export interface ITimelineContainer {
 	focus: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
 	reset: () => void;
 	select: (timelineEventIdentifier?: string) => void;
+	preventNextPreviewRender: () => void;
 }
 enum Direction {
 	In = -1,
@@ -114,9 +119,10 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 	let ioContainer: HTMLDivElement;
 	let rootTimeline: ITimelineEventWithDetails;
 	let currentTimeline: ITimelineEventWithDetails;
-	let selectedTimelineId: string;
+	let selectedTimelineIds: string[];
 	let visibleEvents: ITimelineEventWithDetails[];
 	let previewTimer: NodeJS.Timeout;
+	let preventNextPreviewRender: boolean = false;
 
 	const MINUTES_IN_DAY = 1440; // minutes in a day
 	const MINUTES_IN_WEEK = 10080; // minutes in a week
@@ -171,7 +177,10 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 				autoZoom: false,
 				zoomMargin: 0.1,
 				autoSelect: false,
-				defaultColor: [140, 140, 140],
+				defaultColor: "#aaa",
+				defaultHighlightedColor: "#444",
+				defaultBackgroundColor: "#0000",
+				defaultBackgroundHightligtedColor: "#eee7",
 				zoomDuration: 200,
 				easing: "easeOutCubic",
 				numberOfHighscorePreviews: 5,
@@ -192,7 +201,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 				},
 			},
 			...settings,
-		};
+		} as ITimelineOptions;
 
 		rootTimeline = parseEvent({
 			title: "View",
@@ -300,11 +309,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 
 		currentTimeline = timelineEvent;
 		select();
-
-		zoomto(currentTimeline.timelineEventDetails.startMinutes, currentTimeline.timelineEventDetails.endMinutes, useAnimation, () => {
-			fire("focus.tl.event");
-			if (onfocused) onfocused(currentTimeline);
-		});
+		zoom(timelineEvent, useAnimation, onfocused);
 	};
 	const reset = (): void => {
 		currentTimeline = rootTimeline;
@@ -331,23 +336,22 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 	};
 	const select = (timelineEventIdentifier?: string): void => {
 		if (!timelineEventIdentifier) {
-			selectedTimelineId = undefined;
-			fire("selected.tl.event");
+			selectedTimelineIds = [];
 		} else if (typeof timelineEventIdentifier === "string") {
 			if (timelineEventIdentifier === "next") {
-				const result = findFirstEvent(selectedTimelineId);
+				const result = findFirstEvent(selectedTimelineIds[0]);
 				if (!result) throw `No timeline selected`;
-				selectedTimelineId = result.timelineEventDetails.next;
-				fire("selected.tl.event", findFirstEvent(selectedTimelineId));
+				selectedTimelineIds = [result.timelineEventDetails.next];
+				fire("selected.tl.event", findFirstEvent(selectedTimelineIds[0]));
 			} else if (timelineEventIdentifier === "previous") {
-				const result = findFirstEvent(selectedTimelineId);
+				const result = findFirstEvent(selectedTimelineIds[0]);
 				if (!result) throw `No timeline selected`;
-				selectedTimelineId = result.timelineEventDetails.previous;
-				fire("selected.tl.event", findFirstEvent(selectedTimelineId));
+				selectedTimelineIds = [result.timelineEventDetails.previous];
+				fire("selected.tl.event", findFirstEvent(selectedTimelineIds[0]));
 			} else {
 				const result = findFirstEvent(timelineEventIdentifier);
 				if (!result) throw `Cannot find ${timelineEventIdentifier} by title nor timelineEventDetails.id`;
-				selectedTimelineId = result.timelineEventDetails.id;
+				selectedTimelineIds = [result.timelineEventDetails.id];
 				fire("selected.tl.event", result);
 			}
 		}
@@ -463,7 +467,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			}
 			const eventid = hoverEvent.getAttribute("eventid");
 			const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
-			if (timelineEvent && timelineEvent.timelineEventDetails.type === "timeline") {
+			if (timelineEvent && timelineEvent.type === "timeline") {
 				fire(`hover.tl.event`, timelineEvent);
 				element.style.cursor = "pointer";
 				element.title = timelineEvent.title;
@@ -482,8 +486,11 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		};
 		const onEventClick = (event: CustomEvent<ITimelineCustomEventDetails>) => {
 			if (options.autoSelect && event.detail.timelineEvent) {
-				select(event.detail.timelineEvent.title);
+				select(event.detail.timelineEvent.timelineEventDetails.id);
 			}
+			// if (options.autoZoom && event.detail.timelineEvent && event.detail.timelineEvent.type === "background") {
+			// 	zoom(event.detail.timelineEvent);
+			// }
 		};
 		const onEventSelected = (event: CustomEvent<ITimelineCustomEventDetails>) => {
 			if (options.autoZoom && event.detail.timelineEvent) {
@@ -660,6 +667,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 
 		const highscores = visibleEvents
 			.filter((evt) => !!evt.timelineEventDetails.previewNode)
+			.filter((evt) => !evt.preventNextPreviewRender)
 			.sort((a, b) => b.timelineEventDetails.score - a.timelineEventDetails.score) // Sort from high to low
 			.slice(0, options.numberOfHighscorePreviews)
 			.sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
@@ -687,7 +695,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 				lineFragment.setAttribute("y1", `calc(${randomTopPosition * 100}% + 50px)`);
 				lineFragment.setAttribute("x2", x2 * 100 + "%");
 				lineFragment.setAttribute("y2", timelineEvent.timelineEventDetails.eventNode.offsetTop + "px");
-				lineFragment.setAttribute("style", `stroke:rgb(${[...timelineEvent.timelineEventDetails.color, 1].join(",")});stroke-width:2`);
+				lineFragment.setAttribute("style", `stroke:${timelineEvent.color};stroke-width:2`);
 
 				svgContainer.appendChild(lineFragment);
 
@@ -696,6 +704,11 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 
 			createTimelinePreviewHTML();
 		}
+
+		visibleEvents.forEach((ev) => {
+			ev.preventNextPreviewRender = false;
+		});
+
 		return eventsFragment;
 	};
 	const createEventHTML = (parentEvent: ITimelineEventWithDetails): DocumentFragment | undefined => {
@@ -708,28 +721,23 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			const viewInside = isViewInside(timelineEvent);
 			const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.timelineEventDetails.startMinutes);
 			const widthRatio = viewInside ? 100 : (timelineEvent.timelineEventDetails.durationMinutes / viewDuration()) * 100;
-			const isHighlighted = selectedTimelineId === undefined || selectedTimelineId === timelineEvent.timelineEventDetails.id;
+			const isHighlighted = !!selectedTimelineIds.length && !!selectedTimelineIds.find((tlId) => tlId === timelineEvent.timelineEventDetails.id);
 
-			timelineEvent.timelineEventDetails.eventNode.style.left = leftRatio * 100 + "%";
-			timelineEvent.timelineEventDetails.eventNode.style.width = widthRatio + "%";
-			timelineEvent.timelineEventDetails.eventNode.attributes["starttime"] = viewInside
-				? viewStart()
-				: timelineEvent.timelineEventDetails.startMinutes;
-
-			switch (timelineEvent.timelineEventDetails.type) {
+			switch (timelineEvent.type) {
 				default: {
 					eventsFragment.append(createEventHTML(timelineEvent));
 					break;
 				}
-				case "timeline": {
-					timelineEvent.timelineEventDetails.eventNode.style.opacity = isHighlighted ? "1" : "0.3";
+				case "timeline":
+				case "background": {
+					timelineEvent.timelineEventDetails.eventNode.style.left = leftRatio * 100 + "%";
+					timelineEvent.timelineEventDetails.eventNode.style.width = widthRatio + "%";
+					timelineEvent.timelineEventDetails.eventNode.attributes["starttime"] = viewInside
+						? viewStart()
+						: timelineEvent.timelineEventDetails.startMinutes;
+					timelineEvent.timelineEventDetails.eventNode.style.backgroundColor = isHighlighted ? timelineEvent.highlightedColor : timelineEvent.color;
 					eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
 					visibleEvents.push(timelineEvent);
-					break;
-				}
-				case "background": {
-					timelineEvent.timelineEventDetails.eventNode.style.zIndex = "-1";
-					eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
 					break;
 				}
 			}
@@ -866,8 +874,11 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		if (eventsHtml) eventsContainer.appendChild(eventsHtml);
 	};
 	const appendPreviewHTML = (): void => {
-		const previewsHtml = createPreviewHTML();
-		if (previewsHtml) previewsContainer.appendChild(previewsHtml);
+		if (!preventNextPreviewRender) {
+			const previewsHtml = createPreviewHTML();
+			if (previewsHtml) previewsContainer.appendChild(previewsHtml);
+		}
+		preventNextPreviewRender = false;
 	};
 	const formatDateLabel = (minutes: number): string => {
 		const yearsCount = Math.floor(minutes / MINUTES_IN_YEAR);
@@ -933,7 +944,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		appendLabelHTML();
 		appendEventHTML();
 
-		if (options.numberOfHighscorePreviews > 0 && !selectedTimelineId) {
+		if (options.numberOfHighscorePreviews > 0) {
 			clearTimeout(previewTimer); // Throttle by $options.highscorePreviewDelay
 			previewTimer = setTimeout(() => {
 				appendPreviewHTML();
@@ -1095,118 +1106,118 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			  )
 			: timelineEventWithDetails.timelineEventDetails.startMinutes + 1;
 	};
-	const addEvents = (parent: ITimelineEventWithDetails, ...childrenByStartMinute: ITimelineEvent[]): void => {
-		const parsedSortedChildren = childrenByStartMinute
+	const addEvents = (parent: ITimelineEventWithDetails, ...events: ITimelineEvent[]): void => {
+		const parsedSortedChildren = events
 			.map((tl) => parseEvent(tl, parent))
 			.filter((tl) => !!tl)
 			.sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
 
-		const calcTimelineLevel = (timelineEvent: ITimelineEventWithDetails): number => {
-			let level = 0;
-			for (const eventLevel in parent.timelineEventDetails.timelineLevelMatrix) {
-				level = Number(eventLevel);
-				if (timelineEvent.timelineEventDetails.startMinutes > parent.timelineEventDetails.timelineLevelMatrix[eventLevel].time) {
-					for (let i = 0; i < timelineEvent.timelineEventDetails.height; i++) {
-						parent.timelineEventDetails.timelineLevelMatrix[(level + i).toString()] = {
-							height: timelineEvent.timelineEventDetails.height,
-							time: timelineEvent.timelineEventDetails.endMinutes,
-						};
-					}
-					return level;
-				}
-			}
-			level += 1;
-			for (let i = 0; i < timelineEvent.timelineEventDetails.height; i++) {
-				parent.timelineEventDetails.timelineLevelMatrix[(level + i).toString()] = {
-					height: timelineEvent.timelineEventDetails.height,
-					time: timelineEvent.timelineEventDetails.endMinutes,
-				};
-			}
-			return level;
-		};
-		const calcBackgroundLevel = (timelineEvent: ITimelineEventWithDetails): number => {
-			let level = 0;
-			for (const eventLevel in currentTimeline.timelineEventDetails.backgroundLevelMatrix) {
-				level = Number(eventLevel);
-				if (timelineEvent.timelineEventDetails.startMinutes >= currentTimeline.timelineEventDetails.backgroundLevelMatrix[eventLevel].time) {
-					currentTimeline.timelineEventDetails.backgroundLevelMatrix[level.toString()] = {
-						height: timelineEvent.timelineEventDetails.height,
-						time: timelineEvent.timelineEventDetails.endMinutes,
-					};
-					return level;
-				}
-			}
-			level += 1;
-			currentTimeline.timelineEventDetails.backgroundLevelMatrix[level.toString()] = {
-				height: timelineEvent.timelineEventDetails.height,
-				time: timelineEvent.timelineEventDetails.endMinutes,
-			};
-			return level;
-		};
-		const calcScore = (timelineEvent: ITimelineEventWithDetails): number => {
-			const durationRatio = timelineEvent.timelineEventDetails.durationMinutes / parent.timelineEventDetails.durationMinutes;
-			const score = durationRatio * (timelineEvent.timelineEventDetails.childrenByStartMinute.length + 1);
-			return score;
-		};
 		const createEventNode = (timelineEvent: ITimelineEventWithDetails): HTMLDivElement => {
 			const eventHTML = document.createElement("div");
-			switch (timelineEvent.timelineEventDetails.type) {
-				case "timeline":
-					{
-						const spaceFactor = timelineEvent.timelineEventDetails.level * options.eventSpacing;
-						const heightFactor = (timelineEvent.timelineEventDetails.level - 1) * options.eventHeight;
-						eventHTML.style.bottom = `${spaceFactor + heightFactor}px`;
-						eventHTML.style.minHeight = `${options.eventHeight}px`;
-						//eventHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
-						eventHTML.style.cursor = "pointer";
-						eventHTML.style.borderRadius = "5px";
-						eventHTML.style.backgroundColor = `rgba(${[...timelineEvent.timelineEventDetails.color, 1].join(",")})`;
-						eventHTML.title = timelineEvent.title;
-					}
-					break;
-				case "background":
-					{
-						const topFactor = (timelineEvent.timelineEventDetails.level - 1) * 25;
-						eventHTML.style.bottom = `0`;
-						eventHTML.style.top = `${topFactor}px`;
-					}
-					break;
-				default:
-			}
 
 			eventHTML.style.boxSizing = "border-box";
 			eventHTML.style.position = "absolute";
 			eventHTML.style.minWidth = "5px";
 			eventHTML.style.overflow = "hidden";
+			//eventHTML.style.display = "contents"; // Ignore wrapping div in DOM so custom styling takes preceedence
 			eventHTML.classList.add(options.classNames.timelineEvent);
 			eventHTML.setAttribute("level", timelineEvent.timelineEventDetails.level.toString());
 			eventHTML.setAttribute("depth", timelineEvent.timelineEventDetails.depth.toString());
 			eventHTML.setAttribute("score", timelineEvent.timelineEventDetails.score.toString());
-			eventHTML.setAttribute("eventid", timelineEvent.timelineEventDetails.id);
-
-			if (timelineEvent.renderEventNode) {
-				const elementToAppend = timelineEvent.renderEventNode(timelineEvent);
-				elementToAppend.style.display = "contents"; // Ignore wrapping div in DOM so custom styling takes preceedence
-				eventHTML.append(elementToAppend);
-			}
 
 			return eventHTML;
 		};
-		const createPreviewNode = (timelineEvent: ITimelineEventWithDetails): HTMLDivElement | undefined => {
-			if (!timelineEvent.renderPreviewNode) return undefined;
+		const setTimelineNode = (timelineEvent: ITimelineEventWithDetails) => {
+			const node = createEventNode(timelineEvent);
+			const spaceFactor = timelineEvent.timelineEventDetails.level * options.eventSpacing;
+			const heightFactor = (timelineEvent.timelineEventDetails.level - 1) * options.eventHeight;
+			node.style.bottom = `${spaceFactor + heightFactor}px`;
+			node.style.minHeight = `${options.eventHeight}px`;
+			node.style.cursor = "pointer";
+			node.style.borderRadius = "5px";
+			node.title = timelineEvent.title;
+			if (timelineEvent.renderEventNode) {
+				const elementToAppend = document.createElement("div");
+				elementToAppend.style.display = "contents"; // Ignore wrapping div in DOM so custom styling takes preceedence
+				elementToAppend.append(timelineEvent.renderEventNode(timelineEvent));
+
+				node.append(elementToAppend);
+			}
+			node.setAttribute("eventid", timelineEvent.timelineEventDetails.id);
+			timelineEvent.timelineEventDetails.eventNode = node;
+		};
+		const setBackgroundNode = (timelineEvent: ITimelineEventWithDetails) => {
+			const node = createEventNode(timelineEvent);
+			const topFactor = (timelineEvent.timelineEventDetails.level - 1) * 25;
+			node.style.bottom = `0`;
+			node.style.top = `${topFactor}px`;
+			node.style.zIndex = "-1";
+
+			const elementToAppend = document.createElement("div");
+			//elementToAppend.style.display = "contents"; // Ignore wrapping div in DOM so custom styling takes preceedence
+			elementToAppend.style.whiteSpace = "nowrap";
+			elementToAppend.setAttribute("eventid", timelineEvent.timelineEventDetails.id);
+			if (timelineEvent.renderEventNode) {
+				elementToAppend.append(timelineEvent.renderEventNode(timelineEvent));
+			} else {
+				elementToAppend.append(timelineEvent.title);
+			}
+			node.append(elementToAppend);
+
+			timelineEvent.timelineEventDetails.eventNode = node;
+		};
+		const setPreviewNode = (timelineEvent: ITimelineEventWithDetails) => {
+			if (!timelineEvent.renderPreviewNode) return;
 			const previewHTML = document.createElement("div");
 			previewHTML.style.boxSizing = "border-box";
 			previewHTML.style.position = "absolute";
 			previewHTML.style.overflow = "hidden";
 			previewHTML.style.width = options.highscorePreviewWidth + "px";
-			//previewHTML.style.zIndex = timelineEvent.timelineEventDetails.depth.toString();
 			previewHTML.title = timelineEvent.title;
 			previewHTML.classList.add(options.classNames.timelinePreview);
 			previewHTML.setAttribute("eventid", timelineEvent.timelineEventDetails.id);
 
 			previewHTML.append(timelineEvent.renderPreviewNode(timelineEvent));
 
-			return previewHTML;
+			timelineEvent.timelineEventDetails.previewNode = previewHTML;
+		};
+		const setScore = (timelineEvent: ITimelineEventWithDetails) => {
+			const durationRatio = timelineEvent.timelineEventDetails.durationMinutes / parent.timelineEventDetails.durationMinutes;
+			const score = durationRatio * (timelineEvent.timelineEventDetails.childrenByStartMinute.length + 1);
+			timelineEvent.timelineEventDetails.score = score;
+		};
+		const setLevel = (timelineEvent: ITimelineEventWithDetails, marix: IMatrix, useEqual: boolean = true) => {
+			let level = 0;
+			for (const eventLevel in marix) {
+				level = Number(eventLevel);
+				if (
+					useEqual
+						? timelineEvent.timelineEventDetails.startMinutes >= marix[eventLevel].time
+						: timelineEvent.timelineEventDetails.startMinutes > marix[eventLevel].time
+				) {
+					marix[eventLevel] = {
+						height: timelineEvent.timelineEventDetails.height,
+						time: timelineEvent.timelineEventDetails.endMinutes,
+					};
+					timelineEvent.timelineEventDetails.level = level;
+					return;
+				}
+			}
+			level += 1;
+			marix[level.toString()] = {
+				height: timelineEvent.timelineEventDetails.height,
+				time: timelineEvent.timelineEventDetails.endMinutes,
+			};
+			timelineEvent.timelineEventDetails.level = level;
+		};
+		const setNeighborsTo = (timelineEvent: ITimelineEventWithDetails, me: number) => {
+			// Assign neighbor titles
+			timelineEvent.timelineEventDetails.next =
+				parent.timelineEventDetails.childrenByStartMinute.length > me + 1
+					? parent.timelineEventDetails.childrenByStartMinute[me + 1].timelineEventDetails.id
+					: undefined;
+			timelineEvent.timelineEventDetails.previous =
+				me > 0 ? parent.timelineEventDetails.childrenByStartMinute[me - 1].timelineEventDetails.id : undefined;
 		};
 
 		// push parsed children
@@ -1218,34 +1229,23 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		parent.timelineEventDetails.durationMinutes = parent.timelineEventDetails.endMinutes - parent.timelineEventDetails.startMinutes;
 
 		parent.timelineEventDetails.childrenByStartMinute.forEach((childEvent, i) => {
-			// Add score to result in order to sort by importance
-			childEvent.timelineEventDetails.score = ["timeline"].includes(childEvent.timelineEventDetails.type) ? calcScore(childEvent) : 0;
-
-			// Add level
-			switch (childEvent.timelineEventDetails.type) {
+			//console.debug("iterating cildren", childEvent);
+			switch (childEvent.type) {
 				case "container":
 				case "timeline":
-					childEvent.timelineEventDetails.level = calcTimelineLevel(childEvent);
+					setScore(childEvent);
+					setLevel(childEvent, parent.timelineEventDetails.timelineLevelMatrix, false);
+					setTimelineNode(childEvent);
 					break;
 				case "background":
-					childEvent.timelineEventDetails.level = calcBackgroundLevel(childEvent);
+					setLevel(childEvent, currentTimeline.timelineEventDetails.backgroundLevelMatrix);
+					setBackgroundNode(childEvent);
 					break;
 				default:
-					childEvent.timelineEventDetails.level = 0;
 			}
 
-			// Create Event HTML Node
-			childEvent.timelineEventDetails.eventNode = createEventNode(childEvent);
-
-			// Create Preview HTML Node
-			childEvent.timelineEventDetails.previewNode = createPreviewNode(childEvent);
-
-			// Assign neighbor titles
-			childEvent.timelineEventDetails.next =
-				parent.timelineEventDetails.childrenByStartMinute.length > i + 1
-					? parent.timelineEventDetails.childrenByStartMinute[i + 1].timelineEventDetails.id
-					: undefined;
-			childEvent.timelineEventDetails.previous = i > 0 ? parent.timelineEventDetails.childrenByStartMinute[i - 1].timelineEventDetails.id : undefined;
+			setPreviewNode(childEvent);
+			setNeighborsTo(childEvent, i);
 		});
 
 		parent.timelineEventDetails.height = Object.entries(parent.timelineEventDetails.timelineLevelMatrix).length;
@@ -1256,11 +1256,26 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			return undefined;
 		}
 
+		const timelineEventType = timelineEvent.type || timelineEvent.start ? timelineEvent.type || "timeline" : "wrapper";
 		const timelineEventWithDetails = {
 			...timelineEvent,
+			...{
+				type: timelineEventType,
+				color:
+					timelineEventType === "timeline"
+						? timelineEvent.color || options.defaultColor
+						: timelineEventType === "background"
+						? timelineEvent.color || options.defaultBackgroundColor
+						: undefined,
+				highlightedColor:
+					timelineEventType === "timeline"
+						? timelineEvent.highlightedColor || options.defaultHighlightedColor
+						: timelineEventType === "background"
+						? timelineEvent.highlightedColor || options.defaultBackgroundHightligtedColor
+						: undefined,
+			},
 			timelineEventDetails: {
 				id: crypto.randomUUID(),
-				type: timelineEvent.type || timelineEvent.start ? timelineEvent.type || "timeline" : "wrapper",
 				level: 0,
 				step: 0,
 				score: 0,
@@ -1269,8 +1284,6 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 				childrenByScore: [],
 				depth: parent ? parent.timelineEventDetails.depth + 1 : 0,
 				parentId: parent?.timelineEventDetails.id,
-				color: (timelineEvent.color || options.defaultColor).slice(0, 3),
-				highlightedColor: (timelineEvent.highlightedColor || options.defaultColor).slice(0, 3),
 				startMinutes: parseDateToMinutes(timelineEvent.start),
 				endMinutes: parseDateToMinutes(timelineEvent.end),
 				durationMinutes: parseNumberToMinutes(timelineEvent.duration) || 0,
@@ -1279,8 +1292,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			} as ITimelineEventDetails,
 		};
 
-		if (parent && timelineEventWithDetails.timelineEventDetails.type === "timeline" && parent.timelineEventDetails.type === "wrapper")
-			parent.timelineEventDetails.type = "container";
+		if (parent && timelineEventWithDetails.type === "timeline" && parent.type === "wrapper") parent.type = "container";
 
 		if (timelineEvent.events && timelineEvent.events.length) {
 			addEvents(timelineEventWithDetails, ...timelineEvent.events);
@@ -1348,5 +1360,8 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		add,
 		reset,
 		select,
+		preventNextPreviewRender: () => {
+			preventNextPreviewRender = true;
+		},
 	};
 };

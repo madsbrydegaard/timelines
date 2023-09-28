@@ -29,18 +29,21 @@
 			let log = [];
 			const timelineContainer = document.querySelector("#timeline");
 			const logElement = document.querySelector("#log");
-			const events = ["pinch.tl.container", "wheel.tl.container", "drag.tl.container", "click.tl.event"];
+			const events = ["pinch.tl.container", "wheel.tl.container", "drag.tl.container", "click.tl.event", "selected.tl.event"];
 
 			events.forEach((eventName) => {
 				timelineContainer.addEventListener(eventName, (timelineEvent) => {
 					log.unshift(timelineEvent.detail.name);
 					if (log.length > 20) log.pop();
 					logElement.innerHTML = log.join("\n");
+
+					if (eventName === "selected.tl.event") {
+						//timelineEvent.detail.timelineEvent.preventNextPreviewRender = true;
+						timeline.preventNextPreviewRender();
+					}
 				});
 			});
 
-			const image = new Image();
-			image.src = "docs/100px-Gorm-the-old.jpg";
 			const data = {
 				name: "Den danske kongerække",
 				events: [
@@ -50,17 +53,60 @@
 						title: "Gorm den gamle",
 						description:
 							"Gorm den Gamle (antagelig født mellem 908 og 918, død ca. 958), formodentlig søn af Jellingdynastiets grundlægger, Knud 1. Hardeknud Svendsen, der kort efter 900 tog magten i Vestdanmark. Gorm omtales første gang som konge i skriftlige kilder fra 936. Da han døde omkring 958, begravedes han i nordhøjen i Jelling, men blev senere genbegravet i den første trækirke i Jelling. Ifølge indskriften på den lille Jellingesten var han gift med Thyra (Dannebod), og på den store omtales han som Harald 1. Blåtands fader.",
+						image: "docs/100px-Gorm-the-old.jpg",
+					},
+					{
+						start: [958],
+						end: [987, 11, 1],
+						title: "Harald 1. Blåtand",
+						wikipedia:
+							"https://en.wikipedia.org/w/api.php?action=query&format=json&prop=extracts%7Cpageimages&titles=Harald%20Bluetooth&formatversion=2&exintro=1&explaintext=1&pithumbsize=200",
+						abstract: "D. senest 987",
+						description:
+							"Harald 1. Blåtand (død senest 987), søn af Gorm den Gamle og Dronning Thyra. Indskriften på den store Jellingesten fortæller, at han erobrede hele Danmark og Norge; men den præcise geografiske udstrækning af hans kongemagt er uvis. Betydelige bygningsanlæg fra omkring 980 – ringborge, udbygningen af Dannevirke og broen over Ravning Enge – tyder dog på en vis rigssamling. Det anføres på samme Jellingesten, at han kristnede danerne, og opførelsen af den første trækirke i Jelling tilskrives ham. Hans tilnavn skyldes formentlig en iøjnefaldende dårlig tand.",
+						image: "docs/100px-Gorm-the-old.jpg",
+					},
+					{
+						start: [800],
+						end: [1050],
+						title: "Vikingetid",
+						type: "background",
+					},
+					{
+						start: [1050],
+						end: [1340],
+						title: "Højmiddelalder",
+						type: "background",
+					},
+					{
+						start: [1340],
+						end: [1536],
+						title: "Senmiddelalder",
+						type: "background",
+					},
+					{
+						start: [1400],
+						end: [1450],
+						title: "Mystisk krig",
+						type: "background",
 					},
 				],
 			};
-			const timeline = TimelineContainer(timelineContainer, { start: "100bc", end: "now" });
+			const timeline = TimelineContainer(timelineContainer, { start: "100bc", end: "now", autoSelect: true });
 			timeline.add({
 				id: crypto.randomUUID(),
-				events: data.events.map((item) => ({
-					...item,
-					type: "timeline",
-					renderPreviewNode: (event) => image,
-				})),
+				events: data.events.map((item) => {
+					return {
+						...item,
+						renderPreviewNode: item.image
+							? (event) => {
+									const image = new Image();
+									image.src = item.image;
+									return image;
+							  }
+							: undefined,
+					};
+				}),
 			});
 		</script>
 	</body>
