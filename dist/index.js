@@ -37,6 +37,8 @@ var TimelineContainer = (elementIdentifier, settings) => {
   let visibleEvents;
   let previewTimer;
   let preventNextPreviewRender = false;
+  let preventPreviewRender = false;
+  let eventBatchCount = 0;
   const MINUTES_IN_DAY = 1440;
   const MINUTES_IN_WEEK = 10080;
   const MINUTES_IN_YEAR = 525948.766;
@@ -48,6 +50,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
   const add = (...timelineEvents) => {
     if (!timelineEvents)
       throw new Error(`Event argument is empty. Please provide Timeline event(s) as input`);
+    timelineEvents = timelineEvents.map((tl) => __spreadProps(__spreadValues({}, tl), { step: tl.step || ++eventBatchCount }));
     addEvents(rootTimeline, ...timelineEvents);
     update();
   };
@@ -84,7 +87,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
       autoSelect: false,
       defaultColor: "#aaa",
       defaultHighlightedColor: "#444",
-      defaultBackgroundColor: "#0000",
+      defaultBackgroundColor: "#eeee",
       defaultBackgroundHightligtedColor: "#eee7",
       zoomDuration: 200,
       easing: "easeOutCubic",
@@ -191,6 +194,8 @@ var TimelineContainer = (elementIdentifier, settings) => {
     zoom(timelineEvent, useAnimation, onfocused);
   };
   const reset = () => {
+    preventPreviewRender = false;
+    preventNextPreviewRender = false;
     currentTimeline = rootTimeline;
     zoomto(
       options.start ? parseDateToMinutes(options.start) : currentTimeline.timelineEventDetails.startMinutes,
@@ -202,7 +207,10 @@ var TimelineContainer = (elementIdentifier, settings) => {
   };
   const findFirstEvent = (timelineEventIdentifier, parent) => {
     let result = void 0;
-    for (const child of (parent || rootTimeline).timelineEventDetails.childrenByStartMinute) {
+    const parentNode = parent || rootTimeline;
+    if (parentNode.timelineEventDetails.id === timelineEventIdentifier)
+      return parentNode;
+    for (const child of parentNode.timelineEventDetails.childrenByStartMinute) {
       if (child.title === timelineEventIdentifier || child.timelineEventDetails.id === timelineEventIdentifier) {
         result = child;
         break;
@@ -215,30 +223,38 @@ var TimelineContainer = (elementIdentifier, settings) => {
     return result;
   };
   const select = (timelineEventIdentifier) => {
-    if (!timelineEventIdentifier) {
-      selectedTimelineIds = [];
-    } else if (typeof timelineEventIdentifier === "string") {
-      if (timelineEventIdentifier === "next") {
-        const result = findFirstEvent(selectedTimelineIds[0]);
-        if (!result)
-          throw `No timeline selected`;
-        selectedTimelineIds = [result.timelineEventDetails.next];
-        fire("selected.tl.event", findFirstEvent(selectedTimelineIds[0]));
-      } else if (timelineEventIdentifier === "previous") {
-        const result = findFirstEvent(selectedTimelineIds[0]);
-        if (!result)
-          throw `No timeline selected`;
-        selectedTimelineIds = [result.timelineEventDetails.previous];
-        fire("selected.tl.event", findFirstEvent(selectedTimelineIds[0]));
-      } else {
-        const result = findFirstEvent(timelineEventIdentifier);
-        if (!result)
-          throw `Cannot find ${timelineEventIdentifier} by title nor timelineEventDetails.id`;
-        selectedTimelineIds = [result.timelineEventDetails.id];
-        fire("selected.tl.event", result);
+    try {
+      if (!timelineEventIdentifier) {
+        selectedTimelineIds = [];
+      } else if (typeof timelineEventIdentifier === "string") {
+        if (timelineEventIdentifier === "next") {
+          const result = findFirstEvent(selectedTimelineIds[0]);
+          if (!result)
+            throw `No event selected`;
+          if (!result.timelineEventDetails.next)
+            throw `No next event available`;
+          selectedTimelineIds = [result.timelineEventDetails.next];
+          fire("selected.tl.event", findFirstEvent(selectedTimelineIds[0]));
+        } else if (timelineEventIdentifier === "previous") {
+          const result = findFirstEvent(selectedTimelineIds[0]);
+          if (!result)
+            throw `No event selected`;
+          if (!result.timelineEventDetails.previous)
+            throw `No previous event available`;
+          selectedTimelineIds = [result.timelineEventDetails.previous];
+          fire("selected.tl.event", findFirstEvent(selectedTimelineIds[0]));
+        } else {
+          const result = findFirstEvent(timelineEventIdentifier);
+          if (!result)
+            throw `Cannot find ${timelineEventIdentifier} by title nor timelineEventDetails.id`;
+          selectedTimelineIds = [result.timelineEventDetails.id];
+          fire("selected.tl.event", result);
+        }
       }
+      update();
+    } catch (error) {
+      raise(error);
     }
-    update();
   };
   const zoom = (timelineEvent, useAnimation = true, onzoomend) => {
     if (!timelineEvent) {
@@ -335,9 +351,8 @@ var TimelineContainer = (elementIdentifier, settings) => {
         element2.title = "";
         return;
       }
-      const eventid = hoverEvent.getAttribute("eventid");
-      const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
-      if (timelineEvent && timelineEvent.type === "timeline") {
+      const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === hoverEvent.getAttribute("eventid"));
+      if (timelineEvent) {
         fire(`hover.tl.event`, timelineEvent);
         element2.style.cursor = "pointer";
         element2.title = timelineEvent.title;
@@ -486,6 +501,9 @@ var TimelineContainer = (elementIdentifier, settings) => {
         timelineEvent.timelineEventDetails.previewNode.style.left = randomLeftPosition * 100 + "%";
         timelineEvent.timelineEventDetails.previewNode.style.top = randomTopPosition * 100 + "%";
         let x2 = getViewRatio(timelineEvent.timelineEventDetails.startMinutes + timelineEvent.timelineEventDetails.durationMinutes / 2);
+        if (isViewInside(timelineEvent)) {
+          x2 = 0.5;
+        }
         if (x2 > 1) {
           x2 = getViewRatio(timelineEvent.timelineEventDetails.startMinutes + (viewEnd() - timelineEvent.timelineEventDetails.startMinutes) / 2);
         }
@@ -521,22 +539,35 @@ var TimelineContainer = (elementIdentifier, settings) => {
       const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.timelineEventDetails.startMinutes);
       const widthRatio = viewInside ? 100 : timelineEvent.timelineEventDetails.durationMinutes / viewDuration() * 100;
       const isHighlighted = !!selectedTimelineIds.length && !!selectedTimelineIds.find((tlId) => tlId === timelineEvent.timelineEventDetails.id);
+      const levelFactor = (timelineEvent.timelineEventDetails.level - 1) * options.eventHeight + (timelineEvent.timelineEventDetails.level - 1) * options.eventSpacing;
+      const stepFactor = timelineEvent.timelineEventDetails.step * options.eventSpacing;
       switch (timelineEvent.type) {
         default: {
           eventsFragment.append(createEventHTML(timelineEvent));
+          continue;
+        }
+        case "container": {
+          const heightFactor = timelineEvent.timelineEventDetails.height * options.eventHeight + timelineEvent.timelineEventDetails.height * options.eventSpacing;
+          timelineEvent.timelineEventDetails.eventNode.style.bottom = `${levelFactor + heightFactor + stepFactor}px`;
+          eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
+          eventsFragment.append(createEventHTML(timelineEvent));
+          continue;
+        }
+        case "timeline": {
+          const parentfactor = (parentEvent.timelineEventDetails.level - 1) * options.eventHeight + (parentEvent.timelineEventDetails.level - 1) * options.eventSpacing;
+          timelineEvent.timelineEventDetails.eventNode.style.bottom = `${parentfactor + levelFactor + stepFactor}px`;
+          timelineEvent.timelineEventDetails.eventNode.style.backgroundColor = isHighlighted ? timelineEvent.highlightedColor : timelineEvent.color;
           break;
         }
-        case "timeline":
         case "background": {
-          timelineEvent.timelineEventDetails.eventNode.style.left = leftRatio * 100 + "%";
-          timelineEvent.timelineEventDetails.eventNode.style.width = widthRatio + "%";
-          timelineEvent.timelineEventDetails.eventNode.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
-          timelineEvent.timelineEventDetails.eventNode.style.backgroundColor = isHighlighted ? timelineEvent.highlightedColor : timelineEvent.color;
-          eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
-          visibleEvents.push(timelineEvent);
           break;
         }
       }
+      timelineEvent.timelineEventDetails.eventNode.style.left = leftRatio * 100 + "%";
+      timelineEvent.timelineEventDetails.eventNode.style.width = widthRatio + "%";
+      timelineEvent.timelineEventDetails.eventNode.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
+      eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
+      visibleEvents.push(timelineEvent);
     }
     return eventsFragment;
   };
@@ -642,7 +673,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
       eventsContainer.appendChild(eventsHtml);
   };
   const appendPreviewHTML = () => {
-    if (!preventNextPreviewRender) {
+    if (!preventPreviewRender && !preventNextPreviewRender) {
       const previewsHtml = createPreviewHTML();
       if (previewsHtml)
         previewsContainer.appendChild(previewsHtml);
@@ -694,14 +725,27 @@ var TimelineContainer = (elementIdentifier, settings) => {
     return currentYearString;
   };
   const update = () => {
-    if (!element || !currentTimeline)
-      return;
-    dividerContainer.innerHTML = "";
-    labelContainer.innerHTML = "";
-    eventsContainer.innerHTML = "";
-    previewsContainer.innerHTML = "";
+    if (dividerContainer)
+      dividerContainer.innerHTML = "";
+    if (labelContainer)
+      labelContainer.innerHTML = "";
+    if (eventsContainer)
+      eventsContainer.innerHTML = "";
+    if (previewsContainer)
+      previewsContainer.innerHTML = "";
     visibleEvents = [];
     fire("update.tl.container");
+  };
+  const clear = () => {
+    if (!currentTimeline)
+      return;
+    currentTimeline.events = [];
+    currentTimeline.timelineEventDetails.childrenByStartMinute = [];
+    currentTimeline.timelineEventDetails.timelineLevelMatrix = { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } };
+    currentTimeline.timelineEventDetails.backgroundLevelMatrix = { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } };
+    eventBatchCount = 0;
+    fire("cleared.tl.container");
+    update();
   };
   const onUpdate = () => {
     appendLabelHTML();
@@ -843,25 +887,21 @@ var TimelineContainer = (elementIdentifier, settings) => {
       eventHTML.style.boxSizing = "border-box";
       eventHTML.style.position = "absolute";
       eventHTML.style.minWidth = "5px";
-      eventHTML.style.overflow = "hidden";
       eventHTML.classList.add(options.classNames.timelineEvent);
       eventHTML.setAttribute("level", timelineEvent.timelineEventDetails.level.toString());
       eventHTML.setAttribute("depth", timelineEvent.timelineEventDetails.depth.toString());
       eventHTML.setAttribute("score", timelineEvent.timelineEventDetails.score.toString());
+      eventHTML.setAttribute("step", timelineEvent.timelineEventDetails.step.toString());
       return eventHTML;
     };
     const setTimelineNode = (timelineEvent) => {
       const node = createEventNode(timelineEvent);
-      const spaceFactor = timelineEvent.timelineEventDetails.level * options.eventSpacing;
-      const heightFactor = (timelineEvent.timelineEventDetails.level - 1) * options.eventHeight;
-      node.style.bottom = `${spaceFactor + heightFactor}px`;
       node.style.minHeight = `${options.eventHeight}px`;
       node.style.cursor = "pointer";
       node.style.borderRadius = "5px";
       node.title = timelineEvent.title;
       if (timelineEvent.renderEventNode) {
         const elementToAppend = document.createElement("div");
-        elementToAppend.style.display = "contents";
         elementToAppend.append(timelineEvent.renderEventNode(timelineEvent));
         node.append(elementToAppend);
       }
@@ -874,15 +914,34 @@ var TimelineContainer = (elementIdentifier, settings) => {
       node.style.bottom = `0`;
       node.style.top = `${topFactor}px`;
       node.style.zIndex = "-1";
-      const elementToAppend = document.createElement("div");
-      elementToAppend.style.whiteSpace = "nowrap";
-      elementToAppend.setAttribute("eventid", timelineEvent.timelineEventDetails.id);
+      node.style.overflow = "hidden";
+      node.style.background = `linear-gradient(to right, ${options.defaultBackgroundColor}, 1px, #0000)`;
+      node.title = timelineEvent.title;
       if (timelineEvent.renderEventNode) {
+        const elementToAppend = document.createElement("div");
         elementToAppend.append(timelineEvent.renderEventNode(timelineEvent));
-      } else {
-        elementToAppend.append(timelineEvent.title);
+        elementToAppend.setAttribute("eventid", timelineEvent.timelineEventDetails.id);
+        node.append(elementToAppend);
       }
-      node.append(elementToAppend);
+      timelineEvent.timelineEventDetails.eventNode = node;
+    };
+    const setContainerNode = (timelineEvent) => {
+      const node = createEventNode(timelineEvent);
+      node.style.height = `15px`;
+      node.style.borderBottomColor = options.defaultBackgroundColor;
+      node.style.borderBottomWidth = "1px";
+      node.style.borderBottomStyle = "solid";
+      node.style.width = "100%";
+      const titleNode = document.createElement("div");
+      titleNode.style.position = "relative";
+      titleNode.style.bottom = "-12px";
+      titleNode.style.fontSize = "x-small";
+      titleNode.style.width = "fit-content";
+      titleNode.style.backgroundColor = "white";
+      titleNode.style.zIndex = "1";
+      titleNode.style.padding = "0px 3px 0px 3px";
+      titleNode.append(timelineEvent.title);
+      node.appendChild(titleNode);
       timelineEvent.timelineEventDetails.eventNode = node;
     };
     const setPreviewNode = (timelineEvent) => {
@@ -904,21 +963,23 @@ var TimelineContainer = (elementIdentifier, settings) => {
       const score = durationRatio * (timelineEvent.timelineEventDetails.childrenByStartMinute.length + 1);
       timelineEvent.timelineEventDetails.score = score;
     };
-    const setLevel = (timelineEvent, marix, useEqual = true) => {
+    const setLevel = (timelineEvent, matrix, useEqual = true) => {
       let level = 0;
-      for (const eventLevel in marix) {
+      let height = 0;
+      for (const eventLevel in matrix) {
         level = Number(eventLevel);
-        if (useEqual ? timelineEvent.timelineEventDetails.startMinutes >= marix[eventLevel].time : timelineEvent.timelineEventDetails.startMinutes > marix[eventLevel].time) {
-          marix[eventLevel] = {
+        if (useEqual ? timelineEvent.timelineEventDetails.startMinutes >= matrix[eventLevel].time : timelineEvent.timelineEventDetails.startMinutes > matrix[eventLevel].time) {
+          matrix[eventLevel] = {
             height: timelineEvent.timelineEventDetails.height,
             time: timelineEvent.timelineEventDetails.endMinutes
           };
           timelineEvent.timelineEventDetails.level = level;
           return;
         }
+        height = matrix[eventLevel].height;
       }
-      level += 1;
-      marix[level.toString()] = {
+      level += height;
+      matrix[level.toString()] = {
         height: timelineEvent.timelineEventDetails.height,
         time: timelineEvent.timelineEventDetails.endMinutes
       };
@@ -935,6 +996,9 @@ var TimelineContainer = (elementIdentifier, settings) => {
     parent.timelineEventDetails.childrenByStartMinute.forEach((childEvent, i) => {
       switch (childEvent.type) {
         case "container":
+          setLevel(childEvent, parent.timelineEventDetails.timelineLevelMatrix);
+          setContainerNode(childEvent);
+          break;
         case "timeline":
           setScore(childEvent);
           setLevel(childEvent, parent.timelineEventDetails.timelineLevelMatrix, false);
@@ -949,7 +1013,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
       setPreviewNode(childEvent);
       setNeighborsTo(childEvent, i);
     });
-    parent.timelineEventDetails.height = Object.entries(parent.timelineEventDetails.timelineLevelMatrix).length;
+    parent.timelineEventDetails.height = Math.max(...Object.entries(parent.timelineEventDetails.timelineLevelMatrix).map(([key, o]) => Number(key)));
   };
   const parseEvent = (timelineEvent, parent) => {
     if (!timelineEvent) {
@@ -965,7 +1029,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
       timelineEventDetails: {
         id: crypto.randomUUID(),
         level: 0,
-        step: 0,
+        step: timelineEvent.step || (parent == null ? void 0 : parent.step) || 0,
         score: 0,
         height: 1,
         childrenByStartMinute: [],
@@ -1028,6 +1092,16 @@ var TimelineContainer = (elementIdentifier, settings) => {
       })
     );
   };
+  const raise = (error) => {
+    element.dispatchEvent(
+      new CustomEvent("err.tl.container", {
+        detail: error,
+        bubbles: false,
+        cancelable: true,
+        composed: false
+      })
+    );
+  };
   init(elementIdentifier, settings);
   return {
     focus,
@@ -1037,7 +1111,11 @@ var TimelineContainer = (elementIdentifier, settings) => {
     select,
     preventNextPreviewRender: () => {
       preventNextPreviewRender = true;
-    }
+    },
+    setPreventPreviewRender: (prevent) => {
+      preventPreviewRender = prevent;
+    },
+    clear
   };
 };
 export {

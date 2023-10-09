@@ -91,6 +91,7 @@ export interface ITimelineEvent extends ITimelineBase, ITimelineProps {
     end?: number[] | string | number | Date;
     duration?: number | string;
     events?: ITimelineEvent[];
+    step?: number;
 }
 export interface ITimelineContainer {
     add: (...timelineEvents: ITimelineEvent[]) => void;
@@ -99,6 +100,8 @@ export interface ITimelineContainer {
     reset: () => void;
     select: (timelineEventIdentifier?: string) => void;
     preventNextPreviewRender: () => void;
+    setPreventPreviewRender: (prevent: boolean) => void;
+    clear: () => void;
 }
 export declare const TimelineContainer: (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions) => ITimelineContainer;
 export {};
