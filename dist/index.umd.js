@@ -40,6 +40,7 @@
     let preventNextPreviewRender = false;
     let preventPreviewRender = false;
     let eventBatchCount = 0;
+    let touchDragFactor = 1;
     const MINUTES_IN_DAY = 1440;
     const MINUTES_IN_WEEK = 10080;
     const MINUTES_IN_YEAR = 525948.766;
@@ -180,7 +181,7 @@
       update();
     };
     const onmove = (deltaPivot) => {
-      setPivot(deltaPivot * options.dragSpeed);
+      setPivot(deltaPivot * options.dragSpeed * touchDragFactor);
       update();
     };
     const focus = (timelineEvent, useAnimation = true, onfocused) => {
@@ -441,6 +442,7 @@
               const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
               if (diffX !== 0) {
                 inDrag = true;
+                touchDragFactor = 3;
                 dragStartX = tpCache[touch1].clientX;
                 dragStartY = tpCache[touch1].clientY;
                 move(event.targetTouches[0].clientX, event.targetTouches[0].clientY);
@@ -459,6 +461,7 @@
           dragStartX = event.clientX;
           dragStartY = event.clientY;
           inDrag = true;
+          touchDragFactor = 1;
           fire("mousedown.tl.container");
         },
         { passive: true }

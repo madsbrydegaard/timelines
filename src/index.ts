@@ -128,6 +128,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 	let preventNextPreviewRender: boolean = false;
 	let preventPreviewRender: boolean = false;
 	let eventBatchCount: number = 0;
+	let touchDragFactor: number = 1;
 
 	const MINUTES_IN_DAY = 1440; // minutes in a day
 	const MINUTES_IN_WEEK = 10080; // minutes in a week
@@ -303,7 +304,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		update();
 	};
 	const onmove = (deltaPivot: number): void => {
-		setPivot(deltaPivot * options.dragSpeed);
+		setPivot(deltaPivot * options.dragSpeed * touchDragFactor);
 
 		update();
 	};
@@ -614,6 +615,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 						const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
 						if (diffX !== 0) {
 							inDrag = true;
+							touchDragFactor = 3;
 							dragStartX = tpCache[touch1].clientX;
 							dragStartY = tpCache[touch1].clientY;
 							move(event.targetTouches[0].clientX, event.targetTouches[0].clientY);
@@ -636,6 +638,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 				dragStartY = event.clientY;
 				//
 				inDrag = true;
+				touchDragFactor = 1;
 
 				fire("mousedown.tl.container");
 			},
