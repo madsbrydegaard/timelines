@@ -414,8 +414,7 @@
       element2.addEventListener(
         "touchend",
         (event) => {
-          if (!inDrag)
-            click(tpCache[0].clientX, tpCache[0].clientY);
+          click(tpCache[0].clientX, tpCache[0].clientY);
           inDrag = false;
           fire("touchend.tl.container");
         },

@@ -505,9 +505,6 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			if (options.autoSelect && event.detail.timelineEvent) {
 				select(event.detail.timelineEvent.timelineEventDetails.id);
 			}
-			// if (options.autoZoom && event.detail.timelineEvent && event.detail.timelineEvent.type === "background") {
-			// 	zoom(event.detail.timelineEvent);
-			// }
 		};
 		const onEventSelected = (event: CustomEvent<ITimelineCustomEventDetails>) => {
 			if (options.autoZoom && event.detail.timelineEvent) {
@@ -571,7 +568,8 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		element.addEventListener(
 			"touchend",
 			(event: TouchEvent) => {
-				if (!inDrag) click(tpCache[0].clientX, tpCache[0].clientY);
+				click(tpCache[0].clientX, tpCache[0].clientY);
+				//if (!inDrag) click(tpCache[0].clientX, tpCache[0].clientY);
 				inDrag = false;
 				fire("touchend.tl.container");
 			},
@@ -614,7 +612,6 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 					if (touch1 >= 0) {
 						// Calculate the difference between the start and move coordinates
 						const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
-						//const diffY = event.targetTouches[0].clientY - tpCache[touch1].clientY;
 						if (diffX !== 0) {
 							inDrag = true;
 							dragStartX = tpCache[touch1].clientX;
