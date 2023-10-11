@@ -15,6 +15,7 @@ export interface ITimelineOptions {
 	zoomMargin?: number;
 	autoSelect?: boolean;
 	autoFocusOnTimelineAdd?: boolean;
+	includeBackgroundOnAutoFocus?: boolean;
 	defaultColor?: string;
 	defaultHighlightedColor?: string;
 	defaultBackgroundColor?: string;
@@ -70,6 +71,9 @@ interface ITimelineEventDetails {
 	startMinutes: number;
 	endMinutes: number;
 	durationMinutes: number;
+	startMinutesForTimelineChildren?: number;
+	endMinutesForTimelineChildren?: number;
+	durationMinutesForTimelineChildren?: number;
 	level: number;
 	step: number;
 	depth: number;
@@ -191,6 +195,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 				zoomMargin: 0.1,
 				autoSelect: false,
 				autoFocusOnTimelineAdd: false,
+				includeBackgroundOnAutoFocus: false,
 				defaultColor: "#aaa",
 				defaultHighlightedColor: "#444",
 				defaultBackgroundColor: "#eeee",
@@ -390,7 +395,14 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			throw "first argument 'timelineEvent' of method 'zoom' must be an object of type ITimelineEventWithDetails";
 		}
 
-		zoomto(timelineEvent.timelineEventDetails.startMinutes, timelineEvent.timelineEventDetails.endMinutes, useAnimation, () => {
+		const startMinutes = !options.includeBackgroundOnAutoFocus
+			? timelineEvent.timelineEventDetails.startMinutesForTimelineChildren
+			: timelineEvent.timelineEventDetails.startMinutes;
+		const endMinutes = !options.includeBackgroundOnAutoFocus
+			? timelineEvent.timelineEventDetails.endMinutesForTimelineChildren
+			: timelineEvent.timelineEventDetails.endMinutes;
+
+		zoomto(startMinutes, endMinutes, useAnimation, () => {
 			fire("zoom.tl.event", timelineEvent);
 			if (onzoomend) onzoomend(timelineEvent);
 		});
@@ -876,7 +888,6 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		for (let i = 0; i < options.labelCount + 2; i++) {
 			const labelTime = (i + 1) * currentTimestampDistanceByLevel + timelineStart + currentDif - currentTimestampDistanceByLevel;
 			const dividerTime = labelTime + currentTimestampDistanceByLevel / 2;
-
 			// Set label position
 			const labelViewRatio = getViewRatio(labelTime);
 			const labelViewLeftPosition = labelViewRatio * 100;
@@ -936,7 +947,6 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		const currentRemainder = Math.abs(minutes - yearsCount * MINUTES_IN_YEAR);
 		const momentInValidateRange = minutes > 270000 * MINUTES_IN_YEAR * -1 && minutes < 270000 * MINUTES_IN_YEAR;
 		const date = momentInValidateRange ? new Date(minutes * 6e4) : new Date(currentRemainder * 6e4);
-
 		if (viewDuration() < SHOW_TIME_DURATION) {
 			return [
 				Intl.DateTimeFormat(undefined, {
@@ -1137,15 +1147,16 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		return undefined;
 	};
 	const calcStart = (timelineEventWithDetails: ITimelineEventWithDetails): number | undefined => {
-		return timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length
+		const result = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length
 			? Math.min(
 					timelineEventWithDetails.timelineEventDetails.startMinutes || Number.MAX_SAFE_INTEGER,
 					timelineEventWithDetails.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes
 			  )
 			: timelineEventWithDetails.timelineEventDetails.startMinutes;
+		return result;
 	};
 	const calcEnd = (timelineEventWithDetails: ITimelineEventWithDetails): number => {
-		return timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length
+		const result = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length
 			? Math.max.apply(
 					1,
 					timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.map((child) => child.timelineEventDetails.endMinutes)
@@ -1155,6 +1166,40 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			: timelineEventWithDetails.timelineEventDetails.durationMinutes
 			? timelineEventWithDetails.timelineEventDetails.startMinutes + timelineEventWithDetails.timelineEventDetails.durationMinutes
 			: timelineEventWithDetails.timelineEventDetails.startMinutes + 1;
+		return result;
+	};
+	const calcStartForTimeline = (timelineEventWithDetails: ITimelineEventWithDetails): number | undefined => {
+		const timelineChildren = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.filter((tl) =>
+			["background"].find((ect) => ect !== tl.type)
+		);
+
+		const result = timelineChildren.length
+			? Math.min(
+					timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren || Number.MAX_SAFE_INTEGER,
+					timelineChildren[0].timelineEventDetails.startMinutesForTimelineChildren
+			  )
+			: timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren || timelineEventWithDetails.timelineEventDetails.startMinutes;
+		return result;
+	};
+	const calcEndForTimeline = (timelineEventWithDetails: ITimelineEventWithDetails, excludeChildrenTypes?: string[]): number => {
+		const timelineChildren = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.filter((tl) =>
+			["background"].find((ect) => ect !== tl.type)
+		);
+		const result = timelineChildren.length
+			? Math.max.apply(
+					1,
+					timelineChildren.map((child) => child.timelineEventDetails.endMinutesForTimelineChildren)
+			  )
+			: timelineEventWithDetails.timelineEventDetails.endMinutesForTimelineChildren
+			? timelineEventWithDetails.timelineEventDetails.endMinutesForTimelineChildren
+			: timelineEventWithDetails.timelineEventDetails.durationMinutesForTimelineChildren
+			? timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren +
+			  timelineEventWithDetails.timelineEventDetails.durationMinutesForTimelineChildren
+			: timelineEventWithDetails.timelineEventDetails.endMinutes
+			? timelineEventWithDetails.timelineEventDetails.endMinutes
+			: timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren + 1;
+
+		return result;
 	};
 	const addEvents = (parent: ITimelineEventWithDetails, ...events: ITimelineEvent[]): void => {
 		const parsedSortedChildren = events
@@ -1295,8 +1340,12 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 
 		// Adjust parent start & end if childrenByStartMinute changed range
 		parent.timelineEventDetails.startMinutes = calcStart(parent);
+		parent.timelineEventDetails.startMinutesForTimelineChildren = calcStartForTimeline(parent);
 		parent.timelineEventDetails.endMinutes = calcEnd(parent);
+		parent.timelineEventDetails.endMinutesForTimelineChildren = calcEndForTimeline(parent);
 		parent.timelineEventDetails.durationMinutes = parent.timelineEventDetails.endMinutes - parent.timelineEventDetails.startMinutes;
+		parent.timelineEventDetails.durationMinutesForTimelineChildren =
+			parent.timelineEventDetails.endMinutesForTimelineChildren - parent.timelineEventDetails.startMinutesForTimelineChildren;
 
 		parent.timelineEventDetails.childrenByStartMinute.forEach((childEvent, i) => {
 			switch (childEvent.type) {
@@ -1372,6 +1421,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 
 		// Calculate start date - if childrenByStartMinute exists take lowest date
 		timelineEventWithDetails.timelineEventDetails.startMinutes = calcStart(timelineEventWithDetails);
+		timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren = calcStartForTimeline(timelineEventWithDetails);
 
 		// // Filter missing requirements
 		if (!timelineEventWithDetails.timelineEventDetails.startMinutes) {
@@ -1381,8 +1431,12 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 
 		// Calculate end date
 		timelineEventWithDetails.timelineEventDetails.endMinutes = calcEnd(timelineEventWithDetails);
+		timelineEventWithDetails.timelineEventDetails.endMinutesForTimelineChildren = calcEndForTimeline(timelineEventWithDetails);
 		timelineEventWithDetails.timelineEventDetails.durationMinutes =
 			timelineEventWithDetails.timelineEventDetails.endMinutes - timelineEventWithDetails.timelineEventDetails.startMinutes;
+		timelineEventWithDetails.timelineEventDetails.durationMinutesForTimelineChildren =
+			timelineEventWithDetails.timelineEventDetails.endMinutesForTimelineChildren -
+			timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren;
 
 		return timelineEventWithDetails;
 	};

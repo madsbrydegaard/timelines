@@ -92,6 +92,7 @@
         zoomMargin: 0.1,
         autoSelect: false,
         autoFocusOnTimelineAdd: false,
+        includeBackgroundOnAutoFocus: false,
         defaultColor: "#aaa",
         defaultHighlightedColor: "#444",
         defaultBackgroundColor: "#eeee",
@@ -270,7 +271,9 @@
       if (!isITimelineEventWithDetails(timelineEvent)) {
         throw "first argument 'timelineEvent' of method 'zoom' must be an object of type ITimelineEventWithDetails";
       }
-      zoomto(timelineEvent.timelineEventDetails.startMinutes, timelineEvent.timelineEventDetails.endMinutes, useAnimation, () => {
+      const startMinutes = !options.includeBackgroundOnAutoFocus ? timelineEvent.timelineEventDetails.startMinutesForTimelineChildren : timelineEvent.timelineEventDetails.startMinutes;
+      const endMinutes = !options.includeBackgroundOnAutoFocus ? timelineEvent.timelineEventDetails.endMinutesForTimelineChildren : timelineEvent.timelineEventDetails.endMinutes;
+      zoomto(startMinutes, endMinutes, useAnimation, () => {
         fire("zoom.tl.event", timelineEvent);
         if (onzoomend)
           onzoomend(timelineEvent);
@@ -877,16 +880,38 @@
       return void 0;
     };
     const calcStart = (timelineEventWithDetails) => {
-      return timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? Math.min(
+      const result = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? Math.min(
         timelineEventWithDetails.timelineEventDetails.startMinutes || Number.MAX_SAFE_INTEGER,
         timelineEventWithDetails.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes
       ) : timelineEventWithDetails.timelineEventDetails.startMinutes;
+      return result;
     };
     const calcEnd = (timelineEventWithDetails) => {
-      return timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? Math.max.apply(
+      const result = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? Math.max.apply(
         1,
         timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.map((child) => child.timelineEventDetails.endMinutes)
       ) : timelineEventWithDetails.timelineEventDetails.endMinutes ? timelineEventWithDetails.timelineEventDetails.endMinutes : timelineEventWithDetails.timelineEventDetails.durationMinutes ? timelineEventWithDetails.timelineEventDetails.startMinutes + timelineEventWithDetails.timelineEventDetails.durationMinutes : timelineEventWithDetails.timelineEventDetails.startMinutes + 1;
+      return result;
+    };
+    const calcStartForTimeline = (timelineEventWithDetails) => {
+      const timelineChildren = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.filter(
+        (tl) => ["background"].find((ect) => ect !== tl.type)
+      );
+      const result = timelineChildren.length ? Math.min(
+        timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren || Number.MAX_SAFE_INTEGER,
+        timelineChildren[0].timelineEventDetails.startMinutesForTimelineChildren
+      ) : timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren || timelineEventWithDetails.timelineEventDetails.startMinutes;
+      return result;
+    };
+    const calcEndForTimeline = (timelineEventWithDetails, excludeChildrenTypes) => {
+      const timelineChildren = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.filter(
+        (tl) => ["background"].find((ect) => ect !== tl.type)
+      );
+      const result = timelineChildren.length ? Math.max.apply(
+        1,
+        timelineChildren.map((child) => child.timelineEventDetails.endMinutesForTimelineChildren)
+      ) : timelineEventWithDetails.timelineEventDetails.endMinutesForTimelineChildren ? timelineEventWithDetails.timelineEventDetails.endMinutesForTimelineChildren : timelineEventWithDetails.timelineEventDetails.durationMinutesForTimelineChildren ? timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren + timelineEventWithDetails.timelineEventDetails.durationMinutesForTimelineChildren : timelineEventWithDetails.timelineEventDetails.endMinutes ? timelineEventWithDetails.timelineEventDetails.endMinutes : timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren + 1;
+      return result;
     };
     const addEvents = (parent, ...events) => {
       const parsedSortedChildren = events.map((tl) => parseEvent(tl, parent)).filter((tl) => !!tl).sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
@@ -1001,8 +1026,11 @@
       };
       parent.timelineEventDetails.childrenByStartMinute.push(...parsedSortedChildren);
       parent.timelineEventDetails.startMinutes = calcStart(parent);
+      parent.timelineEventDetails.startMinutesForTimelineChildren = calcStartForTimeline(parent);
       parent.timelineEventDetails.endMinutes = calcEnd(parent);
+      parent.timelineEventDetails.endMinutesForTimelineChildren = calcEndForTimeline(parent);
       parent.timelineEventDetails.durationMinutes = parent.timelineEventDetails.endMinutes - parent.timelineEventDetails.startMinutes;
+      parent.timelineEventDetails.durationMinutesForTimelineChildren = parent.timelineEventDetails.endMinutesForTimelineChildren - parent.timelineEventDetails.startMinutesForTimelineChildren;
       parent.timelineEventDetails.childrenByStartMinute.forEach((childEvent, i) => {
         switch (childEvent.type) {
           case "container":
@@ -1059,12 +1087,15 @@
         addEvents(timelineEventWithDetails, ...timelineEvent.events);
       }
       timelineEventWithDetails.timelineEventDetails.startMinutes = calcStart(timelineEventWithDetails);
+      timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren = calcStartForTimeline(timelineEventWithDetails);
       if (!timelineEventWithDetails.timelineEventDetails.startMinutes) {
         console.warn("Missing start property on event - skipping", timelineEvent);
         return void 0;
       }
       timelineEventWithDetails.timelineEventDetails.endMinutes = calcEnd(timelineEventWithDetails);
+      timelineEventWithDetails.timelineEventDetails.endMinutesForTimelineChildren = calcEndForTimeline(timelineEventWithDetails);
       timelineEventWithDetails.timelineEventDetails.durationMinutes = timelineEventWithDetails.timelineEventDetails.endMinutes - timelineEventWithDetails.timelineEventDetails.startMinutes;
+      timelineEventWithDetails.timelineEventDetails.durationMinutesForTimelineChildren = timelineEventWithDetails.timelineEventDetails.endMinutesForTimelineChildren - timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren;
       return timelineEventWithDetails;
     };
     const parseTimelineHTML = (input) => {

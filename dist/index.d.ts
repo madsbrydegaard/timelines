@@ -15,6 +15,7 @@ export interface ITimelineOptions {
     zoomMargin?: number;
     autoSelect?: boolean;
     autoFocusOnTimelineAdd?: boolean;
+    includeBackgroundOnAutoFocus?: boolean;
     defaultColor?: string;
     defaultHighlightedColor?: string;
     defaultBackgroundColor?: string;
@@ -70,6 +71,9 @@ interface ITimelineEventDetails {
     startMinutes: number;
     endMinutes: number;
     durationMinutes: number;
+    startMinutesForTimelineChildren?: number;
+    endMinutesForTimelineChildren?: number;
+    durationMinutesForTimelineChildren?: number;
     level: number;
     step: number;
     depth: number;
