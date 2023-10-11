@@ -91,6 +91,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
       zoomMargin: 0.1,
       autoSelect: false,
       autoFocusOnTimelineAdd: false,
+      autoDeselectOutside: false,
       includeBackgroundOnAutoFocus: false,
       defaultColor: "#aaa",
       defaultHighlightedColor: "#444",
@@ -204,13 +205,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
     preventPreviewRender = false;
     preventNextPreviewRender = false;
     currentTimeline = rootTimeline;
-    zoomto(
-      options.start ? parseDateToMinutes(options.start) : currentTimeline.timelineEventDetails.startMinutes,
-      options.end ? parseDateToMinutes(options.end) : currentTimeline.timelineEventDetails.endMinutes
-    );
-    if (options.autoSelect) {
-      select();
-    }
+    zoom(currentTimeline);
   };
   const findFirstEvent = (timelineEventIdentifier, parent) => {
     let result = void 0;
@@ -391,8 +386,11 @@ var TimelineContainer = (elementIdentifier, settings) => {
       let clickedEvent = clickedElements.find((element3) => {
         return element3.hasAttribute("eventid");
       });
-      if (!clickedEvent)
+      if (!clickedEvent) {
+        if (options.autoDeselectOutside && !preventPreviewRender && !preventNextPreviewRender)
+          select();
         return;
+      }
       const eventid = clickedEvent.getAttribute("eventid");
       const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
       if (timelineEvent) {
@@ -894,7 +892,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
   };
   const calcStartForTimeline = (timelineEventWithDetails) => {
     const timelineChildren = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.filter(
-      (tl) => ["background"].find((ect) => ect !== tl.type)
+      (tl) => ["background"].find((ect) => ect !== tl.type) && (!!tl.timelineEventDetails.hasTimelineEvents || !tl.timelineEventDetails.childrenByStartMinute.length)
     );
     const result = timelineChildren.length ? Math.min(
       timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren || Number.MAX_SAFE_INTEGER,
@@ -902,9 +900,9 @@ var TimelineContainer = (elementIdentifier, settings) => {
     ) : timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren || timelineEventWithDetails.timelineEventDetails.startMinutes;
     return result;
   };
-  const calcEndForTimeline = (timelineEventWithDetails, excludeChildrenTypes) => {
+  const calcEndForTimeline = (timelineEventWithDetails) => {
     const timelineChildren = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.filter(
-      (tl) => ["background"].find((ect) => ect !== tl.type)
+      (tl) => ["background"].find((ect) => ect !== tl.type) && (!!tl.timelineEventDetails.hasTimelineEvents || !tl.timelineEventDetails.childrenByStartMinute.length)
     );
     const result = timelineChildren.length ? Math.max.apply(
       1,
@@ -1024,6 +1022,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
       timelineEvent.timelineEventDetails.previous = me > 0 ? parent.timelineEventDetails.childrenByStartMinute[me - 1].timelineEventDetails.id : void 0;
     };
     parent.timelineEventDetails.childrenByStartMinute.push(...parsedSortedChildren);
+    parent.timelineEventDetails.hasTimelineEvents = parent.timelineEventDetails.childrenByStartMinute.some((tl) => tl.type === "timeline");
     parent.timelineEventDetails.startMinutes = calcStart(parent);
     parent.timelineEventDetails.startMinutesForTimelineChildren = calcStartForTimeline(parent);
     parent.timelineEventDetails.endMinutes = calcEnd(parent);
@@ -1155,7 +1154,8 @@ var TimelineContainer = (elementIdentifier, settings) => {
     setPreventPreviewRender: (prevent) => {
       preventPreviewRender = prevent;
     },
-    clear
+    clear,
+    update
   };
 };
 export {

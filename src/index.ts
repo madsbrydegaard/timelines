@@ -15,6 +15,7 @@ export interface ITimelineOptions {
 	zoomMargin?: number;
 	autoSelect?: boolean;
 	autoFocusOnTimelineAdd?: boolean;
+	autoDeselectOutside?: boolean;
 	includeBackgroundOnAutoFocus?: boolean;
 	defaultColor?: string;
 	defaultHighlightedColor?: string;
@@ -87,6 +88,7 @@ interface ITimelineEventDetails {
 	childrenByStartMinute: ITimelineEventWithDetails[];
 	next?: string;
 	previous?: string;
+	hasTimelineEvents?: boolean;
 }
 interface ITimelineEventWithDetails extends ITimelineEvent {
 	timelineEventDetails: ITimelineEventDetails;
@@ -107,6 +109,7 @@ export interface ITimelineContainer {
 	preventNextPreviewRender: () => void;
 	setPreventPreviewRender: (prevent: boolean) => void;
 	clear: () => void;
+	update: () => void;
 }
 enum Direction {
 	In = -1,
@@ -195,6 +198,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 				zoomMargin: 0.1,
 				autoSelect: false,
 				autoFocusOnTimelineAdd: false,
+				autoDeselectOutside: false,
 				includeBackgroundOnAutoFocus: false,
 				defaultColor: "#aaa",
 				defaultHighlightedColor: "#444",
@@ -334,13 +338,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		preventPreviewRender = false;
 		preventNextPreviewRender = false;
 		currentTimeline = rootTimeline;
-		zoomto(
-			options.start ? parseDateToMinutes(options.start) : currentTimeline.timelineEventDetails.startMinutes,
-			options.end ? parseDateToMinutes(options.end) : currentTimeline.timelineEventDetails.endMinutes
-		);
-		if (options.autoSelect) {
-			select();
-		}
+		zoom(currentTimeline);
 	};
 	const findFirstEvent = (timelineEventIdentifier: string, parent?: ITimelineEventWithDetails): ITimelineEventWithDetails | undefined => {
 		let result = undefined;
@@ -534,7 +532,10 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			let clickedEvent = clickedElements.find((element) => {
 				return element.hasAttribute("eventid");
 			});
-			if (!clickedEvent) return;
+			if (!clickedEvent) {
+				if (options.autoDeselectOutside && !preventPreviewRender && !preventNextPreviewRender) select();
+				return;
+			}
 			const eventid = clickedEvent.getAttribute("eventid");
 			const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
 			if (timelineEvent) {
@@ -1169,8 +1170,10 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		return result;
 	};
 	const calcStartForTimeline = (timelineEventWithDetails: ITimelineEventWithDetails): number | undefined => {
-		const timelineChildren = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.filter((tl) =>
-			["background"].find((ect) => ect !== tl.type)
+		const timelineChildren = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.filter(
+			(tl) =>
+				["background"].find((ect) => ect !== tl.type) &&
+				(!!tl.timelineEventDetails.hasTimelineEvents || !tl.timelineEventDetails.childrenByStartMinute.length)
 		);
 
 		const result = timelineChildren.length
@@ -1181,9 +1184,11 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			: timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren || timelineEventWithDetails.timelineEventDetails.startMinutes;
 		return result;
 	};
-	const calcEndForTimeline = (timelineEventWithDetails: ITimelineEventWithDetails, excludeChildrenTypes?: string[]): number => {
-		const timelineChildren = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.filter((tl) =>
-			["background"].find((ect) => ect !== tl.type)
+	const calcEndForTimeline = (timelineEventWithDetails: ITimelineEventWithDetails): number => {
+		const timelineChildren = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.filter(
+			(tl) =>
+				["background"].find((ect) => ect !== tl.type) &&
+				(!!tl.timelineEventDetails.hasTimelineEvents || !tl.timelineEventDetails.childrenByStartMinute.length)
 		);
 		const result = timelineChildren.length
 			? Math.max.apply(
@@ -1337,6 +1342,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 
 		// push parsed children
 		parent.timelineEventDetails.childrenByStartMinute.push(...parsedSortedChildren);
+		parent.timelineEventDetails.hasTimelineEvents = parent.timelineEventDetails.childrenByStartMinute.some((tl) => tl.type === "timeline");
 
 		// Adjust parent start & end if childrenByStartMinute changed range
 		parent.timelineEventDetails.startMinutes = calcStart(parent);
@@ -1503,5 +1509,6 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			preventPreviewRender = prevent;
 		},
 		clear,
+		update,
 	};
 };

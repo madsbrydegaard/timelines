@@ -15,6 +15,7 @@ export interface ITimelineOptions {
     zoomMargin?: number;
     autoSelect?: boolean;
     autoFocusOnTimelineAdd?: boolean;
+    autoDeselectOutside?: boolean;
     includeBackgroundOnAutoFocus?: boolean;
     defaultColor?: string;
     defaultHighlightedColor?: string;
@@ -87,6 +88,7 @@ interface ITimelineEventDetails {
     childrenByStartMinute: ITimelineEventWithDetails[];
     next?: string;
     previous?: string;
+    hasTimelineEvents?: boolean;
 }
 interface ITimelineEventWithDetails extends ITimelineEvent {
     timelineEventDetails: ITimelineEventDetails;
@@ -107,6 +109,7 @@ export interface ITimelineContainer {
     preventNextPreviewRender: () => void;
     setPreventPreviewRender: (prevent: boolean) => void;
     clear: () => void;
+    update: () => void;
 }
 export declare const TimelineContainer: (elementIdentifier: HTMLElement | string, settings?: ITimelineOptions) => ITimelineContainer;
 export {};
