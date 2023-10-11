@@ -14,6 +14,7 @@ export interface ITimelineOptions {
     autoZoom?: boolean;
     zoomMargin?: number;
     autoSelect?: boolean;
+    autoFocusOnTimelineAdd?: boolean;
     defaultColor?: string;
     defaultHighlightedColor?: string;
     defaultBackgroundColor?: string;

@@ -14,6 +14,7 @@ export interface ITimelineOptions {
 	autoZoom?: boolean;
 	zoomMargin?: number;
 	autoSelect?: boolean;
+	autoFocusOnTimelineAdd?: boolean;
 	defaultColor?: string;
 	defaultHighlightedColor?: string;
 	defaultBackgroundColor?: string;
@@ -150,8 +151,11 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		// Parse & sort all events
 		addEvents(rootTimeline, ...timelineEvents);
 
-		// Draw
-		update();
+		if (options.autoFocusOnTimelineAdd) {
+			focus(rootTimeline, false);
+		} else {
+			update();
+		}
 	};
 	const isViewInside = (timelineEvent: ITimelineEventWithDetails): boolean => {
 		return timelineEvent.timelineEventDetails.startMinutes < viewStart() && timelineEvent.timelineEventDetails.endMinutes > viewEnd();
@@ -186,6 +190,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 				autoZoom: false,
 				zoomMargin: 0.1,
 				autoSelect: false,
+				autoFocusOnTimelineAdd: false,
 				defaultColor: "#aaa",
 				defaultHighlightedColor: "#444",
 				defaultBackgroundColor: "#eeee",
@@ -1132,27 +1137,23 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		return undefined;
 	};
 	const calcStart = (timelineEventWithDetails: ITimelineEventWithDetails): number | undefined => {
-		return timelineEventWithDetails.timelineEventDetails.startMinutes
-			? timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length
-				? Math.min(
-						timelineEventWithDetails.timelineEventDetails.startMinutes,
-						timelineEventWithDetails.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes
-				  )
-				: timelineEventWithDetails.timelineEventDetails.startMinutes
-			: timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length
-			? timelineEventWithDetails.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes
-			: undefined;
+		return timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length
+			? Math.min(
+					timelineEventWithDetails.timelineEventDetails.startMinutes || Number.MAX_SAFE_INTEGER,
+					timelineEventWithDetails.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes
+			  )
+			: timelineEventWithDetails.timelineEventDetails.startMinutes;
 	};
 	const calcEnd = (timelineEventWithDetails: ITimelineEventWithDetails): number => {
-		return timelineEventWithDetails.timelineEventDetails.endMinutes
-			? timelineEventWithDetails.timelineEventDetails.endMinutes
-			: timelineEventWithDetails.timelineEventDetails.durationMinutes
-			? timelineEventWithDetails.timelineEventDetails.startMinutes + timelineEventWithDetails.timelineEventDetails.durationMinutes
-			: timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length
+		return timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length
 			? Math.max.apply(
 					1,
 					timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.map((child) => child.timelineEventDetails.endMinutes)
 			  )
+			: timelineEventWithDetails.timelineEventDetails.endMinutes
+			? timelineEventWithDetails.timelineEventDetails.endMinutes
+			: timelineEventWithDetails.timelineEventDetails.durationMinutes
+			? timelineEventWithDetails.timelineEventDetails.startMinutes + timelineEventWithDetails.timelineEventDetails.durationMinutes
 			: timelineEventWithDetails.timelineEventDetails.startMinutes + 1;
 	};
 	const addEvents = (parent: ITimelineEventWithDetails, ...events: ITimelineEvent[]): void => {
@@ -1219,16 +1220,18 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			node.style.borderBottomWidth = "1px";
 			node.style.borderBottomStyle = "solid";
 			node.style.width = "100%";
-			const titleNode = document.createElement("div");
-			titleNode.style.position = "relative";
-			titleNode.style.bottom = "-12px";
-			titleNode.style.fontSize = "x-small";
-			titleNode.style.width = "fit-content";
-			titleNode.style.backgroundColor = "white";
-			titleNode.style.zIndex = "1";
-			titleNode.style.padding = "0px 3px 0px 3px";
-			titleNode.append(timelineEvent.title);
-			node.appendChild(titleNode);
+			if (timelineEvent.title) {
+				const titleNode = document.createElement("div");
+				titleNode.style.position = "relative";
+				titleNode.style.bottom = "-12px";
+				titleNode.style.fontSize = "x-small";
+				titleNode.style.width = "fit-content";
+				titleNode.style.backgroundColor = "white";
+				titleNode.style.zIndex = "1";
+				titleNode.style.padding = "0px 3px 0px 3px";
+				titleNode.append(timelineEvent.title);
+				node.appendChild(titleNode);
+			}
 			timelineEvent.timelineEventDetails.eventNode = node;
 		};
 		const setPreviewNode = (timelineEvent: ITimelineEventWithDetails) => {

@@ -39,13 +39,13 @@
 
 					if (eventName === "selected.tl.event") {
 						//timelineEvent.detail.timelineEvent.preventNextPreviewRender = true;
-						timeline.preventNextPreviewRender();
+						//timeline.preventNextPreviewRender();
 					}
 				});
 			});
 
 			const data = {
-				name: "Den danske kongerække",
+				title: "Den danske kongerække",
 				events: [
 					{
 						start: [936],
@@ -92,7 +92,10 @@
 					},
 				],
 			};
-			const timeline = TimelineContainer(timelineContainer, { start: "100bc", end: "now", autoSelect: true });
+			const timeline = TimelineContainer(timelineContainer, {
+				autoSelect: true,
+				autoFocusOnTimelineAdd: true,
+			});
 			timeline.add({
 				id: crypto.randomUUID(),
 				events: data.events.map((item) => {

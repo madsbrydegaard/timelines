@@ -54,7 +54,11 @@
         throw new Error(`Event argument is empty. Please provide Timeline event(s) as input`);
       timelineEvents = timelineEvents.map((tl) => __spreadProps(__spreadValues({}, tl), { step: tl.step || ++eventBatchCount }));
       addEvents(rootTimeline, ...timelineEvents);
-      update();
+      if (options.autoFocusOnTimelineAdd) {
+        focus(rootTimeline, false);
+      } else {
+        update();
+      }
     };
     const isViewInside = (timelineEvent) => {
       return timelineEvent.timelineEventDetails.startMinutes < viewStart() && timelineEvent.timelineEventDetails.endMinutes > viewEnd();
@@ -87,6 +91,7 @@
         autoZoom: false,
         zoomMargin: 0.1,
         autoSelect: false,
+        autoFocusOnTimelineAdd: false,
         defaultColor: "#aaa",
         defaultHighlightedColor: "#444",
         defaultBackgroundColor: "#eeee",
@@ -872,16 +877,16 @@
       return void 0;
     };
     const calcStart = (timelineEventWithDetails) => {
-      return timelineEventWithDetails.timelineEventDetails.startMinutes ? timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? Math.min(
-        timelineEventWithDetails.timelineEventDetails.startMinutes,
+      return timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? Math.min(
+        timelineEventWithDetails.timelineEventDetails.startMinutes || Number.MAX_SAFE_INTEGER,
         timelineEventWithDetails.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes
-      ) : timelineEventWithDetails.timelineEventDetails.startMinutes : timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? timelineEventWithDetails.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes : void 0;
+      ) : timelineEventWithDetails.timelineEventDetails.startMinutes;
     };
     const calcEnd = (timelineEventWithDetails) => {
-      return timelineEventWithDetails.timelineEventDetails.endMinutes ? timelineEventWithDetails.timelineEventDetails.endMinutes : timelineEventWithDetails.timelineEventDetails.durationMinutes ? timelineEventWithDetails.timelineEventDetails.startMinutes + timelineEventWithDetails.timelineEventDetails.durationMinutes : timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? Math.max.apply(
+      return timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? Math.max.apply(
         1,
         timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.map((child) => child.timelineEventDetails.endMinutes)
-      ) : timelineEventWithDetails.timelineEventDetails.startMinutes + 1;
+      ) : timelineEventWithDetails.timelineEventDetails.endMinutes ? timelineEventWithDetails.timelineEventDetails.endMinutes : timelineEventWithDetails.timelineEventDetails.durationMinutes ? timelineEventWithDetails.timelineEventDetails.startMinutes + timelineEventWithDetails.timelineEventDetails.durationMinutes : timelineEventWithDetails.timelineEventDetails.startMinutes + 1;
     };
     const addEvents = (parent, ...events) => {
       const parsedSortedChildren = events.map((tl) => parseEvent(tl, parent)).filter((tl) => !!tl).sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
@@ -935,16 +940,18 @@
         node.style.borderBottomWidth = "1px";
         node.style.borderBottomStyle = "solid";
         node.style.width = "100%";
-        const titleNode = document.createElement("div");
-        titleNode.style.position = "relative";
-        titleNode.style.bottom = "-12px";
-        titleNode.style.fontSize = "x-small";
-        titleNode.style.width = "fit-content";
-        titleNode.style.backgroundColor = "white";
-        titleNode.style.zIndex = "1";
-        titleNode.style.padding = "0px 3px 0px 3px";
-        titleNode.append(timelineEvent.title);
-        node.appendChild(titleNode);
+        if (timelineEvent.title) {
+          const titleNode = document.createElement("div");
+          titleNode.style.position = "relative";
+          titleNode.style.bottom = "-12px";
+          titleNode.style.fontSize = "x-small";
+          titleNode.style.width = "fit-content";
+          titleNode.style.backgroundColor = "white";
+          titleNode.style.zIndex = "1";
+          titleNode.style.padding = "0px 3px 0px 3px";
+          titleNode.append(timelineEvent.title);
+          node.appendChild(titleNode);
+        }
         timelineEvent.timelineEventDetails.eventNode = node;
       };
       const setPreviewNode = (timelineEvent) => {
