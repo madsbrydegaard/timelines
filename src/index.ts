@@ -135,7 +135,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 	let previewTimer: NodeJS.Timeout;
 	let preventNextPreviewRender: boolean = false;
 	let preventPreviewRender: boolean = false;
-	let eventBatchCount: number = 0;
+	let containerStep: number = 0;
 	let touchDragFactor: number = 1;
 
 	const MINUTES_IN_DAY = 1440; // minutes in a day
@@ -153,7 +153,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		if (!timelineEvents) throw new Error(`Event argument is empty. Please provide Timeline event(s) as input`);
 
 		// Prepare events
-		timelineEvents = timelineEvents.map((tl) => ({ ...tl, step: tl.step || ++eventBatchCount }));
+		//timelineEvents = timelineEvents.map((tl) => ({ ...tl, step: tl.step || ++eventBatchCount }));
 
 		// Parse & sort all events
 		addEvents(rootTimeline, ...timelineEvents);
@@ -761,8 +761,8 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			const widthRatio = viewInside ? 100 : (timelineEvent.timelineEventDetails.durationMinutes / viewDuration()) * 100;
 			const isHighlighted = !!selectedTimelineIds.length && !!selectedTimelineIds.find((tlId) => tlId === timelineEvent.timelineEventDetails.id);
 			const levelFactor =
-				(timelineEvent.timelineEventDetails.level - 1) * options.eventHeight + (timelineEvent.timelineEventDetails.level - 1) * options.eventSpacing;
-			const stepFactor = timelineEvent.timelineEventDetails.step * options.eventSpacing;
+				(timelineEvent.timelineEventDetails.level - 1) * options.eventHeight + timelineEvent.timelineEventDetails.level * options.eventSpacing;
+			const stepFactor = (parentEvent.timelineEventDetails.step - 1) * options.eventSpacing;
 
 			switch (timelineEvent.type) {
 				default: {
@@ -771,8 +771,10 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 				}
 				case "container": {
 					const heightFactor =
-						timelineEvent.timelineEventDetails.height * options.eventHeight + timelineEvent.timelineEventDetails.height * options.eventSpacing;
-					timelineEvent.timelineEventDetails.eventNode.style.bottom = `${levelFactor + heightFactor + stepFactor}px`;
+						timelineEvent.timelineEventDetails.height * options.eventHeight +
+						timelineEvent.timelineEventDetails.height * options.eventSpacing +
+						timelineEvent.timelineEventDetails.step * options.eventSpacing;
+					timelineEvent.timelineEventDetails.eventNode.style.bottom = `${heightFactor + levelFactor + stepFactor}px`;
 					eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
 					eventsFragment.append(createEventHTML(timelineEvent));
 					continue;
@@ -998,7 +1000,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		currentTimeline.timelineEventDetails.childrenByStartMinute = [];
 		currentTimeline.timelineEventDetails.timelineLevelMatrix = { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } };
 		currentTimeline.timelineEventDetails.backgroundLevelMatrix = { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } };
-		eventBatchCount = 0;
+		containerStep = 0;
 
 		// Dispatch DOM event
 		fire("cleared.tl.container");
@@ -1339,6 +1341,9 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			timelineEvent.timelineEventDetails.previous =
 				me > 0 ? parent.timelineEventDetails.childrenByStartMinute[me - 1].timelineEventDetails.id : undefined;
 		};
+		const setStep = (timelineEvent: ITimelineEventWithDetails) => {
+			timelineEvent.timelineEventDetails.step = timelineEvent.step || ++containerStep;
+		};
 
 		// push parsed children
 		parent.timelineEventDetails.childrenByStartMinute.push(...parsedSortedChildren);
@@ -1356,6 +1361,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		parent.timelineEventDetails.childrenByStartMinute.forEach((childEvent, i) => {
 			switch (childEvent.type) {
 				case "container":
+					setStep(childEvent);
 					setLevel(childEvent, parent.timelineEventDetails.timelineLevelMatrix);
 					setContainerNode(childEvent);
 					break;
