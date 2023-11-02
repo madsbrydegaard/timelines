@@ -6,8 +6,8 @@ export interface ITimelineOptions {
     end?: number[] | string | number | Date;
     timelineStart?: number[] | string | number | Date;
     timelineEnd?: number[] | string | number | Date;
-    minZoom?: number;
-    maxZoom?: number;
+    minRatio?: number;
+    maxRatio?: number;
     position?: string;
     eventHeight?: number;
     eventSpacing?: number;
@@ -106,8 +106,7 @@ export interface ITimelineContainer {
     focus: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
     reset: () => void;
     select: (timelineEventIdentifier?: string) => void;
-    preventNextPreviewRender: () => void;
-    setPreventPreviewRender: (prevent: boolean) => void;
+    preventNextPreviewRender: (prevent: boolean | undefined) => void;
     clear: () => void;
     update: () => void;
 }

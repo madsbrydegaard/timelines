@@ -6,8 +6,8 @@ export interface ITimelineOptions {
 	end?: number[] | string | number | Date;
 	timelineStart?: number[] | string | number | Date;
 	timelineEnd?: number[] | string | number | Date;
-	minZoom?: number;
-	maxZoom?: number;
+	minRatio?: number;
+	maxRatio?: number;
 	position?: string;
 	eventHeight?: number;
 	eventSpacing?: number;
@@ -106,8 +106,7 @@ export interface ITimelineContainer {
 	focus: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
 	reset: () => void;
 	select: (timelineEventIdentifier?: string) => void;
-	preventNextPreviewRender: () => void;
-	setPreventPreviewRender: (prevent: boolean) => void;
+	preventNextPreviewRender: (prevent: boolean | undefined) => void;
 	clear: () => void;
 	update: () => void;
 }
@@ -152,9 +151,6 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 	const add = (...timelineEvents: ITimelineEvent[]): void => {
 		if (!timelineEvents) throw new Error(`Event argument is empty. Please provide Timeline event(s) as input`);
 
-		// Prepare events
-		//timelineEvents = timelineEvents.map((tl) => ({ ...tl, step: tl.step || ++eventBatchCount }));
-
 		// Parse & sort all events
 		addEvents(rootTimeline, ...timelineEvents);
 
@@ -185,12 +181,12 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 				labelCount: 5,
 				zoomSpeed: 0.04,
 				dragSpeed: 0.001,
-				timelineStart: "-1B",
-				timelineEnd: "1M",
+				timelineStart: "-15B",
+				timelineEnd: "5B",
 				start: "-100y",
 				end: "now",
-				minZoom: 1,
-				maxZoom: 1e11,
+				minRatio: 1,
+				maxRatio: 1e11,
 				position: "bottom",
 				eventHeight: 5,
 				eventSpacing: 3,
@@ -281,12 +277,12 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		let newRatio = ratio - deltaRatio;
 
 		// If zoom OUT - test if zoom is allowed
-		if (direction === Direction.Out && newRatio <= options.minZoom) {
+		if (direction === Direction.Out && newRatio <= options.minRatio) {
 			return false;
 		}
 
 		// If zoom IN - test if zoom is allowed
-		if (direction === Direction.In && newRatio >= options.maxZoom) {
+		if (direction === Direction.In && newRatio >= options.maxRatio) {
 			return false;
 		}
 
@@ -405,6 +401,32 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			if (onzoomend) onzoomend(timelineEvent);
 		});
 	};
+	const calcMinimumZoomDuration = (): number => {
+		return timelineDuration() / options.maxRatio;
+	};
+	const calcPivotRatio = (startMinutes: number, endMinutes: number): { pivot: number; ratio: number } => {
+		const minimumZoomDuration = calcMinimumZoomDuration();
+		let initielTargetDuration = endMinutes - startMinutes;
+		if (initielTargetDuration < minimumZoomDuration) {
+			const durationDiff = minimumZoomDuration - initielTargetDuration;
+			startMinutes -= durationDiff / 2;
+			endMinutes += durationDiff / 2;
+			initielTargetDuration = minimumZoomDuration;
+		}
+		const targetDurationExtension = initielTargetDuration * options.zoomMargin;
+		const targetStart = startMinutes - targetDurationExtension;
+		const targetEnd = endMinutes + targetDurationExtension;
+		const targetDuration = targetEnd - targetStart;
+		const targetPivot = (timelineStart - targetStart) / targetDuration;
+		const targetRatio = timelineDuration() / targetDuration;
+		return { pivot: targetPivot, ratio: targetRatio };
+	};
+	const calcStartEndMinutes = (pivot: number, ratio: number): { startMinutes: number; endMinutes: number } => {
+		const targetDuration = timelineDuration() / ratio;
+		const targetStart = timelineStart - targetDuration * pivot;
+		const targetEnd = targetStart + targetDuration;
+		return { startMinutes: targetStart, endMinutes: targetEnd };
+	};
 	const zoomto = (startMinutes: number, endMinutes: number, useAnimation: boolean = true, onzoomend?: () => void): void => {
 		if (!startMinutes) {
 			throw "first argument 'startMinutes' of method 'zoomto' must be a number";
@@ -413,13 +435,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			throw "second argument 'endMinutes' of method 'zoomto' must be a number";
 		}
 
-		// Create options.zoomMargin spacing on each side of the timeline
-		const targetDurationExtension = (endMinutes - startMinutes) * options.zoomMargin;
-		const targetStart = startMinutes - targetDurationExtension;
-		const targetEnd = endMinutes + targetDurationExtension;
-		const targetDuration = targetEnd - targetStart;
-		const targetRatio = timelineDuration() / targetDuration;
-		const targetPivot = (timelineStart - targetStart) / targetDuration;
+		const { pivot: targetPivot, ratio: targetRatio } = calcPivotRatio(startMinutes, endMinutes);
 
 		const animate = () => {
 			let i = 0;
@@ -441,14 +457,17 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 
 			const startRatio = ratio;
 			const startPivot = pivot;
-			const deltaRatio = targetRatio - ratio;
-			const deltaPivot = targetPivot - pivot;
+			const deltaRatio = targetRatio - startRatio;
+			const deltaPivot = targetPivot - startPivot;
 			const easing = typeof options.easing === "string" ? easings[options.easing] : options.easing;
-
+			const stopAnimation = () => {
+				clearInterval(myTimer);
+				if (onzoomend) onzoomend();
+				update();
+			};
 			const myTimer = setInterval(() => {
 				if (++i > animationDuration) {
-					clearInterval(myTimer);
-					if (onzoomend) onzoomend();
+					return stopAnimation();
 				}
 
 				ratio = easing(i, startRatio, deltaRatio, animationDuration);
@@ -1045,7 +1064,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			}
 
 			// 525948.766 = minutes in a year
-			const dateYearInMinutes = 525948.766 * input[0];
+			const dateYearInMinutes = MINUTES_IN_YEAR * input[0];
 			return dateYearInMinutes + date.getTime() / 6e4;
 		};
 
@@ -1136,6 +1155,22 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			const weeks = input.match(/w$/) ? Number(input.replace(/w$/, "")) : NaN;
 			if (!isNaN(weeks)) {
 				return weeks * 7 * 24 * 60;
+			}
+			const years = input.match(/y$/) ? Number(input.replace(/y$/, "")) : NaN;
+			if (!isNaN(years)) {
+				return years * MINUTES_IN_YEAR;
+			}
+			const yearsK = input.match(/K$/) ? Number(input.replace(/K$/, "")) : NaN;
+			if (!isNaN(yearsK)) {
+				return yearsK * MINUTES_IN_YEAR * 1e3;
+			}
+			const yearsM = input.match(/M$/) ? Number(input.replace(/M$/, "")) : NaN;
+			if (!isNaN(yearsM)) {
+				return yearsM * MINUTES_IN_YEAR * 1e6;
+			}
+			const yearsB = input.match(/B$/) ? Number(input.replace(/B$/, "")) : NaN;
+			if (!isNaN(yearsB)) {
+				return yearsB * MINUTES_IN_YEAR * 1e9;
 			}
 			const minutes = Number(input);
 			if (!isNaN(minutes)) {
@@ -1267,7 +1302,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		};
 		const setContainerNode = (timelineEvent: ITimelineEventWithDetails) => {
 			const node = createEventNode(timelineEvent);
-			node.style.height = `15px`;
+			node.style.height = `1px`;
 			node.style.borderBottomColor = options.defaultBackgroundColor;
 			node.style.borderBottomWidth = "1px";
 			node.style.borderBottomStyle = "solid";
@@ -1275,7 +1310,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			if (timelineEvent.title) {
 				const titleNode = document.createElement("div");
 				titleNode.style.position = "relative";
-				titleNode.style.bottom = "-12px";
+				titleNode.style.bottom = "7.5px";
 				titleNode.style.fontSize = "x-small";
 				titleNode.style.width = "fit-content";
 				titleNode.style.backgroundColor = "white";
@@ -1288,6 +1323,8 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		};
 		const setPreviewNode = (timelineEvent: ITimelineEventWithDetails) => {
 			if (!timelineEvent.renderPreviewNode) return;
+			const previewNode = timelineEvent.renderPreviewNode(timelineEvent);
+			if (!previewNode) return;
 			const previewHTML = document.createElement("div");
 			previewHTML.style.boxSizing = "border-box";
 			previewHTML.style.position = "absolute";
@@ -1297,7 +1334,7 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 			previewHTML.classList.add(options.classNames.timelinePreview);
 			previewHTML.setAttribute("eventid", timelineEvent.timelineEventDetails.id);
 
-			previewHTML.append(timelineEvent.renderPreviewNode(timelineEvent));
+			previewHTML.append(previewNode);
 
 			timelineEvent.timelineEventDetails.previewNode = previewHTML;
 		};
@@ -1508,11 +1545,8 @@ export const TimelineContainer = (elementIdentifier: HTMLElement | string, setti
 		add,
 		reset,
 		select,
-		preventNextPreviewRender: () => {
-			preventNextPreviewRender = true;
-		},
-		setPreventPreviewRender: (prevent: boolean) => {
-			preventPreviewRender = prevent;
+		preventNextPreviewRender: (prevent: boolean | undefined) => {
+			preventNextPreviewRender = prevent || false;
 		},
 		clear,
 		update,

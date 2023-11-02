@@ -1,1 +1,1207 @@
-var Ue=Object.defineProperty,Ve=Object.defineProperties;var je=Object.getOwnPropertyDescriptors;var De=Object.getOwnPropertySymbols;var Ze=Object.prototype.hasOwnProperty,Ge=Object.prototype.propertyIsEnumerable;var Te=(C,M,c)=>M in C?Ue(C,M,{enumerable:!0,configurable:!0,writable:!0,value:c}):C[M]=c,ee=(C,M)=>{for(var c in M||(M={}))Ze.call(M,c)&&Te(C,c,M[c]);if(De)for(var c of De(M))Ge.call(M,c)&&Te(C,c,M[c]);return C},oe=(C,M)=>Ve(C,je(M));var Je=(C,M)=>{let c,L,H,j,p,o,y,S,N,I,R,_,x,F,$,ae,U=!1,Z=!1,me=0,te=1,pe=1440,Me=10080,V=525948.766,ye=V/12*18,we=Me*6,Ne=pe*4,de=e=>"timelineEventDetails"in e,Ie=(...e)=>{if(!e)throw new Error("Event argument is empty. Please provide Timeline event(s) as input");ge(_,...e),o.autoFocusOnTimelineAdd?ne(_,!1):A()},ue=e=>e.timelineEventDetails.startMinutes<k()&&e.timelineEventDetails.endMinutes>K(),Ce=(e,n)=>{if(!e)throw new Error("Element argument is empty. DOM element | selector as first arg");if(typeof e=="string"){let m=document.querySelector(e);if(!m)throw new Error(`Selector could not be found [${p}]`);p=m}e instanceof HTMLElement&&(p=e),o=ee({labelCount:5,zoomSpeed:.04,dragSpeed:.001,timelineStart:"-1B",timelineEnd:"1M",start:"-100y",end:"now",minZoom:1,maxZoom:1e11,position:"bottom",eventHeight:5,eventSpacing:3,autoZoom:!1,zoomMargin:.1,autoSelect:!1,autoFocusOnTimelineAdd:!1,autoDeselectOutside:!1,includeBackgroundOnAutoFocus:!1,defaultColor:"#aaa",defaultHighlightedColor:"#444",defaultBackgroundColor:"#eeee",defaultBackgroundHightligtedColor:"#eee7",zoomDuration:200,easing:"easeOutCubic",numberOfHighscorePreviews:5,highscorePreviewDelay:500,highscorePreviewWidth:100,classNames:{timeline:"tl",timelineEvent:"tl__event",timelinePreview:"tl__preview",timelineEventTitle:"tl__event__title",timelineLabels:"tl__labels",timelineDividers:"tl__dividers",timelineEvents:"tl__events",timelinePreviews:"tl__previews",timelineIo:"tl__io",timelineLabel:"tl__label",timelineDivider:"tl__divider"}},n),_=Ee({title:"View",type:"container",start:o.start,end:o.end}),H=Q(o.timelineStart),j=Q(o.timelineEnd);let s=_.timelineEventDetails.startMinutes,i=_.timelineEventDetails.endMinutes;s<H&&(H=s),i>j&&(j=i);let l=i-s;c=G()/l,L=(H-s)/l,ke(),Pe(p),ne(_,!1)},G=()=>j-H,ie=()=>p.getBoundingClientRect().width||0,k=()=>H-B()*L,K=()=>k()+B(),B=()=>G()/c,Se=()=>o.zoomSpeed*c,O=e=>(e-k())/B(),Le=(e,n)=>{let s=c-n;return e===1&&s<=o.minZoom||e===-1&&s>=o.maxZoom?!1:(c=s,!0)},ce=e=>{let n=L+e;n>=0&&(n=0),n+c<=1&&(n=1-c),L=n},xe=(e,n)=>{let s=e*Se(),i=n*s;Le(e,s)&&ce(i),A()},Fe=e=>{ce(e*o.dragSpeed*te),A()},ne=(e,n=!0,s)=>{if(!e)throw"first argument 'timelineEvent' of method 'zoom' must be an object";if(!de(e))throw"first argument 'timelineEvent' of method 'zoom' must be an object of type ITimelineEventWithDetails";x=e,q(),J(e,n,s)},He=()=>{Z=!1,U=!1,x=_,J(x)},z=(e,n)=>{let s,i=n||_;if(i.timelineEventDetails.id===e)return i;for(let l of i.timelineEventDetails.childrenByStartMinute)if(l.title===e||l.timelineEventDetails.id===e){s=l;break}else if(s=z(e,l),s)break;return s},q=e=>{try{if(!e)F=[];else if(typeof e=="string")if(e==="next"){let n=z(F[0]);if(!n)throw"No event selected";if(!n.timelineEventDetails.next)throw"No next event available";F=[n.timelineEventDetails.next],g("selected.tl.event",z(F[0]))}else if(e==="previous"){let n=z(F[0]);if(!n)throw"No event selected";if(!n.timelineEventDetails.previous)throw"No previous event available";F=[n.timelineEventDetails.previous],g("selected.tl.event",z(F[0]))}else{let n=z(e);if(!n)throw`Cannot find ${e} by title nor timelineEventDetails.id`;F=[n.timelineEventDetails.id],g("selected.tl.event",n)}A()}catch(n){Ye(n)}},J=(e,n=!0,s)=>{if(!e)throw"first argument 'timelineEvent' of method 'zoom' must be an object";if(!de(e))throw"first argument 'timelineEvent' of method 'zoom' must be an object of type ITimelineEventWithDetails";let i=o.includeBackgroundOnAutoFocus?e.timelineEventDetails.startMinutes:e.timelineEventDetails.startMinutesForTimelineChildren,l=o.includeBackgroundOnAutoFocus?e.timelineEventDetails.endMinutes:e.timelineEventDetails.endMinutesForTimelineChildren;Ae(i,l,n,()=>{g("zoom.tl.event",e),s&&s(e)})},Ae=(e,n,s=!0,i)=>{if(!e)throw"first argument 'startMinutes' of method 'zoomto' must be a number";if(!n)throw"second argument 'endMinutes' of method 'zoomto' must be a number";let l=(n-e)*o.zoomMargin,m=e-l,v=n+l-m,b=G()/v,f=(H-m)/v;s?(()=>{let h=0,t=o.zoomDuration,r={easeOutExpo:(P,W,X,Y)=>P==Y?W+X:X*(-Math.pow(2,-10*P/Y)+1)+W,easeOutCubic:(P,W,X,Y)=>X*((P=P/Y-1)*P*P+1)+W,easeLinear:(P,W,X,Y)=>X*P/Y+W},a=c,d=L,D=b-c,u=f-L,T=typeof o.easing=="string"?r[o.easing]:o.easing,le=setInterval(()=>{++h>t&&(clearInterval(le),i&&i()),c=T(h,a,D,t),L=T(h,d,u,t),A()},1)})():(c=b,L=f,A(),i&&i())},Pe=e=>{let n=[],s,i,l=!1,m=(t,r)=>{if(l){let a=t-s,d=r-i;w(a,d),s=t,i=r}v(t,r)},w=(t,r)=>{t&&Fe(t),g("drag.tl.container")},v=(t,r)=>{let d=document.elementsFromPoint(t,r).find(u=>u.hasAttribute("eventid"));if(!d){e.style.cursor="",e.title="";return}let D=$.find(u=>u.timelineEventDetails.id===d.getAttribute("eventid"));D?(g("hover.tl.event",D),e.style.cursor="pointer",e.title=D.title):(e.style.cursor="",e.title="")},b=(t,r)=>{let d=(t/ie()-L)/c;xe(r,d),g("pinch.tl.container")},f=t=>{o.autoSelect&&t.detail.timelineEvent&&q(t.detail.timelineEvent.timelineEventDetails.id)},E=t=>{o.autoZoom&&t.detail.timelineEvent&&J(t.detail.timelineEvent)},h=(t,r)=>{let d=document.elementsFromPoint(t,r).find(T=>T.hasAttribute("eventid"));if(!d){o.autoDeselectOutside&&!Z&&!U&&q();return}let D=d.getAttribute("eventid"),u=$.find(T=>T.timelineEventDetails.id===D);u&&g("click.tl.event",u)};window.addEventListener("resize",t=>{A(),g("resize.tl.container")}),e.addEventListener("wheel",t=>{if(t.defaultPrevented)return;t.preventDefault();var r=Math.sign(t.deltaY);let d=(t.target.attributes.starttime?O(t.target.attributes.starttime):0)*ie()+t.offsetX;b(d,r),g("wheel.tl.container")}),e.addEventListener("touchstart",t=>{t.preventDefault(),n=[],n.push(...t.targetTouches),g("touchstart.tl.container")}),e.addEventListener("touchend",t=>{h(n[0].clientX,n[0].clientY),l=!1,g("touchend.tl.container")},{passive:!0}),e.addEventListener("touchmove",t=>{if(t.targetTouches.length===2&&t.changedTouches.length===2){let a=n.findIndex(D=>D.identifier===t.targetTouches[0].identifier),d=n.findIndex(D=>D.identifier===t.targetTouches[1].identifier);if(a>=0&&d>=0){let D=Math.abs(n[a].clientX-n[d].clientX),u=Math.abs(t.targetTouches[0].clientX-t.targetTouches[1].clientX),T=D-u,le=Math.min(t.targetTouches[0].clientX,t.targetTouches[1].clientX)+u/2;var r=Math.sign(T);b(le,r)}}if(t.targetTouches.length===1&&t.changedTouches.length===1){let a=n.findIndex(d=>d.identifier===t.targetTouches[0].identifier);a>=0&&t.targetTouches[0].clientX-n[a].clientX!==0&&(l=!0,te=3,s=n[a].clientX,i=n[a].clientY,m(t.targetTouches[0].clientX,t.targetTouches[0].clientY))}n=[],n.push(...t.targetTouches),g("touchmove.tl.container")},{passive:!0}),e.addEventListener("mousedown",t=>{s=t.clientX,i=t.clientY,l=!0,te=1,g("mousedown.tl.container")},{passive:!0}),e.addEventListener("mousemove",t=>{m(t.clientX,t.clientY),g("mousemove.tl.container")},{passive:!0}),e.addEventListener("mouseup",t=>{l=!1,g("mouseup.tl.container")},{passive:!0}),e.addEventListener("click",t=>h(t.clientX,t.clientY)),e.addEventListener("click.tl.event",f),e.addEventListener("selected.tl.event",E),e.addEventListener("update.tl.container",ze)},_e=()=>{let e=document.createDocumentFragment(),n=document.createElementNS("http://www.w3.org/2000/svg","svg");n.style.height="100%",n.style.width="100%",n.style.position="absolute",e.append(n);let s=$.filter(i=>!!i.timelineEventDetails.previewNode).filter(i=>!i.preventNextPreviewRender).sort((i,l)=>l.timelineEventDetails.score-i.timelineEventDetails.score).slice(0,o.numberOfHighscorePreviews).sort((i,l)=>i.timelineEventDetails.startMinutes-l.timelineEventDetails.startMinutes);for(let[i,l]of s.entries()){let m=1/s.length,w=o.highscorePreviewWidth/ie(),v=m*i+m/2-w/2,b=Math.random()/3+.08;(()=>{l.timelineEventDetails.previewNode.style.left=v*100+"%",l.timelineEventDetails.previewNode.style.top=b*100+"%";let E=O(l.timelineEventDetails.startMinutes+l.timelineEventDetails.durationMinutes/2);ue(l)&&(E=.5),E>1&&(E=O(l.timelineEventDetails.startMinutes+(K()-l.timelineEventDetails.startMinutes)/2)),E<0&&(E=O((k()+l.timelineEventDetails.endMinutes)/2));let h=document.createElementNS("http://www.w3.org/2000/svg","line");h.setAttribute("x1",`calc(${(v+w/2)*100}%)`),h.setAttribute("y1",`calc(${b*100}% + 50px)`),h.setAttribute("x2",E*100+"%"),h.setAttribute("y2",l.timelineEventDetails.eventNode.offsetTop+"px"),h.setAttribute("style",`stroke:${l.color};stroke-width:2`),n.appendChild(h),e.append(l.timelineEventDetails.previewNode)})()}return $.forEach(i=>{i.preventNextPreviewRender=!1}),e},se=e=>{let n=document.createDocumentFragment();for(let s of e.timelineEventDetails.childrenByStartMinute){if(!s||!s.timelineEventDetails||s.timelineEventDetails.startMinutes>=K()||s.timelineEventDetails.endMinutes<=k())continue;let i=ue(s),l=i?0:O(s.timelineEventDetails.startMinutes),m=i?100:s.timelineEventDetails.durationMinutes/B()*100,w=!!F.length&&!!F.find(f=>f===s.timelineEventDetails.id),v=(s.timelineEventDetails.level-1)*o.eventHeight+s.timelineEventDetails.level*o.eventSpacing,b=(e.timelineEventDetails.step-1)*o.eventSpacing;switch(s.type){default:{n.append(se(s));continue}case"container":{let f=s.timelineEventDetails.height*o.eventHeight+s.timelineEventDetails.height*o.eventSpacing+s.timelineEventDetails.step*o.eventSpacing;s.timelineEventDetails.eventNode.style.bottom=`${f+v+b}px`,n.append(s.timelineEventDetails.eventNode),n.append(se(s));continue}case"timeline":{let f=(e.timelineEventDetails.level-1)*o.eventHeight+(e.timelineEventDetails.level-1)*o.eventSpacing;s.timelineEventDetails.eventNode.style.bottom=`${f+v+b}px`,s.timelineEventDetails.eventNode.style.backgroundColor=w?s.highlightedColor:s.color;break}case"background":break}s.timelineEventDetails.eventNode.style.left=l*100+"%",s.timelineEventDetails.eventNode.style.width=m+"%",s.timelineEventDetails.eventNode.attributes.starttime=i?k():s.timelineEventDetails.startMinutes,n.append(s.timelineEventDetails.eventNode),$.push(s)}return n},ke=()=>{switch(p.style.position="relative",p.style.overflow="hidden",p.style.minHeight="3rem",y=document.createElement("div"),p.appendChild(y),y.classList.add(o.classNames.timelineLabels),y.style.width="100%",y.style.height="50px",y.style.textAlign="center",y.style.position="absolute",y.style.pointerEvents="none",y.style.userSelect="none",o.position){case"top":y.style.top="0";break;default:y.style.bottom="0"}S=document.createElement("div"),p.appendChild(S),S.classList.add(o.classNames.timelineDividers),S.style.width="100%",S.style.height="100%",S.style.position="absolute",S.style.zIndex="-2",S.style.bottom="0",N=document.createElement("div"),p.appendChild(N),N.classList.add(o.classNames.timelineEvents),N.style.position="absolute",N.style.bottom="50px",N.style.height="calc(100% - 50px)",N.style.width="100%",N.style.overflowY="auto",N.style.overflowX="hidden",I=document.createElement("div"),p.appendChild(I),I.classList.add(o.classNames.timelinePreviews),I.style.position="absolute",I.style.bottom="50px",I.style.height="calc(100% - 50px)",I.style.width="100%",I.style.overflowY="auto",I.style.overflowX="hidden",R=document.createElement("div"),p.appendChild(R),R.classList.add(o.classNames.timelineIo),R.style.position="absolute",R.style.bottom="0",R.style.top="0",R.style.width="100%"},Be=()=>{let e=Math.floor(c),n=Math.pow(2,Math.floor(Math.log2(e))),s=1/(o.labelCount+1),i=k()-H,m=G()*s/n,v=Math.floor(i/m)*m,b=document.createDocumentFragment(),f=document.createDocumentFragment();for(let E=0;E<o.labelCount+2;E++){let h=(E+1)*m+H+v-m,t=h+m/2,a=O(h)*100,D=O(t)*100,u=document.createElement("div");u.classList.add(o.classNames.timelineLabel),u.style.left=a+"%",u.style.top="50%",u.style.transform="translate(calc(-50%), calc(-50%))",u.style.textAlign="center",u.style.position="absolute",u.style.zIndex="-1",u.style.width=s*100+"%",u.innerHTML=re(h),b.appendChild(u);let T=document.createElement("div");T.classList.add(o.classNames.timelineDivider),T.style.left=D+"%",T.style.textAlign="center",T.style.position="absolute",T.style.height="100%",T.style.zIndex="-10",T.innerHTML="",f.appendChild(T)}y.appendChild(b),S.appendChild(f)},Re=()=>{let e=se(x);e&&N.appendChild(e)},Oe=()=>{if(!Z&&!U){let e=_e();e&&I.appendChild(e)}U=!1},re=e=>{let n=Math.floor(e/V),s=n+1970,l=s>-1e4&&s<1e4?s.toString():s.toLocaleString("en-US",{notation:"compact",minimumFractionDigits:1,maximumFractionDigits:1}),m=Math.abs(e-n*V),v=e>27e4*V*-1&&e<27e4*V?new Date(e*6e4):new Date(m*6e4);return B()<Ne?[Intl.DateTimeFormat(void 0,{month:"short",day:"numeric"}).format(v),l,Intl.DateTimeFormat(void 0,{hour:"numeric",minute:"numeric"}).format(v)].join(" "):B()<we?[Intl.DateTimeFormat(void 0,{month:"short",day:"numeric"}).format(v),l].join(" "):B()<ye?[Intl.DateTimeFormat(void 0,{month:"short"}).format(v),l].join(" "):l},A=()=>{S&&(S.innerHTML=""),y&&(y.innerHTML=""),N&&(N.innerHTML=""),I&&(I.innerHTML=""),$=[],g("update.tl.container")},$e=()=>{!x||(x.events=[],x.timelineEventDetails.childrenByStartMinute=[],x.timelineEventDetails.timelineLevelMatrix={1:{height:0,time:Number.MIN_SAFE_INTEGER}},x.timelineEventDetails.backgroundLevelMatrix={1:{height:0,time:Number.MIN_SAFE_INTEGER}},me=0,g("cleared.tl.container"),A())},ze=()=>{Be(),Re(),o.numberOfHighscorePreviews>0&&(clearTimeout(ae),ae=setTimeout(()=>{Oe()},o.highscorePreviewDelay))},Q=e=>{if(e===void 0)return;let n=i=>{let l=new Date;return l.setDate(i[2]?i[2]:1),l.setMonth(i[1]?i[1]-1:0),l.setHours(i[3]?i[3]:0),l.setMinutes(i[4]?i[4]:0),l.setSeconds(0),i[0]?i[0]&&i[0]>-27e4&&i[0]<27e4?(l.setFullYear(i[0]),l.getTime()/6e4):525948.766*i[0]+l.getTime()/6e4:l.getTime()/6e4},s=i=>{switch(i){case"now":return n([]);default:let l=i.match(/y$/)?Number(i.replace(/y$/,"")):NaN;if(!isNaN(l))return n([l+1970]);let m=i.match(/K$/)?Number(i.replace(/K$/,"")):NaN;if(!isNaN(m))return n([m*1e3]);let w=i.match(/M$/)?Number(i.replace(/M$/,"")):NaN;if(!isNaN(w))return n([w*1e6]);let v=i.match(/B$/)?Number(i.replace(/B$/,"")):NaN;if(!isNaN(v))return n([v*1e9]);let b=i.match(/bc$/)?Number(i.replace(/bc$/,"")):NaN;if(!isNaN(b))return n([-b]);let f=i.match(/ad$/)?Number(i.replace(/ad$/,"")):NaN;if(!isNaN(f))return n([f]);let E=Number(i);if(!isNaN(E))return new Date().getTime()/6e4+E*6e4;let h=Date.parse(i);return isNaN(h)?new Date().getTime()/6e4:h/6e4}};if(Array.isArray(e)){let i=e;if(i.length===0)throw new Error("argument Array cannot be empty");if(!i.every(m=>typeof m=="number"))throw new Error("input Array must contain only numbers");return n(i)}if(typeof e=="object"&&e.constructor.name==="Date")return e.getTime()/6e4;if(typeof e=="string")return s(e);if(typeof e=="number")return new Date(e).getTime()/6e4},We=e=>{if(e!==void 0){if(typeof e=="string"){let n=e.match(/s$/)?Number(e.replace(/s$/,"")):NaN;if(!isNaN(n))return n/60;let s=e.match(/H$/)?Number(e.replace(/H$/,"")):NaN;if(!isNaN(s))return s*60;let i=e.match(/d$/)?Number(e.replace(/d$/,"")):NaN;if(!isNaN(i))return i*24*60;let l=e.match(/w$/)?Number(e.replace(/w$/,"")):NaN;if(!isNaN(l))return l*7*24*60;let m=Number(e);if(!isNaN(m))return m}if(typeof e=="number")return e}},ve=e=>e.timelineEventDetails.childrenByStartMinute.length?Math.min(e.timelineEventDetails.startMinutes||Number.MAX_SAFE_INTEGER,e.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes):e.timelineEventDetails.startMinutes,he=e=>e.timelineEventDetails.childrenByStartMinute.length?Math.max.apply(1,e.timelineEventDetails.childrenByStartMinute.map(s=>s.timelineEventDetails.endMinutes)):e.timelineEventDetails.endMinutes?e.timelineEventDetails.endMinutes:e.timelineEventDetails.durationMinutes?e.timelineEventDetails.startMinutes+e.timelineEventDetails.durationMinutes:e.timelineEventDetails.startMinutes+1,fe=e=>{let n=e.timelineEventDetails.childrenByStartMinute.filter(i=>["background"].find(l=>l!==i.type)&&(!!i.timelineEventDetails.hasTimelineEvents||!i.timelineEventDetails.childrenByStartMinute.length));return n.length?Math.min(e.timelineEventDetails.startMinutesForTimelineChildren||Number.MAX_SAFE_INTEGER,n[0].timelineEventDetails.startMinutesForTimelineChildren):e.timelineEventDetails.startMinutesForTimelineChildren||e.timelineEventDetails.startMinutes},be=e=>{let n=e.timelineEventDetails.childrenByStartMinute.filter(i=>["background"].find(l=>l!==i.type)&&(!!i.timelineEventDetails.hasTimelineEvents||!i.timelineEventDetails.childrenByStartMinute.length));return n.length?Math.max.apply(1,n.map(i=>i.timelineEventDetails.endMinutesForTimelineChildren)):e.timelineEventDetails.endMinutesForTimelineChildren?e.timelineEventDetails.endMinutesForTimelineChildren:e.timelineEventDetails.durationMinutesForTimelineChildren?e.timelineEventDetails.startMinutesForTimelineChildren+e.timelineEventDetails.durationMinutesForTimelineChildren:e.timelineEventDetails.endMinutes?e.timelineEventDetails.endMinutes:e.timelineEventDetails.startMinutesForTimelineChildren+1},ge=(e,...n)=>{let s=n.map(t=>Ee(t,e)).filter(t=>!!t).sort((t,r)=>t.timelineEventDetails.startMinutes-r.timelineEventDetails.startMinutes),i=t=>{let r=document.createElement("div");return r.style.boxSizing="border-box",r.style.position="absolute",r.style.minWidth="5px",r.classList.add(o.classNames.timelineEvent),r.setAttribute("level",t.timelineEventDetails.level.toString()),r.setAttribute("depth",t.timelineEventDetails.depth.toString()),r.setAttribute("score",t.timelineEventDetails.score.toString()),r.setAttribute("step",t.timelineEventDetails.step.toString()),r},l=t=>{let r=i(t);if(r.style.minHeight=`${o.eventHeight}px`,r.style.cursor="pointer",r.style.borderRadius="5px",r.title=t.title,t.renderEventNode){let a=document.createElement("div");a.append(t.renderEventNode(t)),r.append(a)}r.setAttribute("eventid",t.timelineEventDetails.id),t.timelineEventDetails.eventNode=r},m=t=>{let r=i(t),a=(t.timelineEventDetails.level-1)*25;if(r.style.bottom="0",r.style.top=`${a}px`,r.style.zIndex="-1",r.style.overflow="hidden",r.style.background=`linear-gradient(to right, ${o.defaultBackgroundColor}, 1px, #0000)`,r.title=t.title,t.renderEventNode){let d=document.createElement("div");d.append(t.renderEventNode(t)),d.setAttribute("eventid",t.timelineEventDetails.id),r.append(d)}t.timelineEventDetails.eventNode=r},w=t=>{let r=i(t);if(r.style.height="15px",r.style.borderBottomColor=o.defaultBackgroundColor,r.style.borderBottomWidth="1px",r.style.borderBottomStyle="solid",r.style.width="100%",t.title){let a=document.createElement("div");a.style.position="relative",a.style.bottom="-12px",a.style.fontSize="x-small",a.style.width="fit-content",a.style.backgroundColor="white",a.style.zIndex="1",a.style.padding="0px 3px 0px 3px",a.append(t.title),r.appendChild(a)}t.timelineEventDetails.eventNode=r},v=t=>{if(!t.renderPreviewNode)return;let r=document.createElement("div");r.style.boxSizing="border-box",r.style.position="absolute",r.style.overflow="hidden",r.style.width=o.highscorePreviewWidth+"px",r.title=t.title,r.classList.add(o.classNames.timelinePreview),r.setAttribute("eventid",t.timelineEventDetails.id),r.append(t.renderPreviewNode(t)),t.timelineEventDetails.previewNode=r},b=t=>{let a=t.timelineEventDetails.durationMinutes/e.timelineEventDetails.durationMinutes*(t.timelineEventDetails.childrenByStartMinute.length+1);t.timelineEventDetails.score=a},f=(t,r,a=!0)=>{let d=0,D=0;for(let u in r){if(d=Number(u),a?t.timelineEventDetails.startMinutes>=r[u].time:t.timelineEventDetails.startMinutes>r[u].time){r[u]={height:t.timelineEventDetails.height,time:t.timelineEventDetails.endMinutes},t.timelineEventDetails.level=d;return}D=r[u].height}d+=D,r[d.toString()]={height:t.timelineEventDetails.height,time:t.timelineEventDetails.endMinutes},t.timelineEventDetails.level=d},E=(t,r)=>{t.timelineEventDetails.next=e.timelineEventDetails.childrenByStartMinute.length>r+1?e.timelineEventDetails.childrenByStartMinute[r+1].timelineEventDetails.id:void 0,t.timelineEventDetails.previous=r>0?e.timelineEventDetails.childrenByStartMinute[r-1].timelineEventDetails.id:void 0},h=t=>{t.timelineEventDetails.step=t.step||++me};e.timelineEventDetails.childrenByStartMinute.push(...s),e.timelineEventDetails.hasTimelineEvents=e.timelineEventDetails.childrenByStartMinute.some(t=>t.type==="timeline"),e.timelineEventDetails.startMinutes=ve(e),e.timelineEventDetails.startMinutesForTimelineChildren=fe(e),e.timelineEventDetails.endMinutes=he(e),e.timelineEventDetails.endMinutesForTimelineChildren=be(e),e.timelineEventDetails.durationMinutes=e.timelineEventDetails.endMinutes-e.timelineEventDetails.startMinutes,e.timelineEventDetails.durationMinutesForTimelineChildren=e.timelineEventDetails.endMinutesForTimelineChildren-e.timelineEventDetails.startMinutesForTimelineChildren,e.timelineEventDetails.childrenByStartMinute.forEach((t,r)=>{switch(t.type){case"container":h(t),f(t,e.timelineEventDetails.timelineLevelMatrix),w(t);break;case"timeline":b(t),f(t,e.timelineEventDetails.timelineLevelMatrix,!1),l(t);break;case"background":f(t,x.timelineEventDetails.backgroundLevelMatrix),m(t);break;default:}v(t),E(t,r)}),e.timelineEventDetails.height=Math.max(...Object.entries(e.timelineEventDetails.timelineLevelMatrix).map(([t,r])=>Number(t)))},Ee=(e,n)=>{if(!e){console.warn("Event object is empty");return}let s=e.type||e.start?e.type||"timeline":"wrapper",i=oe(ee({},e),{type:s,color:s==="timeline"?e.color||o.defaultColor:s==="background"?e.color||o.defaultBackgroundColor:void 0,highlightedColor:s==="timeline"?e.highlightedColor||o.defaultHighlightedColor:s==="background"?e.highlightedColor||o.defaultBackgroundHightligtedColor:void 0,timelineEventDetails:{id:crypto.randomUUID(),level:0,step:e.step||(n==null?void 0:n.step)||0,score:0,height:1,childrenByStartMinute:[],childrenByScore:[],depth:n?n.timelineEventDetails.depth+1:0,parentId:n==null?void 0:n.timelineEventDetails.id,startMinutes:Q(e.start),endMinutes:Q(e.end),durationMinutes:We(e.duration)||0,timelineLevelMatrix:{1:{height:0,time:Number.MIN_SAFE_INTEGER}},backgroundLevelMatrix:{1:{height:0,time:Number.MIN_SAFE_INTEGER}}}});if(n&&i.type==="timeline"&&n.type==="wrapper"&&(n.type="container"),e.events&&e.events.length&&ge(i,...e.events),i.timelineEventDetails.startMinutes=ve(i),i.timelineEventDetails.startMinutesForTimelineChildren=fe(i),!i.timelineEventDetails.startMinutes){console.warn("Missing start property on event - skipping",e);return}return i.timelineEventDetails.endMinutes=he(i),i.timelineEventDetails.endMinutesForTimelineChildren=be(i),i.timelineEventDetails.durationMinutes=i.timelineEventDetails.endMinutes-i.timelineEventDetails.startMinutes,i.timelineEventDetails.durationMinutesForTimelineChildren=i.timelineEventDetails.endMinutesForTimelineChildren-i.timelineEventDetails.startMinutesForTimelineChildren,i},Xe=e=>{let n=[],s=e.querySelectorAll(".timelineEvent");return s&&s.forEach(i=>{try{n.push(oe(ee({},i.attributes),{events:Xe(i)}))}catch(l){console.error(l,"timelineEvent")}}),n},g=(e,n)=>{p.dispatchEvent(new CustomEvent(e,{detail:{name:e,options:o,timelineEvent:n,viewStartDate:re(k()),viewEndDate:re(K()),viewDuration:B(),ratio:c,pivot:L},bubbles:!1,cancelable:!0,composed:!1}))},Ye=e=>{p.dispatchEvent(new CustomEvent("err.tl.container",{detail:e,bubbles:!1,cancelable:!0,composed:!1}))};return Ce(C,M),{focus:ne,zoom:J,add:Ie,reset:He,select:q,preventNextPreviewRender:()=>{U=!0},setPreventPreviewRender:e=>{Z=e},clear:$e,update:A}};export{Je as TimelineContainer};
+var __defProp = Object.defineProperty;
+var __defProps = Object.defineProperties;
+var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
+var __getOwnPropSymbols = Object.getOwnPropertySymbols;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __propIsEnum = Object.prototype.propertyIsEnumerable;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __spreadValues = (a, b) => {
+  for (var prop in b || (b = {}))
+    if (__hasOwnProp.call(b, prop))
+      __defNormalProp(a, prop, b[prop]);
+  if (__getOwnPropSymbols)
+    for (var prop of __getOwnPropSymbols(b)) {
+      if (__propIsEnum.call(b, prop))
+        __defNormalProp(a, prop, b[prop]);
+    }
+  return a;
+};
+var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+
+// src/index.ts
+var TimelineContainer = (elementIdentifier, settings) => {
+  let ratio;
+  let pivot;
+  let timelineStart;
+  let timelineEnd;
+  let element;
+  let options;
+  let labelContainer;
+  let dividerContainer;
+  let eventsContainer;
+  let previewsContainer;
+  let ioContainer;
+  let rootTimeline;
+  let currentTimeline;
+  let selectedTimelineIds;
+  let visibleEvents;
+  let previewTimer;
+  let preventNextPreviewRender = false;
+  let preventPreviewRender = false;
+  let containerStep = 0;
+  let touchDragFactor = 1;
+  const MINUTES_IN_DAY = 1440;
+  const MINUTES_IN_WEEK = 10080;
+  const MINUTES_IN_YEAR = 525948.766;
+  const MINUTES_IN_MONTH = MINUTES_IN_YEAR / 12;
+  const SHOW_MONTH_DURATION = MINUTES_IN_MONTH * 18;
+  const SHOW_DAY_DURATION = MINUTES_IN_WEEK * 6;
+  const SHOW_TIME_DURATION = MINUTES_IN_DAY * 4;
+  const isITimelineEventWithDetails = (timelineEvent) => "timelineEventDetails" in timelineEvent;
+  const add = (...timelineEvents) => {
+    if (!timelineEvents)
+      throw new Error(`Event argument is empty. Please provide Timeline event(s) as input`);
+    addEvents(rootTimeline, ...timelineEvents);
+    if (options.autoFocusOnTimelineAdd) {
+      focus(rootTimeline, false);
+    } else {
+      update();
+    }
+  };
+  const isViewInside = (timelineEvent) => {
+    return timelineEvent.timelineEventDetails.startMinutes < viewStart() && timelineEvent.timelineEventDetails.endMinutes > viewEnd();
+  };
+  const init = (elementIdentifier2, settings2) => {
+    if (!elementIdentifier2)
+      throw new Error(`Element argument is empty. DOM element | selector as first arg`);
+    if (typeof elementIdentifier2 === "string") {
+      const elem = document.querySelector(elementIdentifier2);
+      if (!elem)
+        throw new Error(`Selector could not be found [${element}]`);
+      element = elem;
+    }
+    if (elementIdentifier2 instanceof HTMLElement) {
+      element = elementIdentifier2;
+    }
+    options = __spreadValues(__spreadValues({}, {
+      labelCount: 5,
+      zoomSpeed: 0.04,
+      dragSpeed: 1e-3,
+      timelineStart: "-15B",
+      timelineEnd: "5B",
+      start: "-100y",
+      end: "now",
+      minRatio: 1,
+      maxRatio: 1e11,
+      position: "bottom",
+      eventHeight: 5,
+      eventSpacing: 3,
+      autoZoom: false,
+      zoomMargin: 0.1,
+      autoSelect: false,
+      autoFocusOnTimelineAdd: false,
+      autoDeselectOutside: false,
+      includeBackgroundOnAutoFocus: false,
+      defaultColor: "#aaa",
+      defaultHighlightedColor: "#444",
+      defaultBackgroundColor: "#eeee",
+      defaultBackgroundHightligtedColor: "#eee7",
+      zoomDuration: 200,
+      easing: "easeOutCubic",
+      numberOfHighscorePreviews: 5,
+      highscorePreviewDelay: 500,
+      highscorePreviewWidth: 100,
+      classNames: {
+        timeline: "tl",
+        timelineEvent: "tl__event",
+        timelinePreview: "tl__preview",
+        timelineEventTitle: "tl__event__title",
+        timelineLabels: "tl__labels",
+        timelineDividers: "tl__dividers",
+        timelineEvents: "tl__events",
+        timelinePreviews: "tl__previews",
+        timelineIo: "tl__io",
+        timelineLabel: "tl__label",
+        timelineDivider: "tl__divider"
+      }
+    }), settings2);
+    rootTimeline = parseEvent({
+      title: "View",
+      type: "container",
+      start: options.start,
+      end: options.end
+    });
+    timelineStart = parseDateToMinutes(options.timelineStart);
+    timelineEnd = parseDateToMinutes(options.timelineEnd);
+    const viewStart2 = rootTimeline.timelineEventDetails.startMinutes;
+    const viewEnd2 = rootTimeline.timelineEventDetails.endMinutes;
+    if (viewStart2 < timelineStart)
+      timelineStart = viewStart2;
+    if (viewEnd2 > timelineEnd)
+      timelineEnd = viewEnd2;
+    const viewDuration2 = viewEnd2 - viewStart2;
+    ratio = timelineDuration() / viewDuration2;
+    pivot = (timelineStart - viewStart2) / viewDuration2;
+    appendContainerHTML();
+    registerListeners(element);
+    focus(rootTimeline, false);
+  };
+  const timelineDuration = () => {
+    return timelineEnd - timelineStart;
+  };
+  const viewWidth = () => {
+    return element.getBoundingClientRect().width || 0;
+  };
+  const viewStart = () => {
+    return timelineStart - viewDuration() * pivot;
+  };
+  const viewEnd = () => {
+    return viewStart() + viewDuration();
+  };
+  const viewDuration = () => {
+    return timelineDuration() / ratio;
+  };
+  const scaledZoomSpeed = () => {
+    return options.zoomSpeed * ratio;
+  };
+  const getViewRatio = (minutes) => {
+    return (minutes - viewStart()) / viewDuration();
+  };
+  const setRatio = (direction, deltaRatio) => {
+    let newRatio = ratio - deltaRatio;
+    if (direction === 1 /* Out */ && newRatio <= options.minRatio) {
+      return false;
+    }
+    if (direction === -1 /* In */ && newRatio >= options.maxRatio) {
+      return false;
+    }
+    ratio = newRatio;
+    return true;
+  };
+  const setPivot = (deltaPivot) => {
+    let newPivot = pivot + deltaPivot;
+    if (newPivot >= 0) {
+      newPivot = 0;
+    }
+    if (newPivot + ratio <= 1) {
+      newPivot = 1 - ratio;
+    }
+    pivot = newPivot;
+  };
+  const onzoom = (direction, mouseX2timeline) => {
+    const deltaRatio = direction * scaledZoomSpeed();
+    const deltaPivot = mouseX2timeline * deltaRatio;
+    if (setRatio(direction, deltaRatio))
+      setPivot(deltaPivot);
+    update();
+  };
+  const onmove = (deltaPivot) => {
+    setPivot(deltaPivot * options.dragSpeed * touchDragFactor);
+    update();
+  };
+  const focus = (timelineEvent, useAnimation = true, onfocused) => {
+    if (!timelineEvent) {
+      throw "first argument 'timelineEvent' of method 'zoom' must be an object";
+    }
+    if (!isITimelineEventWithDetails(timelineEvent)) {
+      throw "first argument 'timelineEvent' of method 'zoom' must be an object of type ITimelineEventWithDetails";
+    }
+    currentTimeline = timelineEvent;
+    select();
+    zoom(timelineEvent, useAnimation, onfocused);
+  };
+  const reset = () => {
+    preventPreviewRender = false;
+    preventNextPreviewRender = false;
+    currentTimeline = rootTimeline;
+    zoom(currentTimeline);
+  };
+  const findFirstEvent = (timelineEventIdentifier, parent) => {
+    let result = void 0;
+    const parentNode = parent || rootTimeline;
+    if (parentNode.timelineEventDetails.id === timelineEventIdentifier)
+      return parentNode;
+    for (const child of parentNode.timelineEventDetails.childrenByStartMinute) {
+      if (child.title === timelineEventIdentifier || child.timelineEventDetails.id === timelineEventIdentifier) {
+        result = child;
+        break;
+      } else {
+        result = findFirstEvent(timelineEventIdentifier, child);
+        if (result)
+          break;
+      }
+    }
+    return result;
+  };
+  const select = (timelineEventIdentifier) => {
+    try {
+      if (!timelineEventIdentifier) {
+        selectedTimelineIds = [];
+      } else if (typeof timelineEventIdentifier === "string") {
+        if (timelineEventIdentifier === "next") {
+          const result = findFirstEvent(selectedTimelineIds[0]);
+          if (!result)
+            throw `No event selected`;
+          if (!result.timelineEventDetails.next)
+            throw `No next event available`;
+          selectedTimelineIds = [result.timelineEventDetails.next];
+          fire("selected.tl.event", findFirstEvent(selectedTimelineIds[0]));
+        } else if (timelineEventIdentifier === "previous") {
+          const result = findFirstEvent(selectedTimelineIds[0]);
+          if (!result)
+            throw `No event selected`;
+          if (!result.timelineEventDetails.previous)
+            throw `No previous event available`;
+          selectedTimelineIds = [result.timelineEventDetails.previous];
+          fire("selected.tl.event", findFirstEvent(selectedTimelineIds[0]));
+        } else {
+          const result = findFirstEvent(timelineEventIdentifier);
+          if (!result)
+            throw `Cannot find ${timelineEventIdentifier} by title nor timelineEventDetails.id`;
+          selectedTimelineIds = [result.timelineEventDetails.id];
+          fire("selected.tl.event", result);
+        }
+      }
+      update();
+    } catch (error) {
+      raise(error);
+    }
+  };
+  const zoom = (timelineEvent, useAnimation = true, onzoomend) => {
+    if (!timelineEvent) {
+      throw "first argument 'timelineEvent' of method 'zoom' must be an object";
+    }
+    if (!isITimelineEventWithDetails(timelineEvent)) {
+      throw "first argument 'timelineEvent' of method 'zoom' must be an object of type ITimelineEventWithDetails";
+    }
+    const startMinutes = !options.includeBackgroundOnAutoFocus ? timelineEvent.timelineEventDetails.startMinutesForTimelineChildren : timelineEvent.timelineEventDetails.startMinutes;
+    const endMinutes = !options.includeBackgroundOnAutoFocus ? timelineEvent.timelineEventDetails.endMinutesForTimelineChildren : timelineEvent.timelineEventDetails.endMinutes;
+    zoomto(startMinutes, endMinutes, useAnimation, () => {
+      fire("zoom.tl.event", timelineEvent);
+      if (onzoomend)
+        onzoomend(timelineEvent);
+    });
+  };
+  const calcMinimumZoomDuration = () => {
+    return timelineDuration() / options.maxRatio;
+  };
+  const calcPivotRatio = (startMinutes, endMinutes) => {
+    const minimumZoomDuration = calcMinimumZoomDuration();
+    let initielTargetDuration = endMinutes - startMinutes;
+    if (initielTargetDuration < minimumZoomDuration) {
+      const durationDiff = minimumZoomDuration - initielTargetDuration;
+      startMinutes -= durationDiff / 2;
+      endMinutes += durationDiff / 2;
+      initielTargetDuration = minimumZoomDuration;
+    }
+    const targetDurationExtension = initielTargetDuration * options.zoomMargin;
+    const targetStart = startMinutes - targetDurationExtension;
+    const targetEnd = endMinutes + targetDurationExtension;
+    const targetDuration = targetEnd - targetStart;
+    const targetPivot = (timelineStart - targetStart) / targetDuration;
+    const targetRatio = timelineDuration() / targetDuration;
+    return { pivot: targetPivot, ratio: targetRatio };
+  };
+  const calcStartEndMinutes = (pivot2, ratio2) => {
+    const targetDuration = timelineDuration() / ratio2;
+    const targetStart = timelineStart - targetDuration * pivot2;
+    const targetEnd = targetStart + targetDuration;
+    return { startMinutes: targetStart, endMinutes: targetEnd };
+  };
+  const zoomto = (startMinutes, endMinutes, useAnimation = true, onzoomend) => {
+    if (!startMinutes) {
+      throw "first argument 'startMinutes' of method 'zoomto' must be a number";
+    }
+    if (!endMinutes) {
+      throw "second argument 'endMinutes' of method 'zoomto' must be a number";
+    }
+    const { pivot: targetPivot, ratio: targetRatio } = calcPivotRatio(startMinutes, endMinutes);
+    const animate = () => {
+      let i = 0;
+      const animationDuration = options.zoomDuration;
+      const easings = {
+        easeOutExpo: (time, start, change, duration) => {
+          return time == duration ? start + change : change * (-Math.pow(2, -10 * time / duration) + 1) + start;
+        },
+        easeOutCubic: (time, start, change, duration) => {
+          return change * ((time = time / duration - 1) * time * time + 1) + start;
+        },
+        easeLinear: (time, start, change, duration) => {
+          return change * time / duration + start;
+        }
+      };
+      const startRatio = ratio;
+      const startPivot = pivot;
+      const deltaRatio = targetRatio - startRatio;
+      const deltaPivot = targetPivot - startPivot;
+      const easing = typeof options.easing === "string" ? easings[options.easing] : options.easing;
+      const stopAnimation = () => {
+        clearInterval(myTimer);
+        if (onzoomend)
+          onzoomend();
+        update();
+      };
+      const myTimer = setInterval(() => {
+        if (++i > animationDuration) {
+          return stopAnimation();
+        }
+        ratio = easing(i, startRatio, deltaRatio, animationDuration);
+        pivot = easing(i, startPivot, deltaPivot, animationDuration);
+        update();
+      }, 1);
+    };
+    if (useAnimation) {
+      animate();
+    } else {
+      ratio = targetRatio;
+      pivot = targetPivot;
+      update();
+      if (onzoomend)
+        onzoomend();
+    }
+  };
+  const registerListeners = (element2) => {
+    let tpCache = [];
+    let dragStartX, dragStartY;
+    let inDrag = false;
+    const move = (clientX, clientY) => {
+      if (inDrag) {
+        const offsetX = clientX - dragStartX;
+        const offsetY = clientY - dragStartY;
+        drag(offsetX, offsetY);
+        dragStartX = clientX;
+        dragStartY = clientY;
+      }
+      hover(clientX, clientY);
+    };
+    const drag = (offsetX, offsetY) => {
+      if (offsetX)
+        onmove(offsetX);
+      fire("drag.tl.container");
+    };
+    const hover = (clientX, clientY) => {
+      const hoverElements = document.elementsFromPoint(clientX, clientY);
+      let hoverEvent = hoverElements.find((element3) => {
+        return element3.hasAttribute("eventid");
+      });
+      if (!hoverEvent) {
+        element2.style.cursor = "";
+        element2.title = "";
+        return;
+      }
+      const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === hoverEvent.getAttribute("eventid"));
+      if (timelineEvent) {
+        fire(`hover.tl.event`, timelineEvent);
+        element2.style.cursor = "pointer";
+        element2.title = timelineEvent.title;
+      } else {
+        element2.style.cursor = "";
+        element2.title = "";
+      }
+    };
+    const pinch = (offsetX, direction) => {
+      const mouseX2view = offsetX / viewWidth();
+      const mouseX2timeline = (mouseX2view - pivot) / ratio;
+      onzoom(direction, mouseX2timeline);
+      fire("pinch.tl.container");
+    };
+    const onEventClick = (event) => {
+      if (options.autoSelect && event.detail.timelineEvent) {
+        select(event.detail.timelineEvent.timelineEventDetails.id);
+      }
+    };
+    const onEventSelected = (event) => {
+      if (options.autoZoom && event.detail.timelineEvent) {
+        zoom(event.detail.timelineEvent);
+      }
+    };
+    const click = (clientX, clientY) => {
+      const clickedElements = document.elementsFromPoint(clientX, clientY);
+      let clickedEvent = clickedElements.find((element3) => {
+        return element3.hasAttribute("eventid");
+      });
+      if (!clickedEvent) {
+        if (options.autoDeselectOutside && !preventPreviewRender && !preventNextPreviewRender)
+          select();
+        return;
+      }
+      const eventid = clickedEvent.getAttribute("eventid");
+      const timelineEvent = visibleEvents.find((ev) => ev.timelineEventDetails.id === eventid);
+      if (timelineEvent) {
+        fire(`click.tl.event`, timelineEvent);
+      }
+    };
+    window.addEventListener("resize", (event) => {
+      update();
+      fire("resize.tl.container");
+    });
+    element2.addEventListener("wheel", (event) => {
+      if (event.defaultPrevented)
+        return;
+      event.preventDefault();
+      var direction = Math.sign(event.deltaY);
+      const leftRatio = event.target.attributes["starttime"] ? getViewRatio(event.target.attributes["starttime"]) : 0;
+      const offsetX = leftRatio * viewWidth() + event.offsetX;
+      pinch(offsetX, direction);
+      fire("wheel.tl.container");
+    });
+    element2.addEventListener("touchstart", (event) => {
+      event.preventDefault();
+      tpCache = [];
+      tpCache.push(...event.targetTouches);
+      fire("touchstart.tl.container");
+    });
+    element2.addEventListener(
+      "touchend",
+      (event) => {
+        click(tpCache[0].clientX, tpCache[0].clientY);
+        inDrag = false;
+        fire("touchend.tl.container");
+      },
+      { passive: true }
+    );
+    element2.addEventListener(
+      "touchmove",
+      (event) => {
+        if (event.targetTouches.length === 2 && event.changedTouches.length === 2) {
+          const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
+          const touch2 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[1].identifier);
+          if (touch1 >= 0 && touch2 >= 0) {
+            const diff1 = Math.abs(tpCache[touch1].clientX - tpCache[touch2].clientX);
+            const diff2 = Math.abs(event.targetTouches[0].clientX - event.targetTouches[1].clientX);
+            const diff = diff1 - diff2;
+            const offsetX = Math.min(event.targetTouches[0].clientX, event.targetTouches[1].clientX) + diff2 / 2;
+            var direction = Math.sign(diff);
+            pinch(offsetX, direction);
+          }
+        }
+        if (event.targetTouches.length === 1 && event.changedTouches.length === 1) {
+          const touch1 = tpCache.findIndex((tp) => tp.identifier === event.targetTouches[0].identifier);
+          if (touch1 >= 0) {
+            const diffX = event.targetTouches[0].clientX - tpCache[touch1].clientX;
+            if (diffX !== 0) {
+              inDrag = true;
+              touchDragFactor = 3;
+              dragStartX = tpCache[touch1].clientX;
+              dragStartY = tpCache[touch1].clientY;
+              move(event.targetTouches[0].clientX, event.targetTouches[0].clientY);
+            }
+          }
+        }
+        tpCache = [];
+        tpCache.push(...event.targetTouches);
+        fire("touchmove.tl.container");
+      },
+      { passive: true }
+    );
+    element2.addEventListener(
+      "mousedown",
+      (event) => {
+        dragStartX = event.clientX;
+        dragStartY = event.clientY;
+        inDrag = true;
+        touchDragFactor = 1;
+        fire("mousedown.tl.container");
+      },
+      { passive: true }
+    );
+    element2.addEventListener(
+      "mousemove",
+      (event) => {
+        move(event.clientX, event.clientY);
+        fire("mousemove.tl.container");
+      },
+      { passive: true }
+    );
+    element2.addEventListener(
+      "mouseup",
+      (event) => {
+        inDrag = false;
+        fire("mouseup.tl.container");
+      },
+      { passive: true }
+    );
+    element2.addEventListener("click", (e) => click(e.clientX, e.clientY));
+    element2.addEventListener("click.tl.event", onEventClick);
+    element2.addEventListener("selected.tl.event", onEventSelected);
+    element2.addEventListener("update.tl.container", onUpdate);
+  };
+  const createPreviewHTML = () => {
+    const eventsFragment = document.createDocumentFragment();
+    const svgContainer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svgContainer.style.height = "100%";
+    svgContainer.style.width = "100%";
+    svgContainer.style.position = "absolute";
+    eventsFragment.append(svgContainer);
+    const highscores = visibleEvents.filter((evt) => !!evt.timelineEventDetails.previewNode).filter((evt) => !evt.preventNextPreviewRender).sort((a, b) => b.timelineEventDetails.score - a.timelineEventDetails.score).slice(0, options.numberOfHighscorePreviews).sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
+    for (const [i, timelineEvent] of highscores.entries()) {
+      const fraction = 1 / highscores.length;
+      const previewWidthFactor = options.highscorePreviewWidth / viewWidth();
+      const randomLeftPosition = fraction * i + fraction / 2 - previewWidthFactor / 2;
+      const randomTopPosition = Math.random() / 3 + 0.08;
+      const createTimelinePreviewHTML = () => {
+        timelineEvent.timelineEventDetails.previewNode.style.left = randomLeftPosition * 100 + "%";
+        timelineEvent.timelineEventDetails.previewNode.style.top = randomTopPosition * 100 + "%";
+        let x2 = getViewRatio(timelineEvent.timelineEventDetails.startMinutes + timelineEvent.timelineEventDetails.durationMinutes / 2);
+        if (isViewInside(timelineEvent)) {
+          x2 = 0.5;
+        }
+        if (x2 > 1) {
+          x2 = getViewRatio(timelineEvent.timelineEventDetails.startMinutes + (viewEnd() - timelineEvent.timelineEventDetails.startMinutes) / 2);
+        }
+        if (x2 < 0) {
+          x2 = getViewRatio((viewStart() + timelineEvent.timelineEventDetails.endMinutes) / 2);
+        }
+        const lineFragment = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        lineFragment.setAttribute("x1", `calc(${(randomLeftPosition + previewWidthFactor / 2) * 100}%)`);
+        lineFragment.setAttribute("y1", `calc(${randomTopPosition * 100}% + 50px)`);
+        lineFragment.setAttribute("x2", x2 * 100 + "%");
+        lineFragment.setAttribute("y2", timelineEvent.timelineEventDetails.eventNode.offsetTop + "px");
+        lineFragment.setAttribute("style", `stroke:${timelineEvent.color};stroke-width:2`);
+        svgContainer.appendChild(lineFragment);
+        eventsFragment.append(timelineEvent.timelineEventDetails.previewNode);
+      };
+      createTimelinePreviewHTML();
+    }
+    visibleEvents.forEach((ev) => {
+      ev.preventNextPreviewRender = false;
+    });
+    return eventsFragment;
+  };
+  const createEventHTML = (parentEvent) => {
+    const eventsFragment = document.createDocumentFragment();
+    for (const timelineEvent of parentEvent.timelineEventDetails.childrenByStartMinute) {
+      if (!timelineEvent || !timelineEvent.timelineEventDetails)
+        continue;
+      if (timelineEvent.timelineEventDetails.startMinutes >= viewEnd())
+        continue;
+      if (timelineEvent.timelineEventDetails.endMinutes <= viewStart())
+        continue;
+      const viewInside = isViewInside(timelineEvent);
+      const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.timelineEventDetails.startMinutes);
+      const widthRatio = viewInside ? 100 : timelineEvent.timelineEventDetails.durationMinutes / viewDuration() * 100;
+      const isHighlighted = !!selectedTimelineIds.length && !!selectedTimelineIds.find((tlId) => tlId === timelineEvent.timelineEventDetails.id);
+      const levelFactor = (timelineEvent.timelineEventDetails.level - 1) * options.eventHeight + timelineEvent.timelineEventDetails.level * options.eventSpacing;
+      const stepFactor = (parentEvent.timelineEventDetails.step - 1) * options.eventSpacing;
+      switch (timelineEvent.type) {
+        default: {
+          eventsFragment.append(createEventHTML(timelineEvent));
+          continue;
+        }
+        case "container": {
+          const heightFactor = timelineEvent.timelineEventDetails.height * options.eventHeight + timelineEvent.timelineEventDetails.height * options.eventSpacing + timelineEvent.timelineEventDetails.step * options.eventSpacing;
+          timelineEvent.timelineEventDetails.eventNode.style.bottom = `${heightFactor + levelFactor + stepFactor}px`;
+          eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
+          eventsFragment.append(createEventHTML(timelineEvent));
+          continue;
+        }
+        case "timeline": {
+          const parentfactor = (parentEvent.timelineEventDetails.level - 1) * options.eventHeight + (parentEvent.timelineEventDetails.level - 1) * options.eventSpacing;
+          timelineEvent.timelineEventDetails.eventNode.style.bottom = `${parentfactor + levelFactor + stepFactor}px`;
+          timelineEvent.timelineEventDetails.eventNode.style.backgroundColor = isHighlighted ? timelineEvent.highlightedColor : timelineEvent.color;
+          break;
+        }
+        case "background": {
+          break;
+        }
+      }
+      timelineEvent.timelineEventDetails.eventNode.style.left = leftRatio * 100 + "%";
+      timelineEvent.timelineEventDetails.eventNode.style.width = widthRatio + "%";
+      timelineEvent.timelineEventDetails.eventNode.attributes["starttime"] = viewInside ? viewStart() : timelineEvent.timelineEventDetails.startMinutes;
+      eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
+      visibleEvents.push(timelineEvent);
+    }
+    return eventsFragment;
+  };
+  const appendContainerHTML = () => {
+    element.style.position = "relative";
+    element.style.overflow = "hidden";
+    element.style.minHeight = "3rem";
+    labelContainer = document.createElement("div");
+    element.appendChild(labelContainer);
+    labelContainer.classList.add(options.classNames.timelineLabels);
+    labelContainer.style.width = "100%";
+    labelContainer.style.height = "50px";
+    labelContainer.style.textAlign = "center";
+    labelContainer.style.position = "absolute";
+    labelContainer.style.pointerEvents = "none";
+    labelContainer.style.userSelect = "none";
+    switch (options.position) {
+      case "top":
+        labelContainer.style.top = "0";
+        break;
+      default:
+        labelContainer.style.bottom = "0";
+    }
+    dividerContainer = document.createElement("div");
+    element.appendChild(dividerContainer);
+    dividerContainer.classList.add(options.classNames.timelineDividers);
+    dividerContainer.style.width = "100%";
+    dividerContainer.style.height = "100%";
+    dividerContainer.style.position = "absolute";
+    dividerContainer.style.zIndex = "-2";
+    dividerContainer.style.bottom = "0";
+    eventsContainer = document.createElement("div");
+    element.appendChild(eventsContainer);
+    eventsContainer.classList.add(options.classNames.timelineEvents);
+    eventsContainer.style.position = "absolute";
+    eventsContainer.style.bottom = "50px";
+    eventsContainer.style.height = "calc(100% - 50px)";
+    eventsContainer.style.width = "100%";
+    eventsContainer.style.overflowY = "auto";
+    eventsContainer.style.overflowX = "hidden";
+    previewsContainer = document.createElement("div");
+    element.appendChild(previewsContainer);
+    previewsContainer.classList.add(options.classNames.timelinePreviews);
+    previewsContainer.style.position = "absolute";
+    previewsContainer.style.bottom = "50px";
+    previewsContainer.style.height = "calc(100% - 50px)";
+    previewsContainer.style.width = "100%";
+    previewsContainer.style.overflowY = "auto";
+    previewsContainer.style.overflowX = "hidden";
+    ioContainer = document.createElement("div");
+    element.appendChild(ioContainer);
+    ioContainer.classList.add(options.classNames.timelineIo);
+    ioContainer.style.position = "absolute";
+    ioContainer.style.bottom = "0";
+    ioContainer.style.top = "0";
+    ioContainer.style.width = "100%";
+  };
+  const appendLabelHTML = () => {
+    const currentLevel = Math.floor(ratio);
+    const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
+    const granularity = 1 / (options.labelCount + 1);
+    const timelineViewDifference = viewStart() - timelineStart;
+    const timestampDistance = timelineDuration() * granularity;
+    const currentTimestampDistanceByLevel = timestampDistance / iterator;
+    const integerDifFraction = Math.floor(timelineViewDifference / currentTimestampDistanceByLevel);
+    const currentDif = integerDifFraction * currentTimestampDistanceByLevel;
+    const labels = document.createDocumentFragment();
+    const dividers = document.createDocumentFragment();
+    for (let i = 0; i < options.labelCount + 2; i++) {
+      const labelTime = (i + 1) * currentTimestampDistanceByLevel + timelineStart + currentDif - currentTimestampDistanceByLevel;
+      const dividerTime = labelTime + currentTimestampDistanceByLevel / 2;
+      const labelViewRatio = getViewRatio(labelTime);
+      const labelViewLeftPosition = labelViewRatio * 100;
+      const dividerViewRatio = getViewRatio(dividerTime);
+      const dividerViewLeftPosition = dividerViewRatio * 100;
+      const label = document.createElement("div");
+      label.classList.add(options.classNames.timelineLabel);
+      label.style.left = labelViewLeftPosition + "%";
+      label.style.top = "50%";
+      label.style.transform = "translate(calc(-50%), calc(-50%))";
+      label.style.textAlign = "center";
+      label.style.position = "absolute";
+      label.style.zIndex = "-1";
+      label.style.width = granularity * 100 + "%";
+      label.innerHTML = formatDateLabel(labelTime);
+      labels.appendChild(label);
+      const divider = document.createElement("div");
+      divider.classList.add(options.classNames.timelineDivider);
+      divider.style.left = dividerViewLeftPosition + "%";
+      divider.style.textAlign = "center";
+      divider.style.position = "absolute";
+      divider.style.height = "100%";
+      divider.style.zIndex = "-10";
+      divider.innerHTML = "";
+      dividers.appendChild(divider);
+    }
+    labelContainer.appendChild(labels);
+    dividerContainer.appendChild(dividers);
+  };
+  const appendEventHTML = () => {
+    const eventsHtml = createEventHTML(currentTimeline);
+    if (eventsHtml)
+      eventsContainer.appendChild(eventsHtml);
+  };
+  const appendPreviewHTML = () => {
+    if (!preventPreviewRender && !preventNextPreviewRender) {
+      const previewsHtml = createPreviewHTML();
+      if (previewsHtml)
+        previewsContainer.appendChild(previewsHtml);
+    }
+    preventNextPreviewRender = false;
+  };
+  const formatDateLabel = (minutes) => {
+    const yearsCount = Math.floor(minutes / MINUTES_IN_YEAR);
+    const currentYear = yearsCount + 1970;
+    const currentYearLessThan5Digits = currentYear > -1e4 && currentYear < 1e4;
+    const currentYearString = currentYearLessThan5Digits ? currentYear.toString() : currentYear.toLocaleString("en-US", {
+      notation: "compact",
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1
+    });
+    const currentRemainder = Math.abs(minutes - yearsCount * MINUTES_IN_YEAR);
+    const momentInValidateRange = minutes > 27e4 * MINUTES_IN_YEAR * -1 && minutes < 27e4 * MINUTES_IN_YEAR;
+    const date = momentInValidateRange ? new Date(minutes * 6e4) : new Date(currentRemainder * 6e4);
+    if (viewDuration() < SHOW_TIME_DURATION) {
+      return [
+        Intl.DateTimeFormat(void 0, {
+          month: "short",
+          day: "numeric"
+        }).format(date),
+        currentYearString,
+        Intl.DateTimeFormat(void 0, {
+          hour: "numeric",
+          minute: "numeric"
+        }).format(date)
+      ].join(" ");
+    }
+    if (viewDuration() < SHOW_DAY_DURATION) {
+      return [
+        Intl.DateTimeFormat(void 0, {
+          month: "short",
+          day: "numeric"
+        }).format(date),
+        currentYearString
+      ].join(" ");
+    }
+    if (viewDuration() < SHOW_MONTH_DURATION) {
+      return [
+        Intl.DateTimeFormat(void 0, {
+          month: "short"
+        }).format(date),
+        currentYearString
+      ].join(" ");
+    }
+    return currentYearString;
+  };
+  const update = () => {
+    if (dividerContainer)
+      dividerContainer.innerHTML = "";
+    if (labelContainer)
+      labelContainer.innerHTML = "";
+    if (eventsContainer)
+      eventsContainer.innerHTML = "";
+    if (previewsContainer)
+      previewsContainer.innerHTML = "";
+    visibleEvents = [];
+    fire("update.tl.container");
+  };
+  const clear = () => {
+    if (!currentTimeline)
+      return;
+    currentTimeline.events = [];
+    currentTimeline.timelineEventDetails.childrenByStartMinute = [];
+    currentTimeline.timelineEventDetails.timelineLevelMatrix = { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } };
+    currentTimeline.timelineEventDetails.backgroundLevelMatrix = { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } };
+    containerStep = 0;
+    fire("cleared.tl.container");
+    update();
+  };
+  const onUpdate = () => {
+    appendLabelHTML();
+    appendEventHTML();
+    if (options.numberOfHighscorePreviews > 0) {
+      clearTimeout(previewTimer);
+      previewTimer = setTimeout(() => {
+        appendPreviewHTML();
+      }, options.highscorePreviewDelay);
+    }
+  };
+  const parseDateToMinutes = (input) => {
+    if (input === void 0)
+      return void 0;
+    const parseDateArray = (input2) => {
+      const date = new Date();
+      date.setDate(input2[2] ? input2[2] : 1);
+      date.setMonth(input2[1] ? input2[1] - 1 : 0);
+      date.setHours(input2[3] ? input2[3] : 0);
+      date.setMinutes(input2[4] ? input2[4] : 0);
+      date.setSeconds(0);
+      if (!input2[0]) {
+        return date.getTime() / 6e4;
+      }
+      if (input2[0] && input2[0] > -27e4 && input2[0] < 27e4) {
+        date.setFullYear(input2[0]);
+        return date.getTime() / 6e4;
+      }
+      const dateYearInMinutes = MINUTES_IN_YEAR * input2[0];
+      return dateYearInMinutes + date.getTime() / 6e4;
+    };
+    const parseDateString = (input2) => {
+      switch (input2) {
+        case "now":
+          return parseDateArray([]);
+        default:
+          const years = input2.match(/y$/) ? Number(input2.replace(/y$/, "")) : NaN;
+          if (!isNaN(years)) {
+            return parseDateArray([years + 1970]);
+          }
+          const yearsK = input2.match(/K$/) ? Number(input2.replace(/K$/, "")) : NaN;
+          if (!isNaN(yearsK)) {
+            return parseDateArray([yearsK * 1e3]);
+          }
+          const yearsM = input2.match(/M$/) ? Number(input2.replace(/M$/, "")) : NaN;
+          if (!isNaN(yearsM)) {
+            return parseDateArray([yearsM * 1e6]);
+          }
+          const yearsB = input2.match(/B$/) ? Number(input2.replace(/B$/, "")) : NaN;
+          if (!isNaN(yearsB)) {
+            return parseDateArray([yearsB * 1e9]);
+          }
+          const yearsBC = input2.match(/bc$/) ? Number(input2.replace(/bc$/, "")) : NaN;
+          if (!isNaN(yearsBC)) {
+            return parseDateArray([-yearsBC]);
+          }
+          const yearsAD = input2.match(/ad$/) ? Number(input2.replace(/ad$/, "")) : NaN;
+          if (!isNaN(yearsAD)) {
+            return parseDateArray([yearsAD]);
+          }
+          const minutes = Number(input2);
+          if (!isNaN(minutes)) {
+            return new Date().getTime() / 6e4 + minutes * 6e4;
+          }
+          const timestamp = Date.parse(input2);
+          if (isNaN(timestamp))
+            return new Date().getTime() / 6e4;
+          return timestamp / 6e4;
+      }
+    };
+    if (Array.isArray(input)) {
+      let inputArray = input;
+      if (inputArray.length === 0)
+        throw new Error("argument Array cannot be empty");
+      const isNumberArray = inputArray.every((value) => {
+        return typeof value === "number";
+      });
+      if (!isNumberArray)
+        throw new Error("input Array must contain only numbers");
+      return parseDateArray(inputArray);
+    }
+    if (typeof input === "object" && input.constructor.name === "Date") {
+      return input.getTime() / 6e4;
+    }
+    if (typeof input === "string") {
+      return parseDateString(input);
+    }
+    if (typeof input === "number") {
+      return new Date(input).getTime() / 6e4;
+    }
+    return void 0;
+  };
+  const parseNumberToMinutes = (input) => {
+    if (input === void 0)
+      return void 0;
+    if (typeof input === "string") {
+      const seconds = input.match(/s$/) ? Number(input.replace(/s$/, "")) : NaN;
+      if (!isNaN(seconds)) {
+        return seconds / 60;
+      }
+      const hours = input.match(/H$/) ? Number(input.replace(/H$/, "")) : NaN;
+      if (!isNaN(hours)) {
+        return hours * 60;
+      }
+      const days = input.match(/d$/) ? Number(input.replace(/d$/, "")) : NaN;
+      if (!isNaN(days)) {
+        return days * 24 * 60;
+      }
+      const weeks = input.match(/w$/) ? Number(input.replace(/w$/, "")) : NaN;
+      if (!isNaN(weeks)) {
+        return weeks * 7 * 24 * 60;
+      }
+      const years = input.match(/y$/) ? Number(input.replace(/y$/, "")) : NaN;
+      if (!isNaN(years)) {
+        return years * MINUTES_IN_YEAR;
+      }
+      const yearsK = input.match(/K$/) ? Number(input.replace(/K$/, "")) : NaN;
+      if (!isNaN(yearsK)) {
+        return yearsK * MINUTES_IN_YEAR * 1e3;
+      }
+      const yearsM = input.match(/M$/) ? Number(input.replace(/M$/, "")) : NaN;
+      if (!isNaN(yearsM)) {
+        return yearsM * MINUTES_IN_YEAR * 1e6;
+      }
+      const yearsB = input.match(/B$/) ? Number(input.replace(/B$/, "")) : NaN;
+      if (!isNaN(yearsB)) {
+        return yearsB * MINUTES_IN_YEAR * 1e9;
+      }
+      const minutes = Number(input);
+      if (!isNaN(minutes)) {
+        return minutes;
+      }
+    }
+    if (typeof input === "number") {
+      return input;
+    }
+    return void 0;
+  };
+  const calcStart = (timelineEventWithDetails) => {
+    const result = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? Math.min(
+      timelineEventWithDetails.timelineEventDetails.startMinutes || Number.MAX_SAFE_INTEGER,
+      timelineEventWithDetails.timelineEventDetails.childrenByStartMinute[0].timelineEventDetails.startMinutes
+    ) : timelineEventWithDetails.timelineEventDetails.startMinutes;
+    return result;
+  };
+  const calcEnd = (timelineEventWithDetails) => {
+    const result = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.length ? Math.max.apply(
+      1,
+      timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.map((child) => child.timelineEventDetails.endMinutes)
+    ) : timelineEventWithDetails.timelineEventDetails.endMinutes ? timelineEventWithDetails.timelineEventDetails.endMinutes : timelineEventWithDetails.timelineEventDetails.durationMinutes ? timelineEventWithDetails.timelineEventDetails.startMinutes + timelineEventWithDetails.timelineEventDetails.durationMinutes : timelineEventWithDetails.timelineEventDetails.startMinutes + 1;
+    return result;
+  };
+  const calcStartForTimeline = (timelineEventWithDetails) => {
+    const timelineChildren = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.filter(
+      (tl) => ["background"].find((ect) => ect !== tl.type) && (!!tl.timelineEventDetails.hasTimelineEvents || !tl.timelineEventDetails.childrenByStartMinute.length)
+    );
+    const result = timelineChildren.length ? Math.min(
+      timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren || Number.MAX_SAFE_INTEGER,
+      timelineChildren[0].timelineEventDetails.startMinutesForTimelineChildren
+    ) : timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren || timelineEventWithDetails.timelineEventDetails.startMinutes;
+    return result;
+  };
+  const calcEndForTimeline = (timelineEventWithDetails) => {
+    const timelineChildren = timelineEventWithDetails.timelineEventDetails.childrenByStartMinute.filter(
+      (tl) => ["background"].find((ect) => ect !== tl.type) && (!!tl.timelineEventDetails.hasTimelineEvents || !tl.timelineEventDetails.childrenByStartMinute.length)
+    );
+    const result = timelineChildren.length ? Math.max.apply(
+      1,
+      timelineChildren.map((child) => child.timelineEventDetails.endMinutesForTimelineChildren)
+    ) : timelineEventWithDetails.timelineEventDetails.endMinutesForTimelineChildren ? timelineEventWithDetails.timelineEventDetails.endMinutesForTimelineChildren : timelineEventWithDetails.timelineEventDetails.durationMinutesForTimelineChildren ? timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren + timelineEventWithDetails.timelineEventDetails.durationMinutesForTimelineChildren : timelineEventWithDetails.timelineEventDetails.endMinutes ? timelineEventWithDetails.timelineEventDetails.endMinutes : timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren + 1;
+    return result;
+  };
+  const addEvents = (parent, ...events) => {
+    const parsedSortedChildren = events.map((tl) => parseEvent(tl, parent)).filter((tl) => !!tl).sort((a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes);
+    const createEventNode = (timelineEvent) => {
+      const eventHTML = document.createElement("div");
+      eventHTML.style.boxSizing = "border-box";
+      eventHTML.style.position = "absolute";
+      eventHTML.style.minWidth = "5px";
+      eventHTML.classList.add(options.classNames.timelineEvent);
+      eventHTML.setAttribute("level", timelineEvent.timelineEventDetails.level.toString());
+      eventHTML.setAttribute("depth", timelineEvent.timelineEventDetails.depth.toString());
+      eventHTML.setAttribute("score", timelineEvent.timelineEventDetails.score.toString());
+      eventHTML.setAttribute("step", timelineEvent.timelineEventDetails.step.toString());
+      return eventHTML;
+    };
+    const setTimelineNode = (timelineEvent) => {
+      const node = createEventNode(timelineEvent);
+      node.style.minHeight = `${options.eventHeight}px`;
+      node.style.cursor = "pointer";
+      node.style.borderRadius = "5px";
+      node.title = timelineEvent.title;
+      if (timelineEvent.renderEventNode) {
+        const elementToAppend = document.createElement("div");
+        elementToAppend.append(timelineEvent.renderEventNode(timelineEvent));
+        node.append(elementToAppend);
+      }
+      node.setAttribute("eventid", timelineEvent.timelineEventDetails.id);
+      timelineEvent.timelineEventDetails.eventNode = node;
+    };
+    const setBackgroundNode = (timelineEvent) => {
+      const node = createEventNode(timelineEvent);
+      const topFactor = (timelineEvent.timelineEventDetails.level - 1) * 25;
+      node.style.bottom = `0`;
+      node.style.top = `${topFactor}px`;
+      node.style.zIndex = "-1";
+      node.style.overflow = "hidden";
+      node.style.background = `linear-gradient(to right, ${options.defaultBackgroundColor}, 1px, #0000)`;
+      node.title = timelineEvent.title;
+      if (timelineEvent.renderEventNode) {
+        const elementToAppend = document.createElement("div");
+        elementToAppend.append(timelineEvent.renderEventNode(timelineEvent));
+        elementToAppend.setAttribute("eventid", timelineEvent.timelineEventDetails.id);
+        node.append(elementToAppend);
+      }
+      timelineEvent.timelineEventDetails.eventNode = node;
+    };
+    const setContainerNode = (timelineEvent) => {
+      const node = createEventNode(timelineEvent);
+      node.style.height = `1px`;
+      node.style.borderBottomColor = options.defaultBackgroundColor;
+      node.style.borderBottomWidth = "1px";
+      node.style.borderBottomStyle = "solid";
+      node.style.width = "100%";
+      if (timelineEvent.title) {
+        const titleNode = document.createElement("div");
+        titleNode.style.position = "relative";
+        titleNode.style.bottom = "7.5px";
+        titleNode.style.fontSize = "x-small";
+        titleNode.style.width = "fit-content";
+        titleNode.style.backgroundColor = "white";
+        titleNode.style.zIndex = "1";
+        titleNode.style.padding = "0px 3px 0px 3px";
+        titleNode.append(timelineEvent.title);
+        node.appendChild(titleNode);
+      }
+      timelineEvent.timelineEventDetails.eventNode = node;
+    };
+    const setPreviewNode = (timelineEvent) => {
+      if (!timelineEvent.renderPreviewNode)
+        return;
+      const previewNode = timelineEvent.renderPreviewNode(timelineEvent);
+      if (!previewNode)
+        return;
+      const previewHTML = document.createElement("div");
+      previewHTML.style.boxSizing = "border-box";
+      previewHTML.style.position = "absolute";
+      previewHTML.style.overflow = "hidden";
+      previewHTML.style.width = options.highscorePreviewWidth + "px";
+      previewHTML.title = timelineEvent.title;
+      previewHTML.classList.add(options.classNames.timelinePreview);
+      previewHTML.setAttribute("eventid", timelineEvent.timelineEventDetails.id);
+      previewHTML.append(previewNode);
+      timelineEvent.timelineEventDetails.previewNode = previewHTML;
+    };
+    const setScore = (timelineEvent) => {
+      const durationRatio = timelineEvent.timelineEventDetails.durationMinutes / parent.timelineEventDetails.durationMinutes;
+      const score = durationRatio * (timelineEvent.timelineEventDetails.childrenByStartMinute.length + 1);
+      timelineEvent.timelineEventDetails.score = score;
+    };
+    const setLevel = (timelineEvent, matrix, useEqual = true) => {
+      let level = 0;
+      let height = 0;
+      for (const eventLevel in matrix) {
+        level = Number(eventLevel);
+        if (useEqual ? timelineEvent.timelineEventDetails.startMinutes >= matrix[eventLevel].time : timelineEvent.timelineEventDetails.startMinutes > matrix[eventLevel].time) {
+          matrix[eventLevel] = {
+            height: timelineEvent.timelineEventDetails.height,
+            time: timelineEvent.timelineEventDetails.endMinutes
+          };
+          timelineEvent.timelineEventDetails.level = level;
+          return;
+        }
+        height = matrix[eventLevel].height;
+      }
+      level += height;
+      matrix[level.toString()] = {
+        height: timelineEvent.timelineEventDetails.height,
+        time: timelineEvent.timelineEventDetails.endMinutes
+      };
+      timelineEvent.timelineEventDetails.level = level;
+    };
+    const setNeighborsTo = (timelineEvent, me) => {
+      timelineEvent.timelineEventDetails.next = parent.timelineEventDetails.childrenByStartMinute.length > me + 1 ? parent.timelineEventDetails.childrenByStartMinute[me + 1].timelineEventDetails.id : void 0;
+      timelineEvent.timelineEventDetails.previous = me > 0 ? parent.timelineEventDetails.childrenByStartMinute[me - 1].timelineEventDetails.id : void 0;
+    };
+    const setStep = (timelineEvent) => {
+      timelineEvent.timelineEventDetails.step = timelineEvent.step || ++containerStep;
+    };
+    parent.timelineEventDetails.childrenByStartMinute.push(...parsedSortedChildren);
+    parent.timelineEventDetails.hasTimelineEvents = parent.timelineEventDetails.childrenByStartMinute.some((tl) => tl.type === "timeline");
+    parent.timelineEventDetails.startMinutes = calcStart(parent);
+    parent.timelineEventDetails.startMinutesForTimelineChildren = calcStartForTimeline(parent);
+    parent.timelineEventDetails.endMinutes = calcEnd(parent);
+    parent.timelineEventDetails.endMinutesForTimelineChildren = calcEndForTimeline(parent);
+    parent.timelineEventDetails.durationMinutes = parent.timelineEventDetails.endMinutes - parent.timelineEventDetails.startMinutes;
+    parent.timelineEventDetails.durationMinutesForTimelineChildren = parent.timelineEventDetails.endMinutesForTimelineChildren - parent.timelineEventDetails.startMinutesForTimelineChildren;
+    parent.timelineEventDetails.childrenByStartMinute.forEach((childEvent, i) => {
+      switch (childEvent.type) {
+        case "container":
+          setStep(childEvent);
+          setLevel(childEvent, parent.timelineEventDetails.timelineLevelMatrix);
+          setContainerNode(childEvent);
+          break;
+        case "timeline":
+          setScore(childEvent);
+          setLevel(childEvent, parent.timelineEventDetails.timelineLevelMatrix, false);
+          setTimelineNode(childEvent);
+          break;
+        case "background":
+          setLevel(childEvent, currentTimeline.timelineEventDetails.backgroundLevelMatrix);
+          setBackgroundNode(childEvent);
+          break;
+        default:
+      }
+      setPreviewNode(childEvent);
+      setNeighborsTo(childEvent, i);
+    });
+    parent.timelineEventDetails.height = Math.max(...Object.entries(parent.timelineEventDetails.timelineLevelMatrix).map(([key, o]) => Number(key)));
+  };
+  const parseEvent = (timelineEvent, parent) => {
+    if (!timelineEvent) {
+      console.warn("Event object is empty");
+      return void 0;
+    }
+    const timelineEventType = timelineEvent.type || timelineEvent.start ? timelineEvent.type || "timeline" : "wrapper";
+    const timelineEventWithDetails = __spreadProps(__spreadValues(__spreadValues({}, timelineEvent), {
+      type: timelineEventType,
+      color: timelineEventType === "timeline" ? timelineEvent.color || options.defaultColor : timelineEventType === "background" ? timelineEvent.color || options.defaultBackgroundColor : void 0,
+      highlightedColor: timelineEventType === "timeline" ? timelineEvent.highlightedColor || options.defaultHighlightedColor : timelineEventType === "background" ? timelineEvent.highlightedColor || options.defaultBackgroundHightligtedColor : void 0
+    }), {
+      timelineEventDetails: {
+        id: crypto.randomUUID(),
+        level: 0,
+        step: timelineEvent.step || (parent == null ? void 0 : parent.step) || 0,
+        score: 0,
+        height: 1,
+        childrenByStartMinute: [],
+        childrenByScore: [],
+        depth: parent ? parent.timelineEventDetails.depth + 1 : 0,
+        parentId: parent == null ? void 0 : parent.timelineEventDetails.id,
+        startMinutes: parseDateToMinutes(timelineEvent.start),
+        endMinutes: parseDateToMinutes(timelineEvent.end),
+        durationMinutes: parseNumberToMinutes(timelineEvent.duration) || 0,
+        timelineLevelMatrix: { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } },
+        backgroundLevelMatrix: { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } }
+      }
+    });
+    if (parent && timelineEventWithDetails.type === "timeline" && parent.type === "wrapper")
+      parent.type = "container";
+    if (timelineEvent.events && timelineEvent.events.length) {
+      addEvents(timelineEventWithDetails, ...timelineEvent.events);
+    }
+    timelineEventWithDetails.timelineEventDetails.startMinutes = calcStart(timelineEventWithDetails);
+    timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren = calcStartForTimeline(timelineEventWithDetails);
+    if (!timelineEventWithDetails.timelineEventDetails.startMinutes) {
+      console.warn("Missing start property on event - skipping", timelineEvent);
+      return void 0;
+    }
+    timelineEventWithDetails.timelineEventDetails.endMinutes = calcEnd(timelineEventWithDetails);
+    timelineEventWithDetails.timelineEventDetails.endMinutesForTimelineChildren = calcEndForTimeline(timelineEventWithDetails);
+    timelineEventWithDetails.timelineEventDetails.durationMinutes = timelineEventWithDetails.timelineEventDetails.endMinutes - timelineEventWithDetails.timelineEventDetails.startMinutes;
+    timelineEventWithDetails.timelineEventDetails.durationMinutesForTimelineChildren = timelineEventWithDetails.timelineEventDetails.endMinutesForTimelineChildren - timelineEventWithDetails.timelineEventDetails.startMinutesForTimelineChildren;
+    return timelineEventWithDetails;
+  };
+  const parseTimelineHTML = (input) => {
+    let result = [];
+    const timelineEvents = input.querySelectorAll(".timelineEvent");
+    if (timelineEvents) {
+      timelineEvents.forEach((timelineEvent) => {
+        try {
+          result.push(__spreadProps(__spreadValues({}, timelineEvent.attributes), {
+            events: parseTimelineHTML(timelineEvent)
+          }));
+        } catch (error) {
+          console.error(error, "timelineEvent");
+        }
+      });
+    }
+    return result;
+  };
+  const fire = (name, timelineEvent) => {
+    element.dispatchEvent(
+      new CustomEvent(name, {
+        detail: {
+          name,
+          options,
+          timelineEvent,
+          viewStartDate: formatDateLabel(viewStart()),
+          viewEndDate: formatDateLabel(viewEnd()),
+          viewDuration: viewDuration(),
+          ratio,
+          pivot
+        },
+        bubbles: false,
+        cancelable: true,
+        composed: false
+      })
+    );
+  };
+  const raise = (error) => {
+    element.dispatchEvent(
+      new CustomEvent("err.tl.container", {
+        detail: error,
+        bubbles: false,
+        cancelable: true,
+        composed: false
+      })
+    );
+  };
+  init(elementIdentifier, settings);
+  return {
+    focus,
+    zoom,
+    add,
+    reset,
+    select,
+    preventNextPreviewRender: (prevent) => {
+      preventNextPreviewRender = prevent || false;
+    },
+    clear,
+    update
+  };
+};
+export {
+  TimelineContainer
+};
