@@ -1,0 +1,15 @@
+export declare function calcStart(timelineEventWithDetails: ITimelineEventWithDetails): number | undefined;
+export declare function calcEnd(timelineEventWithDetails: ITimelineEventWithDetails): number;
+export declare function calcStartForTimeline(timelineEventWithDetails: ITimelineEventWithDetails): number | undefined;
+export declare function calcEndForTimeline(timelineEventWithDetails: ITimelineEventWithDetails): number;
+export declare function parseEvent(timelineEvent: ITimelineEvent, parent?: ITimelineEventWithDetails, options?: ITimelineOptions): ITimelineEventWithDetails | undefined;
+import type { ITimelineOptions, ITimelineEvent, ITimelineEventWithDetails } from "./timelineTypes";
+export declare const MINUTES_IN_DAY = 1440;
+export declare const MINUTES_IN_WEEK = 10080;
+export declare const MINUTES_IN_YEAR = 525948.766;
+export declare const MINUTES_IN_MONTH: number;
+export declare const SHOW_MONTH_DURATION: number;
+export declare const SHOW_DAY_DURATION: number;
+export declare const SHOW_TIME_DURATION: number;
+export declare function parseDateToMinutes(input: number[] | string | number | Date | undefined): number | undefined;
+export declare function parseNumberToMinutes(input: string | number | undefined): number | undefined;

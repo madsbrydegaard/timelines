@@ -43,7 +43,7 @@ export interface ITimelineOptions {
 export interface ITimelineCustomEventDetails {
     name: string;
     options: ITimelineOptions;
-    timelineEvent: ITimelineEventWithDetails;
+    timelineEvent?: ITimelineEventWithDetails;
     viewStartDate: string;
     viewEndDate: string;
     viewDuration: number;
