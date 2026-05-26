@@ -3,10 +3,13 @@
   "compilerOptions": {
     "declaration": true,
     "emitDeclarationOnly": true,
-    "target": "ES6",
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM"],
+    "strict": false,
     "esModuleInterop": true,
     "noImplicitAny": false,
-    "moduleResolution":"node",
+    "moduleResolution": "bundler",
+    "rootDir": "src",
     "outDir": "dist"
   }
 }

@@ -21,8 +21,7 @@
   "author": "Mads Brydegaard <mb@vidcore.com>",
   "license": "ISC",
   "devDependencies": {
-    "esbuild": "^0.14.50",
-    "typescript": "^4.9.5"
-  },
-  "dependencies": {}
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.3"
+  }
 }

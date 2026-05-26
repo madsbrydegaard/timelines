@@ -1,23 +1,3 @@
-var __defProp = Object.defineProperty;
-var __defProps = Object.defineProperties;
-var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
-var __getOwnPropSymbols = Object.getOwnPropertySymbols;
-var __hasOwnProp = Object.prototype.hasOwnProperty;
-var __propIsEnum = Object.prototype.propertyIsEnumerable;
-var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
-var __spreadValues = (a, b) => {
-  for (var prop in b || (b = {}))
-    if (__hasOwnProp.call(b, prop))
-      __defNormalProp(a, prop, b[prop]);
-  if (__getOwnPropSymbols)
-    for (var prop of __getOwnPropSymbols(b)) {
-      if (__propIsEnum.call(b, prop))
-        __defNormalProp(a, prop, b[prop]);
-    }
-  return a;
-};
-var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
-
 // src/index.ts
 var TimelineContainer = (elementIdentifier, settings) => {
   let ratio;
@@ -49,8 +29,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
   const SHOW_TIME_DURATION = MINUTES_IN_DAY * 4;
   const isITimelineEventWithDetails = (timelineEvent) => "timelineEventDetails" in timelineEvent;
   const add = (...timelineEvents) => {
-    if (!timelineEvents)
-      throw new Error(`Event argument is empty. Please provide Timeline event(s) as input`);
+    if (!timelineEvents) throw new Error(`Event argument is empty. Please provide Timeline event(s) as input`);
     addEvents(rootTimeline, ...timelineEvents);
     if (options.autoFocusOnTimelineAdd) {
       focus(rootTimeline, false);
@@ -62,59 +41,60 @@ var TimelineContainer = (elementIdentifier, settings) => {
     return timelineEvent.timelineEventDetails.startMinutes < viewStart() && timelineEvent.timelineEventDetails.endMinutes > viewEnd();
   };
   const init = (elementIdentifier2, settings2) => {
-    if (!elementIdentifier2)
-      throw new Error(`Element argument is empty. DOM element | selector as first arg`);
+    if (!elementIdentifier2) throw new Error(`Element argument is empty. DOM element | selector as first arg`);
     if (typeof elementIdentifier2 === "string") {
       const elem = document.querySelector(elementIdentifier2);
-      if (!elem)
-        throw new Error(`Selector could not be found [${element}]`);
+      if (!elem) throw new Error(`Selector could not be found [${element}]`);
       element = elem;
     }
     if (elementIdentifier2 instanceof HTMLElement) {
       element = elementIdentifier2;
     }
-    options = __spreadValues(__spreadValues({}, {
-      labelCount: 5,
-      zoomSpeed: 0.04,
-      dragSpeed: 1e-3,
-      timelineStart: "-15B",
-      timelineEnd: "5B",
-      start: "-100y",
-      end: "now",
-      minRatio: 1,
-      maxRatio: 1e11,
-      position: "bottom",
-      eventHeight: 5,
-      eventSpacing: 3,
-      autoZoom: false,
-      zoomMargin: 0.1,
-      autoSelect: false,
-      autoFocusOnTimelineAdd: false,
-      autoDeselectOutside: false,
-      includeBackgroundOnAutoFocus: false,
-      defaultColor: "#aaa",
-      defaultHighlightedColor: "#444",
-      defaultBackgroundColor: "#eeee",
-      defaultBackgroundHightligtedColor: "#eee7",
-      zoomDuration: 200,
-      easing: "easeOutCubic",
-      numberOfHighscorePreviews: 5,
-      highscorePreviewDelay: 500,
-      highscorePreviewWidth: 100,
-      classNames: {
-        timeline: "tl",
-        timelineEvent: "tl__event",
-        timelinePreview: "tl__preview",
-        timelineEventTitle: "tl__event__title",
-        timelineLabels: "tl__labels",
-        timelineDividers: "tl__dividers",
-        timelineEvents: "tl__events",
-        timelinePreviews: "tl__previews",
-        timelineIo: "tl__io",
-        timelineLabel: "tl__label",
-        timelineDivider: "tl__divider"
-      }
-    }), settings2);
+    options = {
+      ...{
+        labelCount: 5,
+        zoomSpeed: 0.04,
+        dragSpeed: 1e-3,
+        timelineStart: "-15B",
+        timelineEnd: "5B",
+        start: "-100y",
+        end: "now",
+        minRatio: 1,
+        maxRatio: 1e11,
+        position: "bottom",
+        eventHeight: 5,
+        eventSpacing: 3,
+        autoZoom: false,
+        zoomMargin: 0.1,
+        autoSelect: false,
+        autoFocusOnTimelineAdd: false,
+        autoDeselectOutside: false,
+        includeBackgroundOnAutoFocus: false,
+        defaultColor: "#aaa",
+        defaultHighlightedColor: "#444",
+        defaultBackgroundColor: "#eeee",
+        defaultBackgroundHightligtedColor: "#eee7",
+        zoomDuration: 200,
+        easing: "easeOutCubic",
+        numberOfHighscorePreviews: 5,
+        highscorePreviewDelay: 500,
+        highscorePreviewWidth: 100,
+        classNames: {
+          timeline: "tl",
+          timelineEvent: "tl__event",
+          timelinePreview: "tl__preview",
+          timelineEventTitle: "tl__event__title",
+          timelineLabels: "tl__labels",
+          timelineDividers: "tl__dividers",
+          timelineEvents: "tl__events",
+          timelinePreviews: "tl__previews",
+          timelineIo: "tl__io",
+          timelineLabel: "tl__label",
+          timelineDivider: "tl__divider"
+        }
+      },
+      ...settings2
+    };
     rootTimeline = parseEvent({
       title: "View",
       type: "container",
@@ -125,10 +105,8 @@ var TimelineContainer = (elementIdentifier, settings) => {
     timelineEnd = parseDateToMinutes(options.timelineEnd);
     const viewStart2 = rootTimeline.timelineEventDetails.startMinutes;
     const viewEnd2 = rootTimeline.timelineEventDetails.endMinutes;
-    if (viewStart2 < timelineStart)
-      timelineStart = viewStart2;
-    if (viewEnd2 > timelineEnd)
-      timelineEnd = viewEnd2;
+    if (viewStart2 < timelineStart) timelineStart = viewStart2;
+    if (viewEnd2 > timelineEnd) timelineEnd = viewEnd2;
     const viewDuration2 = viewEnd2 - viewStart2;
     ratio = timelineDuration() / viewDuration2;
     pivot = (timelineStart - viewStart2) / viewDuration2;
@@ -181,8 +159,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
   const onzoom = (direction, mouseX2timeline) => {
     const deltaRatio = direction * scaledZoomSpeed();
     const deltaPivot = mouseX2timeline * deltaRatio;
-    if (setRatio(direction, deltaRatio))
-      setPivot(deltaPivot);
+    if (setRatio(direction, deltaRatio)) setPivot(deltaPivot);
     update();
   };
   const onmove = (deltaPivot) => {
@@ -209,16 +186,14 @@ var TimelineContainer = (elementIdentifier, settings) => {
   const findFirstEvent = (timelineEventIdentifier, parent) => {
     let result = void 0;
     const parentNode = parent || rootTimeline;
-    if (parentNode.timelineEventDetails.id === timelineEventIdentifier)
-      return parentNode;
+    if (parentNode.timelineEventDetails.id === timelineEventIdentifier) return parentNode;
     for (const child of parentNode.timelineEventDetails.childrenByStartMinute) {
       if (child.title === timelineEventIdentifier || child.timelineEventDetails.id === timelineEventIdentifier) {
         result = child;
         break;
       } else {
         result = findFirstEvent(timelineEventIdentifier, child);
-        if (result)
-          break;
+        if (result) break;
       }
     }
     return result;
@@ -230,24 +205,19 @@ var TimelineContainer = (elementIdentifier, settings) => {
       } else if (typeof timelineEventIdentifier === "string") {
         if (timelineEventIdentifier === "next") {
           const result = findFirstEvent(selectedTimelineIds[0]);
-          if (!result)
-            throw `No event selected`;
-          if (!result.timelineEventDetails.next)
-            throw `No next event available`;
+          if (!result) throw `No event selected`;
+          if (!result.timelineEventDetails.next) throw `No next event available`;
           selectedTimelineIds = [result.timelineEventDetails.next];
           fire("selected.tl.event", findFirstEvent(selectedTimelineIds[0]));
         } else if (timelineEventIdentifier === "previous") {
           const result = findFirstEvent(selectedTimelineIds[0]);
-          if (!result)
-            throw `No event selected`;
-          if (!result.timelineEventDetails.previous)
-            throw `No previous event available`;
+          if (!result) throw `No event selected`;
+          if (!result.timelineEventDetails.previous) throw `No previous event available`;
           selectedTimelineIds = [result.timelineEventDetails.previous];
           fire("selected.tl.event", findFirstEvent(selectedTimelineIds[0]));
         } else {
           const result = findFirstEvent(timelineEventIdentifier);
-          if (!result)
-            throw `Cannot find ${timelineEventIdentifier} by title nor timelineEventDetails.id`;
+          if (!result) throw `Cannot find ${timelineEventIdentifier} by title nor timelineEventDetails.id`;
           selectedTimelineIds = [result.timelineEventDetails.id];
           fire("selected.tl.event", result);
         }
@@ -268,8 +238,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
     const endMinutes = !options.includeBackgroundOnAutoFocus ? timelineEvent.timelineEventDetails.endMinutesForTimelineChildren : timelineEvent.timelineEventDetails.endMinutes;
     zoomto(startMinutes, endMinutes, useAnimation, () => {
       fire("zoom.tl.event", timelineEvent);
-      if (onzoomend)
-        onzoomend(timelineEvent);
+      if (onzoomend) onzoomend(timelineEvent);
     });
   };
   const calcMinimumZoomDuration = () => {
@@ -327,8 +296,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
       const easing = typeof options.easing === "string" ? easings[options.easing] : options.easing;
       const stopAnimation = () => {
         clearInterval(myTimer);
-        if (onzoomend)
-          onzoomend();
+        if (onzoomend) onzoomend();
         update();
       };
       const myTimer = setInterval(() => {
@@ -346,8 +314,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
       ratio = targetRatio;
       pivot = targetPivot;
       update();
-      if (onzoomend)
-        onzoomend();
+      if (onzoomend) onzoomend();
     }
   };
   const registerListeners = (element2) => {
@@ -365,8 +332,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
       hover(clientX, clientY);
     };
     const drag = (offsetX, offsetY) => {
-      if (offsetX)
-        onmove(offsetX);
+      if (offsetX) onmove(offsetX);
       fire("drag.tl.container");
     };
     const hover = (clientX, clientY) => {
@@ -411,8 +377,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
         return element3.hasAttribute("eventid");
       });
       if (!clickedEvent) {
-        if (options.autoDeselectOutside && !preventPreviewRender && !preventNextPreviewRender)
-          select();
+        if (options.autoDeselectOutside && !preventPreviewRender && !preventNextPreviewRender) select();
         return;
       }
       const eventid = clickedEvent.getAttribute("eventid");
@@ -426,8 +391,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
       fire("resize.tl.container");
     });
     element2.addEventListener("wheel", (event) => {
-      if (event.defaultPrevented)
-        return;
+      if (event.defaultPrevented) return;
       event.preventDefault();
       var direction = Math.sign(event.deltaY);
       const leftRatio = event.target.attributes["starttime"] ? getViewRatio(event.target.attributes["starttime"]) : 0;
@@ -561,12 +525,9 @@ var TimelineContainer = (elementIdentifier, settings) => {
   const createEventHTML = (parentEvent) => {
     const eventsFragment = document.createDocumentFragment();
     for (const timelineEvent of parentEvent.timelineEventDetails.childrenByStartMinute) {
-      if (!timelineEvent || !timelineEvent.timelineEventDetails)
-        continue;
-      if (timelineEvent.timelineEventDetails.startMinutes >= viewEnd())
-        continue;
-      if (timelineEvent.timelineEventDetails.endMinutes <= viewStart())
-        continue;
+      if (!timelineEvent || !timelineEvent.timelineEventDetails) continue;
+      if (timelineEvent.timelineEventDetails.startMinutes >= viewEnd()) continue;
+      if (timelineEvent.timelineEventDetails.endMinutes <= viewStart()) continue;
       const viewInside = isViewInside(timelineEvent);
       const leftRatio = viewInside ? 0 : getViewRatio(timelineEvent.timelineEventDetails.startMinutes);
       const widthRatio = viewInside ? 100 : timelineEvent.timelineEventDetails.durationMinutes / viewDuration() * 100;
@@ -620,6 +581,10 @@ var TimelineContainer = (elementIdentifier, settings) => {
       case "top":
         labelContainer.style.top = "0";
         break;
+      // case "center":
+      // 	this.labelContainer.style.top = "50%";
+      // 	this.labelContainer.style.transform = "translate(0, calc(-50%))";
+      // 	break;
       default:
         labelContainer.style.bottom = "0";
     }
@@ -701,14 +666,12 @@ var TimelineContainer = (elementIdentifier, settings) => {
   };
   const appendEventHTML = () => {
     const eventsHtml = createEventHTML(currentTimeline);
-    if (eventsHtml)
-      eventsContainer.appendChild(eventsHtml);
+    if (eventsHtml) eventsContainer.appendChild(eventsHtml);
   };
   const appendPreviewHTML = () => {
     if (!preventPreviewRender && !preventNextPreviewRender) {
       const previewsHtml = createPreviewHTML();
-      if (previewsHtml)
-        previewsContainer.appendChild(previewsHtml);
+      if (previewsHtml) previewsContainer.appendChild(previewsHtml);
     }
     preventNextPreviewRender = false;
   };
@@ -757,20 +720,15 @@ var TimelineContainer = (elementIdentifier, settings) => {
     return currentYearString;
   };
   const update = () => {
-    if (dividerContainer)
-      dividerContainer.innerHTML = "";
-    if (labelContainer)
-      labelContainer.innerHTML = "";
-    if (eventsContainer)
-      eventsContainer.innerHTML = "";
-    if (previewsContainer)
-      previewsContainer.innerHTML = "";
+    if (dividerContainer) dividerContainer.innerHTML = "";
+    if (labelContainer) labelContainer.innerHTML = "";
+    if (eventsContainer) eventsContainer.innerHTML = "";
+    if (previewsContainer) previewsContainer.innerHTML = "";
     visibleEvents = [];
     fire("update.tl.container");
   };
   const clear = () => {
-    if (!currentTimeline)
-      return;
+    if (!currentTimeline) return;
     currentTimeline.events = [];
     currentTimeline.timelineEventDetails.childrenByStartMinute = [];
     currentTimeline.timelineEventDetails.timelineLevelMatrix = { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } };
@@ -790,10 +748,9 @@ var TimelineContainer = (elementIdentifier, settings) => {
     }
   };
   const parseDateToMinutes = (input) => {
-    if (input === void 0)
-      return void 0;
+    if (input === void 0) return void 0;
     const parseDateArray = (input2) => {
-      const date = new Date();
+      const date = /* @__PURE__ */ new Date();
       date.setDate(input2[2] ? input2[2] : 1);
       date.setMonth(input2[1] ? input2[1] - 1 : 0);
       date.setHours(input2[3] ? input2[3] : 0);
@@ -840,23 +797,20 @@ var TimelineContainer = (elementIdentifier, settings) => {
           }
           const minutes = Number(input2);
           if (!isNaN(minutes)) {
-            return new Date().getTime() / 6e4 + minutes * 6e4;
+            return (/* @__PURE__ */ new Date()).getTime() / 6e4 + minutes * 6e4;
           }
           const timestamp = Date.parse(input2);
-          if (isNaN(timestamp))
-            return new Date().getTime() / 6e4;
+          if (isNaN(timestamp)) return (/* @__PURE__ */ new Date()).getTime() / 6e4;
           return timestamp / 6e4;
       }
     };
     if (Array.isArray(input)) {
       let inputArray = input;
-      if (inputArray.length === 0)
-        throw new Error("argument Array cannot be empty");
+      if (inputArray.length === 0) throw new Error("argument Array cannot be empty");
       const isNumberArray = inputArray.every((value) => {
         return typeof value === "number";
       });
-      if (!isNumberArray)
-        throw new Error("input Array must contain only numbers");
+      if (!isNumberArray) throw new Error("input Array must contain only numbers");
       return parseDateArray(inputArray);
     }
     if (typeof input === "object" && input.constructor.name === "Date") {
@@ -871,8 +825,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
     return void 0;
   };
   const parseNumberToMinutes = (input) => {
-    if (input === void 0)
-      return void 0;
+    if (input === void 0) return void 0;
     if (typeof input === "string") {
       const seconds = input.match(/s$/) ? Number(input.replace(/s$/, "")) : NaN;
       if (!isNaN(seconds)) {
@@ -1017,11 +970,9 @@ var TimelineContainer = (elementIdentifier, settings) => {
       timelineEvent.timelineEventDetails.eventNode = node;
     };
     const setPreviewNode = (timelineEvent) => {
-      if (!timelineEvent.renderPreviewNode)
-        return;
+      if (!timelineEvent.renderPreviewNode) return;
       const previewNode = timelineEvent.renderPreviewNode(timelineEvent);
-      if (!previewNode)
-        return;
+      if (!previewNode) return;
       const previewHTML = document.createElement("div");
       previewHTML.style.boxSizing = "border-box";
       previewHTML.style.position = "absolute";
@@ -1104,30 +1055,31 @@ var TimelineContainer = (elementIdentifier, settings) => {
       return void 0;
     }
     const timelineEventType = timelineEvent.type || timelineEvent.start ? timelineEvent.type || "timeline" : "wrapper";
-    const timelineEventWithDetails = __spreadProps(__spreadValues(__spreadValues({}, timelineEvent), {
-      type: timelineEventType,
-      color: timelineEventType === "timeline" ? timelineEvent.color || options.defaultColor : timelineEventType === "background" ? timelineEvent.color || options.defaultBackgroundColor : void 0,
-      highlightedColor: timelineEventType === "timeline" ? timelineEvent.highlightedColor || options.defaultHighlightedColor : timelineEventType === "background" ? timelineEvent.highlightedColor || options.defaultBackgroundHightligtedColor : void 0
-    }), {
+    const timelineEventWithDetails = {
+      ...timelineEvent,
+      ...{
+        type: timelineEventType,
+        color: timelineEventType === "timeline" ? timelineEvent.color || options.defaultColor : timelineEventType === "background" ? timelineEvent.color || options.defaultBackgroundColor : void 0,
+        highlightedColor: timelineEventType === "timeline" ? timelineEvent.highlightedColor || options.defaultHighlightedColor : timelineEventType === "background" ? timelineEvent.highlightedColor || options.defaultBackgroundHightligtedColor : void 0
+      },
       timelineEventDetails: {
         id: crypto.randomUUID(),
         level: 0,
-        step: timelineEvent.step || (parent == null ? void 0 : parent.step) || 0,
+        step: timelineEvent.step || parent?.step || 0,
         score: 0,
         height: 1,
         childrenByStartMinute: [],
         childrenByScore: [],
         depth: parent ? parent.timelineEventDetails.depth + 1 : 0,
-        parentId: parent == null ? void 0 : parent.timelineEventDetails.id,
+        parentId: parent?.timelineEventDetails.id,
         startMinutes: parseDateToMinutes(timelineEvent.start),
         endMinutes: parseDateToMinutes(timelineEvent.end),
         durationMinutes: parseNumberToMinutes(timelineEvent.duration) || 0,
         timelineLevelMatrix: { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } },
         backgroundLevelMatrix: { 1: { height: 0, time: Number.MIN_SAFE_INTEGER } }
       }
-    });
-    if (parent && timelineEventWithDetails.type === "timeline" && parent.type === "wrapper")
-      parent.type = "container";
+    };
+    if (parent && timelineEventWithDetails.type === "timeline" && parent.type === "wrapper") parent.type = "container";
     if (timelineEvent.events && timelineEvent.events.length) {
       addEvents(timelineEventWithDetails, ...timelineEvent.events);
     }
@@ -1149,9 +1101,10 @@ var TimelineContainer = (elementIdentifier, settings) => {
     if (timelineEvents) {
       timelineEvents.forEach((timelineEvent) => {
         try {
-          result.push(__spreadProps(__spreadValues({}, timelineEvent.attributes), {
+          result.push({
+            ...timelineEvent.attributes,
             events: parseTimelineHTML(timelineEvent)
-          }));
+          });
         } catch (error) {
           console.error(error, "timelineEvent");
         }
