@@ -46,11 +46,20 @@ export interface ITimelineOptions {
     timelineLabel?: string;
     timelineDivider?: string;
   };
+  showCenterMarker?: boolean;
+  showCenterLabel?: boolean;
+  formatCenterLabel?: (centerMinutes: number) => string;
+  centerMarkerClassName?: string;
+  centerLineClassName?: string;
+  centerLabelClassName?: string;
 }
 export interface ITimelineCustomEventDetails {
   name: string;
   options: ITimelineOptions;
   timelineEvent: ITimelineEventWithDetails;
+  viewStartMinutes: number;
+  viewEndMinutes: number;
+  viewCenterMinutes: number;
   viewStartDate: string;
   viewEndDate: string;
   viewDuration: number;
@@ -149,6 +158,9 @@ export const TimelineContainer = (
   let eventsContainer: HTMLDivElement;
   let previewsContainer: HTMLDivElement;
   let ioContainer: HTMLDivElement;
+  let timelineCenterIndicator: HTMLDivElement;
+  let timelineCenterLine: HTMLDivElement;
+  let timelineCenterLabel: HTMLDivElement;
   let rootTimeline: ITimelineEventWithDetails;
   let currentTimeline: ITimelineEventWithDetails;
   let selectedTimelineIds: string[];
@@ -254,6 +266,12 @@ export const TimelineContainer = (
           timelineLabel: "tl__label",
           timelineDivider: "tl__divider",
         },
+        showCenterMarker: false,
+        showCenterLabel: false,
+        formatCenterLabel: undefined,
+        centerMarkerClassName: "timeline-center-indicator",
+        centerLineClassName: "timeline-center-indicator__line",
+        centerLabelClassName: "timeline-center-indicator__label",
       },
       ...settings,
     } as ITimelineOptions;
@@ -1076,11 +1094,47 @@ export const TimelineContainer = (
     ioContainer.style.bottom = "0";
     ioContainer.style.top = "0";
     ioContainer.style.width = "100%";
+
+    const shouldShowCenterIndicator =
+      options.showCenterMarker || options.showCenterLabel;
+    if (!shouldShowCenterIndicator) {
+      return;
+    }
+
+    timelineCenterIndicator = document.createElement("div");
+    timelineCenterIndicator.classList.add(options.centerMarkerClassName);
+
+    if (options.showCenterMarker) {
+      timelineCenterLine = document.createElement("div");
+      timelineCenterLine.classList.add(options.centerLineClassName);
+      timelineCenterIndicator.appendChild(timelineCenterLine);
+    }
+
+    if (options.showCenterLabel) {
+      timelineCenterLabel = document.createElement("div");
+      timelineCenterLabel.classList.add(options.centerLabelClassName);
+      timelineCenterIndicator.appendChild(timelineCenterLabel);
+    }
+
+    element.appendChild(timelineCenterIndicator);
+  };
+  const appendCenterIndicatorHTML = (): void => {
+    if (!timelineCenterIndicator) {
+      return;
+    }
+
+    if (options.showCenterLabel && timelineCenterLabel) {
+      const centerMinutes = viewStart() + viewDuration() / 2;
+      timelineCenterLabel.textContent = options.formatCenterLabel
+        ? options.formatCenterLabel(centerMinutes)
+        : formatDateLabel(centerMinutes);
+    }
   };
   const appendLabelHTML = (): void => {
-    const currentLevel = Math.floor(ratio);
+    const currentLevel = Number.isFinite(ratio) ? Math.floor(ratio) : 1;
+    const safeLevel = Math.max(1, currentLevel);
     // https://math.stackexchange.com/questions/3381728/find-closest-power-of-2-to-a-specific-number
-    const iterator = Math.pow(2, Math.floor(Math.log2(currentLevel)));
+    const iterator = Math.pow(2, Math.floor(Math.log2(safeLevel)));
     const granularity = 1 / (options.labelCount + 1);
     const timelineViewDifference = viewStart() - timelineStart;
     const timestampDistance = timelineDuration() * granularity;
@@ -1229,6 +1283,7 @@ export const TimelineContainer = (
   };
   const onUpdate = (): void => {
     appendLabelHTML();
+    appendCenterIndicatorHTML();
     appendEventHTML();
 
     if (options.numberOfHighscorePreviews > 0) {
@@ -1855,15 +1910,22 @@ export const TimelineContainer = (
     return result;
   };
   const fire = (name: string, timelineEvent?: ITimelineEventWithDetails) => {
+    const currentViewStart = viewStart();
+    const currentViewEnd = viewEnd();
+    const currentViewDuration = viewDuration();
+
     element.dispatchEvent(
       new CustomEvent<ITimelineCustomEventDetails>(name, {
         detail: {
           name,
           options,
           timelineEvent,
-          viewStartDate: formatDateLabel(viewStart()),
-          viewEndDate: formatDateLabel(viewEnd()),
-          viewDuration: viewDuration(),
+          viewStartMinutes: currentViewStart,
+          viewEndMinutes: currentViewEnd,
+          viewCenterMinutes: currentViewStart + currentViewDuration / 2,
+          viewStartDate: formatDateLabel(currentViewStart),
+          viewEndDate: formatDateLabel(currentViewEnd),
+          viewDuration: currentViewDuration,
           ratio,
           pivot,
         },

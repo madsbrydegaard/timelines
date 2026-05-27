@@ -39,11 +39,20 @@ export interface ITimelineOptions {
         timelineLabel?: string;
         timelineDivider?: string;
     };
+    showCenterMarker?: boolean;
+    showCenterLabel?: boolean;
+    formatCenterLabel?: (centerMinutes: number) => string;
+    centerMarkerClassName?: string;
+    centerLineClassName?: string;
+    centerLabelClassName?: string;
 }
 export interface ITimelineCustomEventDetails {
     name: string;
     options: ITimelineOptions;
     timelineEvent: ITimelineEventWithDetails;
+    viewStartMinutes: number;
+    viewEndMinutes: number;
+    viewCenterMinutes: number;
     viewStartDate: string;
     viewEndDate: string;
     viewDuration: number;
