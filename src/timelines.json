@@ -1,0 +1,144 @@
+[
+  {
+    "id": "roman-empire",
+    "title": "Roman Empire – rise and fall",
+    "timelineStart": "2000bc",
+    "timelineEnd": "2000ad",
+    "mapConfig": {
+      "center": [18, 38],
+      "zoom": 2.25
+    },
+    "events": [
+      {
+        "start": "500bc",
+        "end": "264bc",
+        "title": "Roman Republic foundations",
+        "description": "Rome grows from city-state influence into control of Italy.",
+        "map": {
+          "centerLng": 12.5,
+          "centerLat": 41.9,
+          "radiusLng": 0.8,
+          "radiusLat": 0.5
+        }
+      },
+      {
+        "start": "264bc",
+        "end": "146bc",
+        "title": "Punic Wars and western expansion",
+        "description": "Roman victories over Carthage reshape the western Mediterranean.",
+        "map": {
+          "centerLng": 12.0,
+          "centerLat": 42.0,
+          "radiusLng": 4.8,
+          "radiusLat": 2.9
+        }
+      },
+      {
+        "start": "146bc",
+        "end": "44bc",
+        "title": "Late Republican conquests",
+        "description": "Campaigns in Hispania, Gaul, Greece, and North Africa dramatically widen territory.",
+        "map": {
+          "centerLng": 10.0,
+          "centerLat": 39.0,
+          "radiusLng": 12.0,
+          "radiusLat": 6.2
+        }
+      },
+      {
+        "start": "44bc",
+        "end": "117ad",
+        "title": "Imperial ascent",
+        "description": "From Augustus to Trajan, the empire expands to its greatest recorded extent.",
+        "map": {
+          "centerLng": 12.0,
+          "centerLat": 38.0,
+          "radiusLng": 17.5,
+          "radiusLat": 8.5
+        }
+      },
+      {
+        "start": "117ad",
+        "end": "395ad",
+        "title": "Stabilization and pressure",
+        "description": "Defensive strategy, internal crises, and frontier pressure reduce cohesion and size.",
+        "map": {
+          "centerLng": 20.0,
+          "centerLat": 37.0,
+          "radiusLng": 29.0,
+          "radiusLat": 10.8
+        }
+      },
+      {
+        "start": "395ad",
+        "end": "476ad",
+        "title": "Western decline",
+        "description": "The western half contracts until imperial authority ends in 476 CE.",
+        "map": {
+          "centerLng": 20.0,
+          "centerLat": 37.0,
+          "radiusLng": 21.5,
+          "radiusLat": 8.2
+        }
+      }
+    ]
+  },
+  {
+    "id": "columbus-first-voyage",
+    "title": "Columbus' first voyage",
+    "timelineStart": "1491-01-01T00:00:00Z",
+    "timelineEnd": "1494-01-01T00:00:00Z",
+    "mapConfig": {
+      "center": [-40, 25],
+      "zoom": 1.8,
+      "bounds": [
+        [-74.4862, 24.043],
+        [-6.9292, 37.1882]
+      ]
+    },
+    "events": [
+      {
+        "start": "1492-08-03T00:00:00Z",
+        "end": "1492-08-12T00:00:00Z",
+        "title": "Departure from Palos",
+        "description": "Christopher Columbus departs Palos de la Frontera, Spain.",
+        "map": { "lat": 37.1882, "lng": -6.9292 }
+      },
+      {
+        "start": "1492-08-12T00:00:00Z",
+        "end": "1492-09-06T00:00:00Z",
+        "title": "Canary Islands – La Gomera",
+        "description": "The fleet stops at La Gomera for repairs and provisions.",
+        "map": { "lat": 28.099, "lng": -17.925 }
+      },
+      {
+        "start": "1492-09-06T00:00:00Z",
+        "end": "1492-09-22T00:00:00Z",
+        "title": "Westbound into the Atlantic",
+        "description": "The fleet departs La Gomera and sails west into open ocean.",
+        "map": { "lat": 28.099, "lng": -17.925 }
+      },
+      {
+        "start": "1492-09-22T00:00:00Z",
+        "end": "1492-10-07T00:00:00Z",
+        "title": "Mid-Atlantic crossing",
+        "description": "Weeks at sea with no sight of land.",
+        "map": { "lat": 25.0, "lng": -31.5 }
+      },
+      {
+        "start": "1492-10-07T00:00:00Z",
+        "end": "1492-10-12T00:00:00Z",
+        "title": "Approaching the Bahamas",
+        "description": "Signs of land spotted; birds and floating vegetation appear.",
+        "map": { "lat": 24.0, "lng": -61.0 }
+      },
+      {
+        "start": "1492-10-12T00:00:00Z",
+        "end": "1492-10-13T00:00:00Z",
+        "title": "Landfall at San Salvador",
+        "description": "Land is sighted and Columbus makes landfall in the Bahamas.",
+        "map": { "lat": 24.043, "lng": -74.4862 }
+      }
+    ]
+  }
+]
