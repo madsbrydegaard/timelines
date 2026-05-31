@@ -102,12 +102,46 @@ interface ITimelineEventDetails {
 interface ITimelineEventWithDetails extends ITimelineEvent {
     timelineEventDetails: ITimelineEventDetails;
 }
+/** Optional map data attached to a timeline entry.
+ *  - Use `lat`/`lng` for waypoint-style line geometry (e.g. a voyage route).
+ *  - Use `centerLat`/`centerLng` + `radiusLat`/`radiusLng` for ellipse/polygon geometry (e.g. territorial extent).
+ *  - Both sets of properties may be present on the same entry.
+ */
+export interface IMapEntry {
+    /** Waypoint latitude – used as the current position for line geometry. */
+    lat?: number;
+    /** Waypoint longitude – used as the current position for line geometry. */
+    lng?: number;
+    /** Centre latitude of an ellipse/polygon. */
+    centerLat?: number;
+    /** Centre longitude of an ellipse/polygon. */
+    centerLng?: number;
+    /** Half-height (latitude radius) of an ellipse/polygon. */
+    radiusLat?: number;
+    /** Half-width (longitude radius) of an ellipse/polygon. */
+    radiusLng?: number;
+}
+/** Map configuration for the top-level timeline entry, controlling the initial map view. */
+export interface IMapConfig {
+    /** Initial map centre as [lng, lat]. */
+    center?: [number, number];
+    /** Initial zoom level. */
+    zoom?: number;
+    /** Auto-fit bounds as [[minLng, minLat], [maxLng, maxLat]]. Applied after load. */
+    bounds?: [[number, number], [number, number]];
+    /** MapLibre style URL. Defaults to the demotiles globe style when omitted. */
+    style?: string;
+}
 export interface ITimelineEvent extends ITimelineBase, ITimelineProps {
     start?: number[] | string | number | Date;
     end?: number[] | string | number | Date;
     duration?: number | string;
     events?: ITimelineEvent[];
     step?: number;
+    /** Optional map entry for this timeline event. */
+    map?: IMapEntry;
+    /** Optional map configuration for the top-level timeline (initial view, bounds, style). */
+    mapConfig?: IMapConfig;
 }
 export interface ITimelineContainer {
     add: (...timelineEvents: ITimelineEvent[]) => void;
