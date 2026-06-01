@@ -1998,3 +1998,531 @@ export const TimelineContainer = (
     update,
   };
 };
+
+// =============================================================================
+// Map / demo runtime
+// =============================================================================
+
+// MapLibre GL is loaded via CDN <script> tag in the HTML.
+declare const maplibregl: any;
+
+// ---------------------------------------------------------------------------
+// Date / time helpers (demo-local, mirrors the library's parseDateToMinutes)
+// ---------------------------------------------------------------------------
+
+type DemoDateInput = number | number[] | string | Date | undefined | null;
+
+const demoParseToMinutes = (input: DemoDateInput): number | undefined => {
+  if (input === undefined || input === null) return undefined;
+  if (typeof input === "number") return input;
+  if (Array.isArray(input)) return undefined;
+  if (input instanceof Date) return input.getTime() / 60000;
+  if (typeof input !== "string") return undefined;
+
+  const setYear = (year: number): number => {
+    const d = new Date();
+    d.setDate(1);
+    d.setMonth(0);
+    d.setHours(0, 0, 0, 0);
+    d.setFullYear(year);
+    return d.getTime() / 60000;
+  };
+
+  const bcMatch = input.match(/^(\d+(?:\.\d+)?)bc$/i);
+  if (bcMatch) return setYear(-parseFloat(bcMatch[1]));
+
+  const adMatch = input.match(/^(\d+(?:\.\d+)?)ad$/i);
+  if (adMatch) return setYear(parseFloat(adMatch[1]));
+
+  const ts = Date.parse(input);
+  return isNaN(ts) ? undefined : ts / 60000;
+};
+
+const demoClamp = (v: number, min: number, max: number): number =>
+  Math.max(min, Math.min(max, v));
+
+const demoLerp = (a: number, b: number, t: number): number => a + (b - a) * t;
+
+// ---------------------------------------------------------------------------
+// Map type detection
+// ---------------------------------------------------------------------------
+
+type MapType = "line" | "polygon" | null;
+
+const detectMapType = (timeline: ITimelineEvent): MapType => {
+  const withMap = (timeline.events || []).filter((e) => e.map);
+  if (!withMap.length) return null;
+  const m = withMap[0].map as IMapEntry;
+  if ("lat" in m || "lng" in m) return "line";
+  if ("centerLat" in m) return "polygon";
+  return null;
+};
+
+// ---------------------------------------------------------------------------
+// Line (waypoint) helpers
+// ---------------------------------------------------------------------------
+
+interface Waypoint {
+  minutes: number;
+  coordinates: [number, number];
+}
+
+const buildWaypoints = (timeline: ITimelineEvent): Waypoint[] =>
+  (timeline.events || [])
+    .filter((e) => e.map && ("lat" in e.map || "lng" in e.map))
+    .map((e) => ({
+      minutes: demoParseToMinutes(e.start) as number,
+      coordinates: [(e.map as IMapEntry).lng!, (e.map as IMapEntry).lat!] as [
+        number,
+        number,
+      ],
+    }))
+    .sort((a, b) => a.minutes - b.minutes);
+
+const buildLineCoords = (
+  waypoints: Waypoint[],
+  centerMinutes: number,
+): [number, number][] => {
+  if (!waypoints.length) return [];
+  const first = waypoints[0];
+  const last = waypoints[waypoints.length - 1];
+
+  if (centerMinutes <= first.minutes) return [first.coordinates];
+  if (centerMinutes >= last.minutes) return waypoints.map((w) => w.coordinates);
+
+  const coords: [number, number][] = [first.coordinates];
+  for (let i = 0; i < waypoints.length - 1; i++) {
+    const a = waypoints[i];
+    const b = waypoints[i + 1];
+    if (centerMinutes > b.minutes) {
+      coords.push(b.coordinates);
+      continue;
+    }
+    const t = demoClamp(
+      (centerMinutes - a.minutes) / (b.minutes - a.minutes),
+      0,
+      1,
+    );
+    coords.push([
+      demoLerp(a.coordinates[0], b.coordinates[0], t),
+      demoLerp(a.coordinates[1], b.coordinates[1], t),
+    ]);
+    break;
+  }
+  return coords;
+};
+
+// ---------------------------------------------------------------------------
+// Polygon (ellipse) helpers
+// ---------------------------------------------------------------------------
+
+interface Phase {
+  minutes: number;
+  centerLng: number;
+  centerLat: number;
+  radiusLng: number;
+  radiusLat: number;
+}
+
+const buildPhases = (timeline: ITimelineEvent): Phase[] =>
+  (timeline.events || [])
+    .filter((e) => e.map && "centerLat" in e.map)
+    .map((e) => {
+      const m = e.map as IMapEntry;
+      return {
+        minutes: demoParseToMinutes(e.start) as number,
+        centerLng: m.centerLng!,
+        centerLat: m.centerLat!,
+        radiusLng: m.radiusLng!,
+        radiusLat: m.radiusLat!,
+      };
+    })
+    .sort((a, b) => a.minutes - b.minutes);
+
+const interpolatePhase = (a: Phase, b: Phase, t: number): Phase => ({
+  minutes: demoLerp(a.minutes, b.minutes, t),
+  centerLng: demoLerp(a.centerLng, b.centerLng, t),
+  centerLat: demoLerp(a.centerLat, b.centerLat, t),
+  radiusLng: demoLerp(a.radiusLng, b.radiusLng, t),
+  radiusLat: demoLerp(a.radiusLat, b.radiusLat, t),
+});
+
+const getPhaseAtTime = (
+  phases: Phase[],
+  centerMinutes: number,
+): Phase | null => {
+  if (!phases.length) return null;
+  const first = phases[0];
+  const last = phases[phases.length - 1];
+  if (centerMinutes <= first.minutes) return first;
+  if (centerMinutes >= last.minutes) return last;
+  for (let i = 0; i < phases.length - 1; i++) {
+    const a = phases[i];
+    const b = phases[i + 1];
+    if (centerMinutes <= b.minutes) {
+      const t = demoClamp(
+        (centerMinutes - a.minutes) / (b.minutes - a.minutes),
+        0,
+        1,
+      );
+      return interpolatePhase(a, b, t);
+    }
+  }
+  return last;
+};
+
+const ellipseCoords = (
+  centerLng: number,
+  centerLat: number,
+  radiusLng: number,
+  radiusLat: number,
+  steps = 72,
+): [number, number][] => {
+  const coords: [number, number][] = [];
+  for (let s = 0; s <= steps; s++) {
+    const theta = (Math.PI * 2 * s) / steps;
+    coords.push([
+      centerLng + Math.cos(theta) * radiusLng,
+      demoClamp(centerLat + Math.sin(theta) * radiusLat, -85, 85),
+    ]);
+  }
+  return coords;
+};
+
+// ---------------------------------------------------------------------------
+// GeoJSON feature builders
+// ---------------------------------------------------------------------------
+
+const asLineFeature = (coords: [number, number][]) => ({
+  type: "Feature" as const,
+  properties: {},
+  geometry: {
+    type: "LineString" as const,
+    // LineString requires >= 2 coordinates; duplicate the point when stationary.
+    coordinates: coords.length >= 2 ? coords : coords.concat(coords),
+  },
+});
+
+const asPolygonFeature = (phase: Phase) => ({
+  type: "Feature" as const,
+  properties: {},
+  geometry: {
+    type: "Polygon" as const,
+    coordinates: [
+      ellipseCoords(
+        phase.centerLng,
+        phase.centerLat,
+        phase.radiusLng,
+        phase.radiusLat,
+      ),
+    ],
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Centre-label formatter
+// ---------------------------------------------------------------------------
+
+const formatCenterLabel = (centerMinutes: number): string => {
+  const d = new Date(centerMinutes * 60000);
+  const year = d.getUTCFullYear();
+  if (year < 1000) {
+    const absYear = year <= 0 ? Math.abs(year - 1) : year;
+    return `${absYear} ${year <= 0 ? "BCE" : "CE"}`;
+  }
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  }).format(d);
+};
+
+// ---------------------------------------------------------------------------
+// Event-at-time helpers
+// ---------------------------------------------------------------------------
+
+interface FlatMapEvent {
+  map: IMapEntry;
+  startM: number;
+  endM: number;
+  depth: number;
+  duration: number;
+}
+
+const flattenMapEvents = (
+  events: ITimelineEvent[] | undefined,
+  depth = 0,
+): FlatMapEvent[] => {
+  const result: FlatMapEvent[] = [];
+  for (const e of events || []) {
+    if (e.map) {
+      const startM = demoParseToMinutes(e.start);
+      const endM = demoParseToMinutes(e.end ?? e.start);
+      if (startM !== undefined && endM !== undefined) {
+        result.push({
+          map: e.map,
+          startM,
+          endM,
+          depth,
+          duration: Math.abs(endM - startM),
+        });
+      }
+    }
+    if (e.events?.length) result.push(...flattenMapEvents(e.events, depth + 1));
+  }
+  return result;
+};
+
+// Find the most specific event (deepest hierarchy, smallest duration) whose
+// range contains centerMinutes. Returns its map entry or null.
+const findMapAtTime = (
+  allMapEvents: FlatMapEvent[],
+  centerMinutes: number,
+): IMapEntry | null => {
+  const candidates = allMapEvents.filter(
+    (e) =>
+      centerMinutes >= Math.min(e.startM, e.endM) &&
+      centerMinutes <= Math.max(e.startM, e.endM),
+  );
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => b.depth - a.depth || a.duration - b.duration);
+  return candidates[0].map;
+};
+
+// ---------------------------------------------------------------------------
+// Demo entry point — only runs when the required DOM elements are present
+// ---------------------------------------------------------------------------
+
+interface TimelineData
+  extends
+    ITimelineEvent,
+    Pick<ITimelineOptions, "timelineStart" | "timelineEnd"> {
+  id: string;
+}
+
+const initDemo = async () => {
+  const timelineContainer = document.querySelector<HTMLElement>("#timeline");
+  const mapContainer = document.querySelector<HTMLElement>("#map");
+  if (!timelineContainer || !mapContainer) return;
+
+  const timelinesData: TimelineData[] = await fetch(
+    "./src/timelines.json",
+  ).then((r) => r.json());
+
+  const lineTimelines = timelinesData
+    .filter((tl) => detectMapType(tl) === "line")
+    .map((tl) => ({ ...tl, waypoints: buildWaypoints(tl) }));
+
+  const polygonTimelines = timelinesData
+    .filter((tl) => detectMapType(tl) === "polygon")
+    .map((tl) => ({ ...tl, phases: buildPhases(tl) }));
+
+  const allMapEvents = timelinesData.flatMap((tl) =>
+    flattenMapEvents(tl.events),
+  );
+
+  const map = new maplibregl.Map({
+    container: mapContainer,
+    style: "https://demotiles.maplibre.org/globe.json",
+    center: [0, 30],
+    zoom: 1.5,
+    projection: "globe",
+  });
+
+  // Tracks the most recent timeline view center so the map can sync when ready.
+  let lastKnownCenter: number | undefined;
+
+  const lineMarkers: Record<string, any> = {};
+  for (const lt of lineTimelines) {
+    const el = document.createElement("div");
+    el.className = "voyage-marker";
+    const marker = new maplibregl.Marker({ element: el, anchor: "center" });
+    if (lt.waypoints.length) {
+      marker.setLngLat(lt.waypoints[0].coordinates).addTo(map);
+    }
+    lineMarkers[lt.id] = marker;
+  }
+
+  let mapReady = false;
+
+  const renderAll = (centerMinutes: number) => {
+    if (!mapReady) return;
+
+    for (const lt of lineTimelines) {
+      const coords = buildLineCoords(lt.waypoints, centerMinutes);
+      map.getSource(`line-${lt.id}`)?.setData(asLineFeature(coords));
+      if (coords.length) {
+        lineMarkers[lt.id]?.setLngLat(coords[coords.length - 1]);
+      }
+    }
+
+    for (const pt of polygonTimelines) {
+      const phase = getPhaseAtTime(pt.phases, centerMinutes);
+      if (phase) {
+        map.getSource(`polygon-${pt.id}`)?.setData(asPolygonFeature(phase));
+      }
+    }
+  };
+
+  map.on("load", () => {
+    for (const lt of lineTimelines) {
+      const initial = asLineFeature(
+        lt.waypoints.length
+          ? [lt.waypoints[0].coordinates, lt.waypoints[0].coordinates]
+          : [
+              [0, 0],
+              [0, 0],
+            ],
+      );
+      map.addSource(`line-${lt.id}`, { type: "geojson", data: initial });
+      map.addLayer({
+        id: `line-glow-${lt.id}`,
+        type: "line",
+        source: `line-${lt.id}`,
+        paint: {
+          "line-color": "rgba(255,255,255,0.28)",
+          "line-width": 7,
+          "line-blur": 1,
+        },
+      });
+      map.addLayer({
+        id: `line-stroke-${lt.id}`,
+        type: "line",
+        source: `line-${lt.id}`,
+        layout: { "line-cap": "round", "line-join": "round" },
+        paint: { "line-color": "#f8b84e", "line-width": 4 },
+      });
+    }
+
+    for (const pt of polygonTimelines) {
+      const initial = pt.phases.length
+        ? asPolygonFeature(pt.phases[0])
+        : asPolygonFeature({
+            minutes: 0,
+            centerLng: 0,
+            centerLat: 0,
+            radiusLng: 0.1,
+            radiusLat: 0.1,
+          });
+      map.addSource(`polygon-${pt.id}`, { type: "geojson", data: initial });
+      map.addLayer({
+        id: `polygon-fill-${pt.id}`,
+        type: "fill",
+        source: `polygon-${pt.id}`,
+        paint: { "fill-color": "#c99a3d", "fill-opacity": 0.42 },
+      });
+      map.addLayer({
+        id: `polygon-outline-${pt.id}`,
+        type: "line",
+        source: `polygon-${pt.id}`,
+        layout: { "line-join": "round" },
+        paint: { "line-color": "#7d3f00", "line-width": 2.5 },
+      });
+    }
+
+    mapReady = true;
+
+    // Sync map to wherever the timeline auto-focused while the map was loading.
+    if (lastKnownCenter !== undefined) {
+      flyToPosition(lastKnownCenter, 0);
+    }
+  });
+
+  // Compute overall scroll boundaries from all timeline declarations.
+  const allStartPairs = timelinesData
+    .map((tl) => ({ tl, m: demoParseToMinutes(tl.timelineStart) }))
+    .filter(({ m }) => m !== undefined) as { tl: TimelineData; m: number }[];
+  const allEndPairs = timelinesData
+    .map((tl) => ({ tl, m: demoParseToMinutes(tl.timelineEnd) }))
+    .filter(({ m }) => m !== undefined) as { tl: TimelineData; m: number }[];
+
+  const timelineStart = allStartPairs.length
+    ? allStartPairs.reduce((a, b) => (a.m < b.m ? a : b)).tl.timelineStart
+    : "-15B";
+  const timelineEnd = allEndPairs.length
+    ? allEndPairs.reduce((a, b) => (a.m > b.m ? a : b)).tl.timelineEnd
+    : "5B";
+
+  const timelineOptions: ITimelineOptions = {
+    autoSelect: true,
+    autoFocusOnTimelineAdd: true,
+    autoZoom: true,
+    includeBackgroundOnAutoFocus: true,
+    labelCount: 8,
+    timelineStart,
+    timelineEnd,
+    showCenterMarker: true,
+    showCenterLabel: true,
+    formatCenterLabel,
+  };
+
+  const flyToPosition = (centerMinutes: number, duration = 800) => {
+    if (!mapReady || !timelineOptions.autoZoom) return;
+
+    const mapEntry = findMapAtTime(allMapEvents, centerMinutes);
+    if (!mapEntry) return;
+
+    if ("centerLat" in mapEntry && "centerLng" in mapEntry) {
+      const { centerLng, centerLat, radiusLng = 0, radiusLat = 0 } = mapEntry;
+      map.fitBounds(
+        [
+          [centerLng - radiusLng, centerLat - radiusLat],
+          [centerLng + radiusLng, centerLat + radiusLat],
+        ],
+        { padding: 60, duration },
+      );
+    } else if ("lat" in mapEntry && "lng" in mapEntry) {
+      map.flyTo({ center: [mapEntry.lng, mapEntry.lat], duration });
+    }
+  };
+
+  const timeline = TimelineContainer(timelineContainer, timelineOptions);
+
+  timelineContainer.addEventListener("update.tl.container", (e) => {
+    const center = (e as CustomEvent<ITimelineCustomEventDetails>).detail.viewCenterMinutes;
+    lastKnownCenter = center;
+    renderAll(center);
+  });
+
+  timelineContainer.addEventListener("drag.tl.container", (e) => {
+    flyToPosition(
+      (e as CustomEvent<ITimelineCustomEventDetails>).detail.viewCenterMinutes,
+    );
+  });
+
+  timelineContainer.addEventListener("selected.tl.event", (e) => {
+    const detail = (e as CustomEvent<ITimelineCustomEventDetails>).detail;
+    if (!mapReady || !timelineOptions.autoZoom) return;
+    const mapEntry = detail.timelineEvent?.map;
+    if (!mapEntry) return;
+
+    if ("centerLat" in mapEntry && "centerLng" in mapEntry) {
+      const { centerLng, centerLat, radiusLng = 0, radiusLat = 0 } = mapEntry;
+      map.fitBounds(
+        [
+          [centerLng - radiusLng, centerLat - radiusLat],
+          [centerLng + radiusLng, centerLat + radiusLat],
+        ],
+        { padding: 60, duration: 800 },
+      );
+    } else if ("lat" in mapEntry && "lng" in mapEntry) {
+      map.flyTo({ center: [mapEntry.lng, mapEntry.lat], duration: 800 });
+    }
+  });
+
+  // Add all timelines, then select the first one so the timeline and map
+  // both focus on it.
+  for (const tl of timelinesData) {
+    timeline.add({ id: tl.id, ...tl });
+  }
+
+  if (timelinesData.length) {
+    timeline.select(timelinesData[0].title);
+  }
+};
+
+initDemo();

@@ -2,12 +2,8 @@
   {
     "id": "roman-empire",
     "title": "Roman Empire – rise and fall",
-    "timelineStart": "2000bc",
-    "timelineEnd": "2000ad",
-    "mapConfig": {
-      "center": [18, 38],
-      "zoom": 2.25
-    },
+    "timelineStart": "10000bc",
+    "timelineEnd": "10000ad",
     "events": [
       {
         "start": "500bc",
@@ -88,14 +84,6 @@
     "title": "Columbus' first voyage",
     "timelineStart": "1491-01-01T00:00:00Z",
     "timelineEnd": "1494-01-01T00:00:00Z",
-    "mapConfig": {
-      "center": [-40, 25],
-      "zoom": 1.8,
-      "bounds": [
-        [-74.4862, 24.043],
-        [-6.9292, 37.1882]
-      ]
-    },
     "events": [
       {
         "start": "1492-08-03T00:00:00Z",
