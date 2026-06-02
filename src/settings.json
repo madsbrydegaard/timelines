@@ -1,0 +1,8 @@
+{
+  "timelineStart": "10000bc",
+  "timelineEnd": "10000ad",
+  "timelines": [
+    "./src/timelines/roman-empire.json",
+    "./src/timelines/columbus-first-voyage.json"
+  ]
+}

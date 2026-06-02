@@ -1,0 +1,48 @@
+{
+  "id": "columbus-first-voyage",
+  "title": "Columbus' first voyage",
+  "events": [
+    {
+      "start": "1492-08-03T00:00:00Z",
+      "end": "1492-08-12T00:00:00Z",
+      "title": "Departure from Palos",
+      "description": "Christopher Columbus departs Palos de la Frontera, Spain.",
+      "map": { "lat": 37.1882, "lng": -6.9292 }
+    },
+    {
+      "start": "1492-08-12T00:00:00Z",
+      "end": "1492-09-06T00:00:00Z",
+      "title": "Canary Islands – La Gomera",
+      "description": "The fleet stops at La Gomera for repairs and provisions.",
+      "map": { "lat": 28.099, "lng": -17.925 }
+    },
+    {
+      "start": "1492-09-06T00:00:00Z",
+      "end": "1492-09-22T00:00:00Z",
+      "title": "Westbound into the Atlantic",
+      "description": "The fleet departs La Gomera and sails west into open ocean.",
+      "map": { "lat": 28.099, "lng": -17.925 }
+    },
+    {
+      "start": "1492-09-22T00:00:00Z",
+      "end": "1492-10-07T00:00:00Z",
+      "title": "Mid-Atlantic crossing",
+      "description": "Weeks at sea with no sight of land.",
+      "map": { "lat": 25.0, "lng": -31.5 }
+    },
+    {
+      "start": "1492-10-07T00:00:00Z",
+      "end": "1492-10-12T00:00:00Z",
+      "title": "Approaching the Bahamas",
+      "description": "Signs of land spotted; birds and floating vegetation appear.",
+      "map": { "lat": 24.0, "lng": -61.0 }
+    },
+    {
+      "start": "1492-10-12T00:00:00Z",
+      "end": "1492-10-13T00:00:00Z",
+      "title": "Landfall at San Salvador",
+      "description": "Land is sighted and Columbus makes landfall in the Bahamas.",
+      "map": { "lat": 24.043, "lng": -74.4862 }
+    }
+  ]
+}

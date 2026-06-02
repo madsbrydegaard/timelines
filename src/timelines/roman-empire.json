@@ -1,0 +1,78 @@
+{
+  "id": "roman-empire",
+  "title": "Roman Empire – rise and fall",
+  "events": [
+    {
+      "start": "500bc",
+      "end": "264bc",
+      "title": "Roman Republic foundations",
+      "description": "Rome grows from city-state influence into control of Italy.",
+      "map": {
+        "centerLng": 12.5,
+        "centerLat": 41.9,
+        "radiusLng": 0.8,
+        "radiusLat": 0.5
+      }
+    },
+    {
+      "start": "264bc",
+      "end": "146bc",
+      "title": "Punic Wars and western expansion",
+      "description": "Roman victories over Carthage reshape the western Mediterranean.",
+      "map": {
+        "centerLng": 12.0,
+        "centerLat": 42.0,
+        "radiusLng": 4.8,
+        "radiusLat": 2.9
+      }
+    },
+    {
+      "start": "146bc",
+      "end": "44bc",
+      "title": "Late Republican conquests",
+      "description": "Campaigns in Hispania, Gaul, Greece, and North Africa dramatically widen territory.",
+      "map": {
+        "centerLng": 10.0,
+        "centerLat": 39.0,
+        "radiusLng": 12.0,
+        "radiusLat": 6.2
+      }
+    },
+    {
+      "start": "44bc",
+      "end": "117ad",
+      "title": "Imperial ascent",
+      "description": "From Augustus to Trajan, the empire expands to its greatest recorded extent.",
+      "map": {
+        "centerLng": 12.0,
+        "centerLat": 38.0,
+        "radiusLng": 17.5,
+        "radiusLat": 8.5
+      }
+    },
+    {
+      "start": "117ad",
+      "end": "395ad",
+      "title": "Stabilization and pressure",
+      "description": "Defensive strategy, internal crises, and frontier pressure reduce cohesion and size.",
+      "map": {
+        "centerLng": 20.0,
+        "centerLat": 37.0,
+        "radiusLng": 29.0,
+        "radiusLat": 10.8
+      }
+    },
+    {
+      "start": "395ad",
+      "end": "476ad",
+      "title": "Western decline",
+      "description": "The western half contracts until imperial authority ends in 476 CE.",
+      "map": {
+        "centerLng": 20.0,
+        "centerLat": 37.0,
+        "radiusLng": 21.5,
+        "radiusLat": 8.2
+      }
+    }
+  ]
+}

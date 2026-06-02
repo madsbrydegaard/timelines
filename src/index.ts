@@ -2277,6 +2277,21 @@ const flattenMapEvents = (
   return result;
 };
 
+// Compute the overall time range (min start, max end) across all direct events.
+const computeTimeRange = (
+  timeline: ITimelineEvent,
+): { startM: number; endM: number } | null => {
+  const mins: number[] = [];
+  for (const e of timeline.events || []) {
+    const s = demoParseToMinutes(e.start);
+    const en = demoParseToMinutes(e.end ?? e.start);
+    if (s !== undefined) mins.push(s);
+    if (en !== undefined) mins.push(en);
+  }
+  if (!mins.length) return null;
+  return { startM: Math.min(...mins), endM: Math.max(...mins) };
+};
+
 // Find the most specific event (deepest hierarchy, smallest duration) whose
 // range contains centerMinutes. Returns its map entry or null.
 const findMapAtTime = (
@@ -2297,29 +2312,67 @@ const findMapAtTime = (
 // Demo entry point — only runs when the required DOM elements are present
 // ---------------------------------------------------------------------------
 
-interface TimelineData
-  extends
-    ITimelineEvent,
-    Pick<ITimelineOptions, "timelineStart" | "timelineEnd"> {
+interface TimelineData extends ITimelineEvent {
   id: string;
 }
+
+interface ISettings {
+  timelineStart?: ITimelineOptions["timelineStart"];
+  timelineEnd?: ITimelineOptions["timelineEnd"];
+  timelines: string[];
+}
+
+// Recursively collect all event start/end minutes for fallback bounds calculation.
+const collectEventMinutes = (
+  events: ITimelineEvent[] | undefined,
+): number[] => {
+  const minutes: number[] = [];
+  for (const e of events || []) {
+    const startM = demoParseToMinutes(e.start);
+    const endM = demoParseToMinutes(e.end ?? e.start);
+    if (startM !== undefined) minutes.push(startM);
+    if (endM !== undefined) minutes.push(endM);
+    if (e.events?.length) minutes.push(...collectEventMinutes(e.events));
+  }
+  return minutes;
+};
 
 const initDemo = async () => {
   const timelineContainer = document.querySelector<HTMLElement>("#timeline");
   const mapContainer = document.querySelector<HTMLElement>("#map");
   if (!timelineContainer || !mapContainer) return;
 
-  const timelinesData: TimelineData[] = await fetch(
-    "./src/timelines.json",
-  ).then((r) => r.json());
+  const settings: ISettings = await fetch("./src/settings.json").then((r) =>
+    r.json(),
+  );
+
+  const timelinesData: TimelineData[] = await Promise.all(
+    settings.timelines.map((url) => fetch(url).then((r) => r.json())),
+  );
 
   const lineTimelines = timelinesData
     .filter((tl) => detectMapType(tl) === "line")
-    .map((tl) => ({ ...tl, waypoints: buildWaypoints(tl) }));
+    .map((tl) => {
+      const range = computeTimeRange(tl);
+      return {
+        ...tl,
+        waypoints: buildWaypoints(tl),
+        startM: range?.startM ?? 0,
+        endM: range?.endM ?? 0,
+      };
+    });
 
   const polygonTimelines = timelinesData
     .filter((tl) => detectMapType(tl) === "polygon")
-    .map((tl) => ({ ...tl, phases: buildPhases(tl) }));
+    .map((tl) => {
+      const range = computeTimeRange(tl);
+      return {
+        ...tl,
+        phases: buildPhases(tl),
+        startM: range?.startM ?? 0,
+        endM: range?.endM ?? 0,
+      };
+    });
 
   const allMapEvents = timelinesData.flatMap((tl) =>
     flattenMapEvents(tl.events),
@@ -2333,8 +2386,10 @@ const initDemo = async () => {
     projection: "globe",
   });
 
-  // Tracks the most recent timeline view center so the map can sync when ready.
+  // Tracks the most recent timeline view state so the map can sync when ready.
   let lastKnownCenter: number | undefined;
+  let lastKnownViewStart: number | undefined;
+  let lastKnownViewEnd: number | undefined;
 
   const lineMarkers: Record<string, any> = {};
   for (const lt of lineTimelines) {
@@ -2349,21 +2404,45 @@ const initDemo = async () => {
 
   let mapReady = false;
 
-  const renderAll = (centerMinutes: number) => {
+  const renderAll = (
+    centerMinutes: number,
+    viewStart: number,
+    viewEnd: number,
+  ) => {
     if (!mapReady) return;
 
     for (const lt of lineTimelines) {
-      const coords = buildLineCoords(lt.waypoints, centerMinutes);
-      map.getSource(`line-${lt.id}`)?.setData(asLineFeature(coords));
-      if (coords.length) {
-        lineMarkers[lt.id]?.setLngLat(coords[coords.length - 1]);
+      const visible = centerMinutes >= lt.startM && centerMinutes <= lt.endM;
+      const visibility = visible ? "visible" : "none";
+      map.setLayoutProperty(`line-glow-${lt.id}`, "visibility", visibility);
+      map.setLayoutProperty(`line-stroke-${lt.id}`, "visibility", visibility);
+      const markerEl = lineMarkers[lt.id]?.getElement() as
+        | HTMLElement
+        | undefined;
+      if (markerEl) markerEl.style.display = visible ? "" : "none";
+      if (visible) {
+        const coords = buildLineCoords(lt.waypoints, centerMinutes);
+        map.getSource(`line-${lt.id}`)?.setData(asLineFeature(coords));
+        if (coords.length) {
+          lineMarkers[lt.id]?.setLngLat(coords[coords.length - 1]);
+        }
       }
     }
 
     for (const pt of polygonTimelines) {
-      const phase = getPhaseAtTime(pt.phases, centerMinutes);
-      if (phase) {
-        map.getSource(`polygon-${pt.id}`)?.setData(asPolygonFeature(phase));
+      const visible = centerMinutes >= pt.startM && centerMinutes <= pt.endM;
+      const visibility = visible ? "visible" : "none";
+      map.setLayoutProperty(`polygon-fill-${pt.id}`, "visibility", visibility);
+      map.setLayoutProperty(
+        `polygon-outline-${pt.id}`,
+        "visibility",
+        visibility,
+      );
+      if (visible) {
+        const phase = getPhaseAtTime(pt.phases, centerMinutes);
+        if (phase) {
+          map.getSource(`polygon-${pt.id}`)?.setData(asPolygonFeature(phase));
+        }
       }
     }
   };
@@ -2429,23 +2508,26 @@ const initDemo = async () => {
     // Sync map to wherever the timeline auto-focused while the map was loading.
     if (lastKnownCenter !== undefined) {
       flyToPosition(lastKnownCenter, 0);
+      if (lastKnownViewStart !== undefined && lastKnownViewEnd !== undefined) {
+        renderAll(lastKnownCenter, lastKnownViewStart, lastKnownViewEnd);
+      }
     }
   });
 
-  // Compute overall scroll boundaries from all timeline declarations.
-  const allStartPairs = timelinesData
-    .map((tl) => ({ tl, m: demoParseToMinutes(tl.timelineStart) }))
-    .filter(({ m }) => m !== undefined) as { tl: TimelineData; m: number }[];
-  const allEndPairs = timelinesData
-    .map((tl) => ({ tl, m: demoParseToMinutes(tl.timelineEnd) }))
-    .filter(({ m }) => m !== undefined) as { tl: TimelineData; m: number }[];
+  // Compute overall scroll boundaries: use settings values when present,
+  // otherwise fall back to the outer bounds of all timeline events.
+  let timelineStart: ITimelineOptions["timelineStart"] = settings.timelineStart;
+  let timelineEnd: ITimelineOptions["timelineEnd"] = settings.timelineEnd;
 
-  const timelineStart = allStartPairs.length
-    ? allStartPairs.reduce((a, b) => (a.m < b.m ? a : b)).tl.timelineStart
-    : "-15B";
-  const timelineEnd = allEndPairs.length
-    ? allEndPairs.reduce((a, b) => (a.m > b.m ? a : b)).tl.timelineEnd
-    : "5B";
+  if (!timelineStart || !timelineEnd) {
+    const allMinutes = timelinesData.flatMap((tl) =>
+      collectEventMinutes(tl.events),
+    );
+    if (allMinutes.length) {
+      if (!timelineStart) timelineStart = Math.min(...allMinutes);
+      if (!timelineEnd) timelineEnd = Math.max(...allMinutes);
+    }
+  }
 
   const timelineOptions: ITimelineOptions = {
     autoSelect: true,
@@ -2483,9 +2565,15 @@ const initDemo = async () => {
   const timeline = TimelineContainer(timelineContainer, timelineOptions);
 
   timelineContainer.addEventListener("update.tl.container", (e) => {
-    const center = (e as CustomEvent<ITimelineCustomEventDetails>).detail.viewCenterMinutes;
-    lastKnownCenter = center;
-    renderAll(center);
+    const detail = (e as CustomEvent<ITimelineCustomEventDetails>).detail;
+    lastKnownCenter = detail.viewCenterMinutes;
+    lastKnownViewStart = detail.viewStartMinutes;
+    lastKnownViewEnd = detail.viewEndMinutes;
+    renderAll(
+      detail.viewCenterMinutes,
+      detail.viewStartMinutes,
+      detail.viewEndMinutes,
+    );
   });
 
   timelineContainer.addEventListener("drag.tl.container", (e) => {

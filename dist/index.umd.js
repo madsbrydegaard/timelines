@@ -1497,6 +1497,17 @@
     }
     return result;
   };
+  var computeTimeRange = (timeline) => {
+    const mins = [];
+    for (const e of timeline.events || []) {
+      const s = demoParseToMinutes(e.start);
+      const en = demoParseToMinutes(e.end ?? e.start);
+      if (s !== void 0) mins.push(s);
+      if (en !== void 0) mins.push(en);
+    }
+    if (!mins.length) return null;
+    return { startM: Math.min(...mins), endM: Math.max(...mins) };
+  };
   var findMapAtTime = (allMapEvents, centerMinutes) => {
     const candidates = allMapEvents.filter(
       (e) => centerMinutes >= Math.min(e.startM, e.endM) && centerMinutes <= Math.max(e.startM, e.endM)
@@ -1505,15 +1516,45 @@
     candidates.sort((a, b) => b.depth - a.depth || a.duration - b.duration);
     return candidates[0].map;
   };
+  var collectEventMinutes = (events) => {
+    const minutes = [];
+    for (const e of events || []) {
+      const startM = demoParseToMinutes(e.start);
+      const endM = demoParseToMinutes(e.end ?? e.start);
+      if (startM !== void 0) minutes.push(startM);
+      if (endM !== void 0) minutes.push(endM);
+      if (e.events?.length) minutes.push(...collectEventMinutes(e.events));
+    }
+    return minutes;
+  };
   var initDemo = async () => {
     const timelineContainer = document.querySelector("#timeline");
     const mapContainer = document.querySelector("#map");
     if (!timelineContainer || !mapContainer) return;
-    const timelinesData = await fetch(
-      "./src/timelines.json"
-    ).then((r) => r.json());
-    const lineTimelines = timelinesData.filter((tl) => detectMapType(tl) === "line").map((tl) => ({ ...tl, waypoints: buildWaypoints(tl) }));
-    const polygonTimelines = timelinesData.filter((tl) => detectMapType(tl) === "polygon").map((tl) => ({ ...tl, phases: buildPhases(tl) }));
+    const settings = await fetch("./src/settings.json").then(
+      (r) => r.json()
+    );
+    const timelinesData = await Promise.all(
+      settings.timelines.map((url) => fetch(url).then((r) => r.json()))
+    );
+    const lineTimelines = timelinesData.filter((tl) => detectMapType(tl) === "line").map((tl) => {
+      const range = computeTimeRange(tl);
+      return {
+        ...tl,
+        waypoints: buildWaypoints(tl),
+        startM: range?.startM ?? 0,
+        endM: range?.endM ?? 0
+      };
+    });
+    const polygonTimelines = timelinesData.filter((tl) => detectMapType(tl) === "polygon").map((tl) => {
+      const range = computeTimeRange(tl);
+      return {
+        ...tl,
+        phases: buildPhases(tl),
+        startM: range?.startM ?? 0,
+        endM: range?.endM ?? 0
+      };
+    });
     const allMapEvents = timelinesData.flatMap(
       (tl) => flattenMapEvents(tl.events)
     );
@@ -1525,6 +1566,8 @@
       projection: "globe"
     });
     let lastKnownCenter;
+    let lastKnownViewStart;
+    let lastKnownViewEnd;
     const lineMarkers = {};
     for (const lt of lineTimelines) {
       const el = document.createElement("div");
@@ -1536,19 +1579,37 @@
       lineMarkers[lt.id] = marker;
     }
     let mapReady = false;
-    const renderAll = (centerMinutes) => {
+    const renderAll = (centerMinutes, viewStart, viewEnd) => {
       if (!mapReady) return;
       for (const lt of lineTimelines) {
-        const coords = buildLineCoords(lt.waypoints, centerMinutes);
-        map.getSource(`line-${lt.id}`)?.setData(asLineFeature(coords));
-        if (coords.length) {
-          lineMarkers[lt.id]?.setLngLat(coords[coords.length - 1]);
+        const visible = centerMinutes >= lt.startM && centerMinutes <= lt.endM;
+        const visibility = visible ? "visible" : "none";
+        map.setLayoutProperty(`line-glow-${lt.id}`, "visibility", visibility);
+        map.setLayoutProperty(`line-stroke-${lt.id}`, "visibility", visibility);
+        const markerEl = lineMarkers[lt.id]?.getElement();
+        if (markerEl) markerEl.style.display = visible ? "" : "none";
+        if (visible) {
+          const coords = buildLineCoords(lt.waypoints, centerMinutes);
+          map.getSource(`line-${lt.id}`)?.setData(asLineFeature(coords));
+          if (coords.length) {
+            lineMarkers[lt.id]?.setLngLat(coords[coords.length - 1]);
+          }
         }
       }
       for (const pt of polygonTimelines) {
-        const phase = getPhaseAtTime(pt.phases, centerMinutes);
-        if (phase) {
-          map.getSource(`polygon-${pt.id}`)?.setData(asPolygonFeature(phase));
+        const visible = centerMinutes >= pt.startM && centerMinutes <= pt.endM;
+        const visibility = visible ? "visible" : "none";
+        map.setLayoutProperty(`polygon-fill-${pt.id}`, "visibility", visibility);
+        map.setLayoutProperty(
+          `polygon-outline-${pt.id}`,
+          "visibility",
+          visibility
+        );
+        if (visible) {
+          const phase = getPhaseAtTime(pt.phases, centerMinutes);
+          if (phase) {
+            map.getSource(`polygon-${pt.id}`)?.setData(asPolygonFeature(phase));
+          }
         }
       }
     };
@@ -1605,12 +1666,22 @@
       mapReady = true;
       if (lastKnownCenter !== void 0) {
         flyToPosition(lastKnownCenter, 0);
+        if (lastKnownViewStart !== void 0 && lastKnownViewEnd !== void 0) {
+          renderAll(lastKnownCenter, lastKnownViewStart, lastKnownViewEnd);
+        }
       }
     });
-    const allStartPairs = timelinesData.map((tl) => ({ tl, m: demoParseToMinutes(tl.timelineStart) })).filter(({ m }) => m !== void 0);
-    const allEndPairs = timelinesData.map((tl) => ({ tl, m: demoParseToMinutes(tl.timelineEnd) })).filter(({ m }) => m !== void 0);
-    const timelineStart = allStartPairs.length ? allStartPairs.reduce((a, b) => a.m < b.m ? a : b).tl.timelineStart : "-15B";
-    const timelineEnd = allEndPairs.length ? allEndPairs.reduce((a, b) => a.m > b.m ? a : b).tl.timelineEnd : "5B";
+    let timelineStart = settings.timelineStart;
+    let timelineEnd = settings.timelineEnd;
+    if (!timelineStart || !timelineEnd) {
+      const allMinutes = timelinesData.flatMap(
+        (tl) => collectEventMinutes(tl.events)
+      );
+      if (allMinutes.length) {
+        if (!timelineStart) timelineStart = Math.min(...allMinutes);
+        if (!timelineEnd) timelineEnd = Math.max(...allMinutes);
+      }
+    }
     const timelineOptions = {
       autoSelect: true,
       autoFocusOnTimelineAdd: true,
@@ -1642,9 +1713,15 @@
     };
     const timeline = TimelineContainer(timelineContainer, timelineOptions);
     timelineContainer.addEventListener("update.tl.container", (e) => {
-      const center = e.detail.viewCenterMinutes;
-      lastKnownCenter = center;
-      renderAll(center);
+      const detail = e.detail;
+      lastKnownCenter = detail.viewCenterMinutes;
+      lastKnownViewStart = detail.viewStartMinutes;
+      lastKnownViewEnd = detail.viewEndMinutes;
+      renderAll(
+        detail.viewCenterMinutes,
+        detail.viewStartMinutes,
+        detail.viewEndMinutes
+      );
     });
     timelineContainer.addEventListener("drag.tl.container", (e) => {
       flyToPosition(
