@@ -30,18 +30,13 @@ export interface ITimelineOptions {
         change: number,
         duration: number,
       ) => number);
-  numberOfHighscorePreviews?: number;
-  highscorePreviewDelay?: number;
-  highscorePreviewWidth?: number;
   classNames?: {
     timeline?: string;
     timelineEvent?: string;
-    timelinePreview?: string;
     timelineEventTitle?: string;
     timelineLabels?: string;
     timelineDividers?: string;
     timelineEvents?: string;
-    timelinePreviews?: string;
     timelineIo?: string;
     timelineLabel?: string;
     timelineDivider?: string;
@@ -77,15 +72,11 @@ interface ITimelineBase {
   renderEventNode?: (
     timelineEvent: ITimelineEventWithDetails,
   ) => HTMLDivElement;
-  renderPreviewNode?: (
-    timelineEvent: ITimelineEventWithDetails,
-  ) => HTMLDivElement;
 }
 interface ITimelineProps {
   type?: string;
   color?: string;
   highlightedColor?: string;
-  preventNextPreviewRender?: boolean;
 }
 interface ITimelineEventDetails {
   id: string;
@@ -104,7 +95,6 @@ interface ITimelineEventDetails {
   timelineLevelMatrix: IMatrix;
   backgroundLevelMatrix: IMatrix;
   eventNode?: HTMLDivElement;
-  previewNode?: HTMLDivElement;
   childrenByStartMinute: ITimelineEventWithDetails[];
   next?: string;
   previous?: string;
@@ -171,7 +161,6 @@ export interface ITimelineContainer {
   ) => void;
   reset: () => void;
   select: (timelineEventIdentifier?: string) => void;
-  preventNextPreviewRender: (prevent: boolean | undefined) => void;
   clear: () => void;
   update: () => void;
 }
@@ -193,7 +182,6 @@ export const TimelineContainer = (
   let labelContainer: HTMLDivElement;
   let dividerContainer: HTMLDivElement;
   let eventsContainer: HTMLDivElement;
-  let previewsContainer: HTMLDivElement;
   let ioContainer: HTMLDivElement;
   let timelineCenterIndicator: HTMLDivElement;
   let timelineCenterLine: HTMLDivElement;
@@ -202,9 +190,6 @@ export const TimelineContainer = (
   let currentTimeline: ITimelineEventWithDetails;
   let selectedTimelineIds: string[];
   let visibleEvents: ITimelineEventWithDetails[];
-  let previewTimer: ReturnType<typeof setTimeout>;
-  let preventNextPreviewRender: boolean = false;
-  let preventPreviewRender: boolean = false;
   let containerStep: number = 0;
   let touchDragFactor: number = 1;
   let globalTopLevelMatrix: IMatrix = {
@@ -290,18 +275,13 @@ export const TimelineContainer = (
         defaultBackgroundHightligtedColor: "#eee7",
         zoomDuration: 200,
         easing: "easeOutCubic",
-        numberOfHighscorePreviews: 5,
-        highscorePreviewDelay: 500,
-        highscorePreviewWidth: 100,
         classNames: {
           timeline: "tl",
           timelineEvent: "tl__event",
-          timelinePreview: "tl__preview",
           timelineEventTitle: "tl__event__title",
           timelineLabels: "tl__labels",
           timelineDividers: "tl__dividers",
           timelineEvents: "tl__events",
-          timelinePreviews: "tl__previews",
           timelineIo: "tl__io",
           timelineLabel: "tl__label",
           timelineDivider: "tl__divider",
@@ -429,8 +409,6 @@ export const TimelineContainer = (
     zoom(timelineEvent, useAnimation, onfocused);
   };
   const reset = (): void => {
-    preventPreviewRender = false;
-    preventNextPreviewRender = false;
     currentTimeline = rootTimeline;
     zoom(currentTimeline);
   };
@@ -705,12 +683,7 @@ export const TimelineContainer = (
         return element.hasAttribute("eventid");
       });
       if (!clickedEvent) {
-        if (
-          options.autoDeselectOutside &&
-          !preventPreviewRender &&
-          !preventNextPreviewRender
-        )
-          select();
+        if (options.autoDeselectOutside) select();
         return;
       }
       const eventid = clickedEvent.getAttribute("eventid");
@@ -896,98 +869,6 @@ export const TimelineContainer = (
     // update.tl.container event handler
     element.addEventListener("update.tl.container", onUpdate);
   };
-  const createPreviewHTML = (): DocumentFragment | undefined => {
-    const eventsFragment = document.createDocumentFragment();
-    const svgContainer = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "svg",
-    );
-    svgContainer.style.height = "100%";
-    svgContainer.style.width = "100%";
-    svgContainer.style.position = "absolute";
-    eventsFragment.append(svgContainer);
-
-    const highscores = visibleEvents
-      .filter((evt) => !!evt.timelineEventDetails.previewNode)
-      .filter((evt) => !evt.preventNextPreviewRender)
-      .sort(
-        (a, b) => b.timelineEventDetails.score - a.timelineEventDetails.score,
-      ) // Sort from high to low
-      .slice(0, options.numberOfHighscorePreviews)
-      .sort(
-        (a, b) =>
-          a.timelineEventDetails.startMinutes -
-          b.timelineEventDetails.startMinutes,
-      );
-
-    for (const [i, timelineEvent] of highscores.entries()) {
-      const fraction = 1 / highscores.length;
-      const previewWidthFactor = options.highscorePreviewWidth / viewWidth();
-      const randomLeftPosition =
-        fraction * i + fraction / 2 - previewWidthFactor / 2;
-      const randomTopPosition = Math.random() / 3 + 0.08;
-
-      const createTimelinePreviewHTML = (): void => {
-        timelineEvent.timelineEventDetails.previewNode.style.left =
-          randomLeftPosition * 100 + "%";
-        timelineEvent.timelineEventDetails.previewNode.style.top =
-          randomTopPosition * 100 + "%";
-
-        let x2 = getViewRatio(
-          timelineEvent.timelineEventDetails.startMinutes +
-            timelineEvent.timelineEventDetails.durationMinutes / 2,
-        );
-        if (isViewInside(timelineEvent)) {
-          x2 = 0.5;
-        }
-        if (x2 > 1) {
-          x2 = getViewRatio(
-            timelineEvent.timelineEventDetails.startMinutes +
-              (viewEnd() - timelineEvent.timelineEventDetails.startMinutes) / 2,
-          );
-        }
-        if (x2 < 0) {
-          x2 = getViewRatio(
-            (viewStart() + timelineEvent.timelineEventDetails.endMinutes) / 2,
-          );
-        }
-
-        const lineFragment = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "line",
-        );
-        lineFragment.setAttribute(
-          "x1",
-          `calc(${(randomLeftPosition + previewWidthFactor / 2) * 100}%)`,
-        );
-        lineFragment.setAttribute(
-          "y1",
-          `calc(${randomTopPosition * 100}% + 50px)`,
-        );
-        lineFragment.setAttribute("x2", x2 * 100 + "%");
-        lineFragment.setAttribute(
-          "y2",
-          timelineEvent.timelineEventDetails.eventNode.offsetTop + "px",
-        );
-        lineFragment.setAttribute(
-          "style",
-          `stroke:${timelineEvent.color};stroke-width:2`,
-        );
-
-        svgContainer.appendChild(lineFragment);
-
-        eventsFragment.append(timelineEvent.timelineEventDetails.previewNode);
-      };
-
-      createTimelinePreviewHTML();
-    }
-
-    visibleEvents.forEach((ev) => {
-      ev.preventNextPreviewRender = false;
-    });
-
-    return eventsFragment;
-  };
   const createEventHTML = (
     parentEvent: ITimelineEventWithDetails,
   ): DocumentFragment | undefined => {
@@ -1133,23 +1014,6 @@ export const TimelineContainer = (
     eventsContainer.style.overflowY = "auto";
     eventsContainer.style.overflowX = "hidden";
 
-    // Initialize previews container
-    previewsContainer = document.createElement("div");
-    element.appendChild(previewsContainer);
-    previewsContainer.classList.add(options.classNames.timelinePreviews);
-    previewsContainer.style.position = "absolute";
-    if (options.position === "top") {
-      previewsContainer.style.top = "50px";
-      previewsContainer.style.bottom = "0";
-    } else {
-      previewsContainer.style.bottom = "50px";
-      previewsContainer.style.top = "0";
-    }
-    previewsContainer.style.height = "calc(100% - 50px)";
-    previewsContainer.style.width = "100%";
-    previewsContainer.style.overflowY = "auto";
-    previewsContainer.style.overflowX = "hidden";
-
     // Initialize User I/O container
     ioContainer = document.createElement("div");
     element.appendChild(ioContainer);
@@ -1256,13 +1120,6 @@ export const TimelineContainer = (
     const eventsHtml = createEventHTML(currentTimeline);
     if (eventsHtml) eventsContainer.appendChild(eventsHtml);
   };
-  const appendPreviewHTML = (): void => {
-    if (!preventPreviewRender && !preventNextPreviewRender) {
-      const previewsHtml = createPreviewHTML();
-      if (previewsHtml) previewsContainer.appendChild(previewsHtml);
-    }
-    preventNextPreviewRender = false;
-  };
   const formatDateLabel = (minutes: number): string => {
     const yearsCount = Math.floor(minutes / MINUTES_IN_YEAR);
     const currentYear = yearsCount + 1970;
@@ -1324,7 +1181,6 @@ export const TimelineContainer = (
     if (dividerContainer) dividerContainer.innerHTML = "";
     if (labelContainer) labelContainer.innerHTML = "";
     if (eventsContainer) eventsContainer.innerHTML = "";
-    if (previewsContainer) previewsContainer.innerHTML = "";
     visibleEvents = [];
 
     // Dispatch DOM event
@@ -1355,13 +1211,6 @@ export const TimelineContainer = (
     appendLabelHTML();
     appendCenterIndicatorHTML();
     appendEventHTML();
-
-    if (options.numberOfHighscorePreviews > 0) {
-      clearTimeout(previewTimer); // Throttle by $options.highscorePreviewDelay
-      previewTimer = setTimeout(() => {
-        appendPreviewHTML();
-      }, options.highscorePreviewDelay);
-    }
   };
   const parseDateToMinutes = (
     input: number[] | string | number | Date | undefined,
@@ -1720,26 +1569,6 @@ export const TimelineContainer = (
       }
       timelineEvent.timelineEventDetails.eventNode = node;
     };
-    const setPreviewNode = (timelineEvent: ITimelineEventWithDetails) => {
-      if (!timelineEvent.renderPreviewNode) return;
-      const previewNode = timelineEvent.renderPreviewNode(timelineEvent);
-      if (!previewNode) return;
-      const previewHTML = document.createElement("div");
-      previewHTML.style.boxSizing = "border-box";
-      previewHTML.style.position = "absolute";
-      previewHTML.style.overflow = "hidden";
-      previewHTML.style.width = options.highscorePreviewWidth + "px";
-      previewHTML.title = timelineEvent.title;
-      previewHTML.classList.add(options.classNames.timelinePreview);
-      previewHTML.setAttribute(
-        "eventid",
-        timelineEvent.timelineEventDetails.id,
-      );
-
-      previewHTML.append(previewNode);
-
-      timelineEvent.timelineEventDetails.previewNode = previewHTML;
-    };
     const setScore = (timelineEvent: ITimelineEventWithDetails) => {
       const durationRatio =
         timelineEvent.timelineEventDetails.durationMinutes /
@@ -1875,7 +1704,6 @@ export const TimelineContainer = (
           default:
         }
 
-        setPreviewNode(childEvent);
         setNeighborsTo(childEvent, i);
       },
     );
@@ -2044,9 +1872,6 @@ export const TimelineContainer = (
     add,
     reset,
     select,
-    preventNextPreviewRender: (prevent: boolean | undefined) => {
-      preventNextPreviewRender = prevent || false;
-    },
     clear,
     update,
   };

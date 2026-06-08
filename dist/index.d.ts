@@ -23,18 +23,13 @@ export interface ITimelineOptions {
     defaultBackgroundHightligtedColor?: string;
     zoomDuration?: number;
     easing?: string | ((time: number, start: number, change: number, duration: number) => number);
-    numberOfHighscorePreviews?: number;
-    highscorePreviewDelay?: number;
-    highscorePreviewWidth?: number;
     classNames?: {
         timeline?: string;
         timelineEvent?: string;
-        timelinePreview?: string;
         timelineEventTitle?: string;
         timelineLabels?: string;
         timelineDividers?: string;
         timelineEvents?: string;
-        timelinePreviews?: string;
         timelineIo?: string;
         timelineLabel?: string;
         timelineDivider?: string;
@@ -68,13 +63,11 @@ interface IMatrix {
 interface ITimelineBase {
     title: string;
     renderEventNode?: (timelineEvent: ITimelineEventWithDetails) => HTMLDivElement;
-    renderPreviewNode?: (timelineEvent: ITimelineEventWithDetails) => HTMLDivElement;
 }
 interface ITimelineProps {
     type?: string;
     color?: string;
     highlightedColor?: string;
-    preventNextPreviewRender?: boolean;
 }
 interface ITimelineEventDetails {
     id: string;
@@ -93,7 +86,6 @@ interface ITimelineEventDetails {
     timelineLevelMatrix: IMatrix;
     backgroundLevelMatrix: IMatrix;
     eventNode?: HTMLDivElement;
-    previewNode?: HTMLDivElement;
     childrenByStartMinute: ITimelineEventWithDetails[];
     next?: string;
     previous?: string;
@@ -149,7 +141,6 @@ export interface ITimelineContainer {
     focus: (timelineEvent: ITimelineEvent, useAnimation?: boolean, onfocused?: (timelineEvent: ITimelineEvent) => void) => void;
     reset: () => void;
     select: (timelineEventIdentifier?: string) => void;
-    preventNextPreviewRender: (prevent: boolean | undefined) => void;
     clear: () => void;
     update: () => void;
 }

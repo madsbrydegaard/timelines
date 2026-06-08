@@ -9,7 +9,6 @@ var TimelineContainer = (elementIdentifier, settings) => {
   let labelContainer;
   let dividerContainer;
   let eventsContainer;
-  let previewsContainer;
   let ioContainer;
   let timelineCenterIndicator;
   let timelineCenterLine;
@@ -18,9 +17,6 @@ var TimelineContainer = (elementIdentifier, settings) => {
   let currentTimeline;
   let selectedTimelineIds;
   let visibleEvents;
-  let previewTimer;
-  let preventNextPreviewRender = false;
-  let preventPreviewRender = false;
   let containerStep = 0;
   let touchDragFactor = 1;
   let globalTopLevelMatrix = {
@@ -88,18 +84,13 @@ var TimelineContainer = (elementIdentifier, settings) => {
         defaultBackgroundHightligtedColor: "#eee7",
         zoomDuration: 200,
         easing: "easeOutCubic",
-        numberOfHighscorePreviews: 5,
-        highscorePreviewDelay: 500,
-        highscorePreviewWidth: 100,
         classNames: {
           timeline: "tl",
           timelineEvent: "tl__event",
-          timelinePreview: "tl__preview",
           timelineEventTitle: "tl__event__title",
           timelineLabels: "tl__labels",
           timelineDividers: "tl__dividers",
           timelineEvents: "tl__events",
-          timelinePreviews: "tl__previews",
           timelineIo: "tl__io",
           timelineLabel: "tl__label",
           timelineDivider: "tl__divider"
@@ -197,8 +188,6 @@ var TimelineContainer = (elementIdentifier, settings) => {
     zoom(timelineEvent, useAnimation, onfocused);
   };
   const reset = () => {
-    preventPreviewRender = false;
-    preventNextPreviewRender = false;
     currentTimeline = rootTimeline;
     zoom(currentTimeline);
   };
@@ -405,8 +394,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
         return element3.hasAttribute("eventid");
       });
       if (!clickedEvent) {
-        if (options.autoDeselectOutside && !preventPreviewRender && !preventNextPreviewRender)
-          select();
+        if (options.autoDeselectOutside) select();
         return;
       }
       const eventid = clickedEvent.getAttribute("eventid");
@@ -527,76 +515,6 @@ var TimelineContainer = (elementIdentifier, settings) => {
     element2.addEventListener("selected.tl.event", onEventSelected);
     element2.addEventListener("update.tl.container", onUpdate);
   };
-  const createPreviewHTML = () => {
-    const eventsFragment = document.createDocumentFragment();
-    const svgContainer = document.createElementNS(
-      "http://www.w3.org/2000/svg",
-      "svg"
-    );
-    svgContainer.style.height = "100%";
-    svgContainer.style.width = "100%";
-    svgContainer.style.position = "absolute";
-    eventsFragment.append(svgContainer);
-    const highscores = visibleEvents.filter((evt) => !!evt.timelineEventDetails.previewNode).filter((evt) => !evt.preventNextPreviewRender).sort(
-      (a, b) => b.timelineEventDetails.score - a.timelineEventDetails.score
-    ).slice(0, options.numberOfHighscorePreviews).sort(
-      (a, b) => a.timelineEventDetails.startMinutes - b.timelineEventDetails.startMinutes
-    );
-    for (const [i, timelineEvent] of highscores.entries()) {
-      const fraction = 1 / highscores.length;
-      const previewWidthFactor = options.highscorePreviewWidth / viewWidth();
-      const randomLeftPosition = fraction * i + fraction / 2 - previewWidthFactor / 2;
-      const randomTopPosition = Math.random() / 3 + 0.08;
-      const createTimelinePreviewHTML = () => {
-        timelineEvent.timelineEventDetails.previewNode.style.left = randomLeftPosition * 100 + "%";
-        timelineEvent.timelineEventDetails.previewNode.style.top = randomTopPosition * 100 + "%";
-        let x2 = getViewRatio(
-          timelineEvent.timelineEventDetails.startMinutes + timelineEvent.timelineEventDetails.durationMinutes / 2
-        );
-        if (isViewInside(timelineEvent)) {
-          x2 = 0.5;
-        }
-        if (x2 > 1) {
-          x2 = getViewRatio(
-            timelineEvent.timelineEventDetails.startMinutes + (viewEnd() - timelineEvent.timelineEventDetails.startMinutes) / 2
-          );
-        }
-        if (x2 < 0) {
-          x2 = getViewRatio(
-            (viewStart() + timelineEvent.timelineEventDetails.endMinutes) / 2
-          );
-        }
-        const lineFragment = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "line"
-        );
-        lineFragment.setAttribute(
-          "x1",
-          `calc(${(randomLeftPosition + previewWidthFactor / 2) * 100}%)`
-        );
-        lineFragment.setAttribute(
-          "y1",
-          `calc(${randomTopPosition * 100}% + 50px)`
-        );
-        lineFragment.setAttribute("x2", x2 * 100 + "%");
-        lineFragment.setAttribute(
-          "y2",
-          timelineEvent.timelineEventDetails.eventNode.offsetTop + "px"
-        );
-        lineFragment.setAttribute(
-          "style",
-          `stroke:${timelineEvent.color};stroke-width:2`
-        );
-        svgContainer.appendChild(lineFragment);
-        eventsFragment.append(timelineEvent.timelineEventDetails.previewNode);
-      };
-      createTimelinePreviewHTML();
-    }
-    visibleEvents.forEach((ev) => {
-      ev.preventNextPreviewRender = false;
-    });
-    return eventsFragment;
-  };
   const createEventHTML = (parentEvent) => {
     const eventsFragment = document.createDocumentFragment();
     const TOP_LEVEL_BAND_OFFSET = 15;
@@ -694,21 +612,6 @@ var TimelineContainer = (elementIdentifier, settings) => {
     eventsContainer.style.width = "100%";
     eventsContainer.style.overflowY = "auto";
     eventsContainer.style.overflowX = "hidden";
-    previewsContainer = document.createElement("div");
-    element.appendChild(previewsContainer);
-    previewsContainer.classList.add(options.classNames.timelinePreviews);
-    previewsContainer.style.position = "absolute";
-    if (options.position === "top") {
-      previewsContainer.style.top = "50px";
-      previewsContainer.style.bottom = "0";
-    } else {
-      previewsContainer.style.bottom = "50px";
-      previewsContainer.style.top = "0";
-    }
-    previewsContainer.style.height = "calc(100% - 50px)";
-    previewsContainer.style.width = "100%";
-    previewsContainer.style.overflowY = "auto";
-    previewsContainer.style.overflowX = "hidden";
     ioContainer = document.createElement("div");
     element.appendChild(ioContainer);
     ioContainer.classList.add(options.classNames.timelineIo);
@@ -792,13 +695,6 @@ var TimelineContainer = (elementIdentifier, settings) => {
     const eventsHtml = createEventHTML(currentTimeline);
     if (eventsHtml) eventsContainer.appendChild(eventsHtml);
   };
-  const appendPreviewHTML = () => {
-    if (!preventPreviewRender && !preventNextPreviewRender) {
-      const previewsHtml = createPreviewHTML();
-      if (previewsHtml) previewsContainer.appendChild(previewsHtml);
-    }
-    preventNextPreviewRender = false;
-  };
   const formatDateLabel = (minutes) => {
     const yearsCount = Math.floor(minutes / MINUTES_IN_YEAR);
     const currentYear = yearsCount + 1970;
@@ -850,7 +746,6 @@ var TimelineContainer = (elementIdentifier, settings) => {
     if (dividerContainer) dividerContainer.innerHTML = "";
     if (labelContainer) labelContainer.innerHTML = "";
     if (eventsContainer) eventsContainer.innerHTML = "";
-    if (previewsContainer) previewsContainer.innerHTML = "";
     visibleEvents = [];
     fire("update.tl.container");
   };
@@ -875,12 +770,6 @@ var TimelineContainer = (elementIdentifier, settings) => {
     appendLabelHTML();
     appendCenterIndicatorHTML();
     appendEventHTML();
-    if (options.numberOfHighscorePreviews > 0) {
-      clearTimeout(previewTimer);
-      previewTimer = setTimeout(() => {
-        appendPreviewHTML();
-      }, options.highscorePreviewDelay);
-    }
   };
   const parseDateToMinutes = (input) => {
     if (input === void 0) return void 0;
@@ -1127,24 +1016,6 @@ var TimelineContainer = (elementIdentifier, settings) => {
       }
       timelineEvent.timelineEventDetails.eventNode = node;
     };
-    const setPreviewNode = (timelineEvent) => {
-      if (!timelineEvent.renderPreviewNode) return;
-      const previewNode = timelineEvent.renderPreviewNode(timelineEvent);
-      if (!previewNode) return;
-      const previewHTML = document.createElement("div");
-      previewHTML.style.boxSizing = "border-box";
-      previewHTML.style.position = "absolute";
-      previewHTML.style.overflow = "hidden";
-      previewHTML.style.width = options.highscorePreviewWidth + "px";
-      previewHTML.title = timelineEvent.title;
-      previewHTML.classList.add(options.classNames.timelinePreview);
-      previewHTML.setAttribute(
-        "eventid",
-        timelineEvent.timelineEventDetails.id
-      );
-      previewHTML.append(previewNode);
-      timelineEvent.timelineEventDetails.previewNode = previewHTML;
-    };
     const setScore = (timelineEvent) => {
       const durationRatio = timelineEvent.timelineEventDetails.durationMinutes / parent.timelineEventDetails.durationMinutes;
       const score = durationRatio * (timelineEvent.timelineEventDetails.childrenByStartMinute.length + 1);
@@ -1236,7 +1107,6 @@ var TimelineContainer = (elementIdentifier, settings) => {
             break;
           default:
         }
-        setPreviewNode(childEvent);
         setNeighborsTo(childEvent, i);
       }
     );
@@ -1360,9 +1230,6 @@ var TimelineContainer = (elementIdentifier, settings) => {
     add,
     reset,
     select,
-    preventNextPreviewRender: (prevent) => {
-      preventNextPreviewRender = prevent || false;
-    },
     clear,
     update
   };
