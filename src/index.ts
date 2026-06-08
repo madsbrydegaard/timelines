@@ -207,6 +207,9 @@ export const TimelineContainer = (
   let preventPreviewRender: boolean = false;
   let containerStep: number = 0;
   let touchDragFactor: number = 1;
+  let globalTopLevelMatrix: IMatrix = {
+    1: { height: 0, time: Number.MAX_SAFE_INTEGER },
+  };
 
   const MINUTES_IN_DAY = 1440; // minutes in a day
   const MINUTES_IN_WEEK = 10080; // minutes in a week
@@ -989,6 +992,10 @@ export const TimelineContainer = (
     parentEvent: ITimelineEventWithDetails,
   ): DocumentFragment | undefined => {
     const eventsFragment = document.createDocumentFragment();
+    const TOP_LEVEL_BAND_OFFSET = 15;
+    const isTopLevelContainerChildren =
+      parentEvent.timelineEventDetails.parentId ===
+      rootTimeline.timelineEventDetails.id;
     for (const timelineEvent of parentEvent.timelineEventDetails
       .childrenByStartMinute) {
       if (!timelineEvent || !timelineEvent.timelineEventDetails) continue;
@@ -1027,7 +1034,12 @@ export const TimelineContainer = (
             timelineEvent.timelineEventDetails.height * options.eventHeight +
             timelineEvent.timelineEventDetails.height * options.eventSpacing +
             timelineEvent.timelineEventDetails.step * options.eventSpacing;
-          timelineEvent.timelineEventDetails.eventNode.style.top = `${heightFactor + levelFactor + stepFactor}px`;
+          const topLevelContainerOffset =
+            timelineEvent.timelineEventDetails.parentId ===
+            rootTimeline.timelineEventDetails.id
+              ? TOP_LEVEL_BAND_OFFSET
+              : 0;
+          timelineEvent.timelineEventDetails.eventNode.style.top = `${heightFactor + levelFactor + stepFactor - topLevelContainerOffset}px`;
           eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
           eventsFragment.append(createEventHTML(timelineEvent));
           continue;
@@ -1036,7 +1048,10 @@ export const TimelineContainer = (
           const parentfactor =
             (parentEvent.timelineEventDetails.level - 1) * options.eventHeight +
             (parentEvent.timelineEventDetails.level - 1) * options.eventSpacing;
-          timelineEvent.timelineEventDetails.eventNode.style.top = `${parentfactor + levelFactor + stepFactor}px`;
+          const topLevelTimelineOffset = isTopLevelContainerChildren
+            ? TOP_LEVEL_BAND_OFFSET
+            : 0;
+          timelineEvent.timelineEventDetails.eventNode.style.top = `${parentfactor + levelFactor + stepFactor - topLevelTimelineOffset}px`;
           timelineEvent.timelineEventDetails.eventNode.style.backgroundColor =
             isHighlighted
               ? timelineEvent.highlightedColor
@@ -1325,6 +1340,9 @@ export const TimelineContainer = (
     };
     currentTimeline.timelineEventDetails.backgroundLevelMatrix = {
       1: { height: 0, time: Number.MIN_SAFE_INTEGER },
+    };
+    globalTopLevelMatrix = {
+      1: { height: 0, time: Number.MAX_SAFE_INTEGER },
     };
     containerStep = 0;
 
@@ -1763,6 +1781,22 @@ export const TimelineContainer = (
       };
       timelineEvent.timelineEventDetails.level = level;
     };
+    const setTopLevelContainerLevel = (
+      timelineEvent: ITimelineEventWithDetails,
+      matrix: IMatrix,
+    ) => {
+      const levels = Object.keys(matrix).map((l) => Number(l));
+      const highestLevel = Math.max(...levels);
+      const highestHeight = matrix[highestLevel].height;
+      const nextLevel = highestLevel + highestHeight;
+
+      matrix[nextLevel] = {
+        height: timelineEvent.timelineEventDetails.height,
+        // Keep levels occupied forever to stack top-level timelines vertically.
+        time: Number.MAX_SAFE_INTEGER,
+      };
+      timelineEvent.timelineEventDetails.level = nextLevel;
+    };
     const setNeighborsTo = (
       timelineEvent: ITimelineEventWithDetails,
       me: number,
@@ -1812,10 +1846,14 @@ export const TimelineContainer = (
         switch (childEvent.type) {
           case "container":
             setStep(childEvent);
-            setLevel(
-              childEvent,
-              parent.timelineEventDetails.timelineLevelMatrix,
-            );
+            if (parent === rootTimeline) {
+              setTopLevelContainerLevel(childEvent, globalTopLevelMatrix);
+            } else {
+              setLevel(
+                childEvent,
+                parent.timelineEventDetails.timelineLevelMatrix,
+              );
+            }
             setContainerNode(childEvent);
             break;
           case "timeline":
