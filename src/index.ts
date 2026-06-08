@@ -48,10 +48,10 @@ export interface ITimelineOptions {
   };
   showCenterMarker?: boolean;
   showCenterLabel?: boolean;
-  formatCenterLabel?: (centerMinutes: number) => string;
   centerMarkerClassName?: string;
   centerLineClassName?: string;
   centerLabelClassName?: string;
+  eventsContainerHeight?: string; // New option for configurable height
 }
 export interface ITimelineCustomEventDetails {
   name: string;
@@ -272,7 +272,7 @@ export const TimelineContainer = (
         end: "now",
         minRatio: 1,
         maxRatio: 1e11,
-        position: "bottom",
+        position: "top",
         eventHeight: 5,
         eventSpacing: 3,
         autoZoom: false,
@@ -305,10 +305,10 @@ export const TimelineContainer = (
         },
         showCenterMarker: false,
         showCenterLabel: false,
-        formatCenterLabel: undefined,
         centerMarkerClassName: "timeline-center-indicator",
         centerLineClassName: "timeline-center-indicator__line",
         centerLabelClassName: "timeline-center-indicator__label",
+        eventsContainerHeight: "calc(100% - 50px)", // Default value
       },
       ...settings,
     } as ITimelineOptions;
@@ -1027,7 +1027,7 @@ export const TimelineContainer = (
             timelineEvent.timelineEventDetails.height * options.eventHeight +
             timelineEvent.timelineEventDetails.height * options.eventSpacing +
             timelineEvent.timelineEventDetails.step * options.eventSpacing;
-          timelineEvent.timelineEventDetails.eventNode.style.bottom = `${heightFactor + levelFactor + stepFactor}px`;
+          timelineEvent.timelineEventDetails.eventNode.style.top = `${heightFactor + levelFactor + stepFactor}px`;
           eventsFragment.append(timelineEvent.timelineEventDetails.eventNode);
           eventsFragment.append(createEventHTML(timelineEvent));
           continue;
@@ -1036,7 +1036,7 @@ export const TimelineContainer = (
           const parentfactor =
             (parentEvent.timelineEventDetails.level - 1) * options.eventHeight +
             (parentEvent.timelineEventDetails.level - 1) * options.eventSpacing;
-          timelineEvent.timelineEventDetails.eventNode.style.bottom = `${parentfactor + levelFactor + stepFactor}px`;
+          timelineEvent.timelineEventDetails.eventNode.style.top = `${parentfactor + levelFactor + stepFactor}px`;
           timelineEvent.timelineEventDetails.eventNode.style.backgroundColor =
             isHighlighted
               ? timelineEvent.highlightedColor
@@ -1106,8 +1106,14 @@ export const TimelineContainer = (
     element.appendChild(eventsContainer);
     eventsContainer.classList.add(options.classNames.timelineEvents);
     eventsContainer.style.position = "absolute";
-    eventsContainer.style.bottom = "50px";
-    eventsContainer.style.height = "calc(100% - 50px)";
+    if (options.position === "top") {
+      eventsContainer.style.top = "50px";
+      eventsContainer.style.bottom = "0";
+    } else {
+      eventsContainer.style.bottom = "50px";
+      eventsContainer.style.top = "0";
+    }
+    eventsContainer.style.height = options.eventsContainerHeight; // Use the new configurable height
     eventsContainer.style.width = "100%";
     eventsContainer.style.overflowY = "auto";
     eventsContainer.style.overflowX = "hidden";
@@ -1117,7 +1123,13 @@ export const TimelineContainer = (
     element.appendChild(previewsContainer);
     previewsContainer.classList.add(options.classNames.timelinePreviews);
     previewsContainer.style.position = "absolute";
-    previewsContainer.style.bottom = "50px";
+    if (options.position === "top") {
+      previewsContainer.style.top = "50px";
+      previewsContainer.style.bottom = "0";
+    } else {
+      previewsContainer.style.bottom = "50px";
+      previewsContainer.style.top = "0";
+    }
     previewsContainer.style.height = "calc(100% - 50px)";
     previewsContainer.style.width = "100%";
     previewsContainer.style.overflowY = "auto";
@@ -1162,9 +1174,7 @@ export const TimelineContainer = (
 
     if (options.showCenterLabel && timelineCenterLabel) {
       const centerMinutes = viewStart() + viewDuration() / 2;
-      timelineCenterLabel.textContent = options.formatCenterLabel
-        ? options.formatCenterLabel(centerMinutes)
-        : formatDateLabel(centerMinutes);
+      timelineCenterLabel.textContent = formatDateLabel(centerMinutes);
     }
   };
   const appendLabelHTML = (): void => {
@@ -1241,15 +1251,20 @@ export const TimelineContainer = (
   const formatDateLabel = (minutes: number): string => {
     const yearsCount = Math.floor(minutes / MINUTES_IN_YEAR);
     const currentYear = yearsCount + 1970;
-    const currentYearLessThan5Digits =
-      currentYear > -10000 && currentYear < 10000;
-    const currentYearString = currentYearLessThan5Digits
-      ? currentYear.toString()
-      : currentYear.toLocaleString("en-US", {
-          notation: "compact",
-          minimumFractionDigits: 1,
-          maximumFractionDigits: 1,
-        });
+    const isBCE = currentYear <= 0;
+    const absYear = isBCE ? Math.abs(currentYear - 1) : currentYear;
+    const era = isBCE ? "BCE" : "CE";
+
+    const formattedYear =
+      absYear < 10000
+        ? absYear.toString()
+        : absYear.toLocaleString("en-US", {
+            notation: "compact",
+            minimumFractionDigits: 1,
+            maximumFractionDigits: 1,
+          });
+    const currentYearString = `${formattedYear} ${era}`;
+
     const currentRemainder = Math.abs(minutes - yearsCount * MINUTES_IN_YEAR);
     const momentInValidateRange =
       minutes > 270000 * MINUTES_IN_YEAR * -1 &&
@@ -2220,28 +2235,6 @@ const asPolygonFeature = (phase: Phase) => ({
 });
 
 // ---------------------------------------------------------------------------
-// Centre-label formatter
-// ---------------------------------------------------------------------------
-
-const formatCenterLabel = (centerMinutes: number): string => {
-  const d = new Date(centerMinutes * 60000);
-  const year = d.getUTCFullYear();
-  if (year < 1000) {
-    const absYear = year <= 0 ? Math.abs(year - 1) : year;
-    return `${absYear} ${year <= 0 ? "BCE" : "CE"}`;
-  }
-  return new Intl.DateTimeFormat(undefined, {
-    weekday: "short",
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: "UTC",
-  }).format(d);
-};
-
-// ---------------------------------------------------------------------------
 // Event-at-time helpers
 // ---------------------------------------------------------------------------
 
@@ -2539,7 +2532,6 @@ const initDemo = async () => {
     timelineEnd,
     showCenterMarker: true,
     showCenterLabel: true,
-    formatCenterLabel,
   };
 
   const flyToPosition = (centerMinutes: number, duration = 800) => {

@@ -41,10 +41,10 @@ export interface ITimelineOptions {
     };
     showCenterMarker?: boolean;
     showCenterLabel?: boolean;
-    formatCenterLabel?: (centerMinutes: number) => string;
     centerMarkerClassName?: string;
     centerLineClassName?: string;
     centerLabelClassName?: string;
+    eventsContainerHeight?: string;
 }
 export interface ITimelineCustomEventDetails {
     name: string;
