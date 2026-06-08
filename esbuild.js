@@ -14,6 +14,13 @@ build({
 
 build({
   ...shared,
+  entryPoints: ["src/timeline.ts"],
+  outfile: "dist/timeline.js",
+  format: "esm",
+});
+
+build({
+  ...shared,
   entryPoints: ["src/index.umd.js"],
   outfile: "dist/index.umd.js",
 });

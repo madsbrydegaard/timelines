@@ -1,4 +1,4 @@
-// src/timeline.ts
+// src/index.ts
 var TimelineContainer = (elementIdentifier, settings) => {
   let ratio;
   let pivot;
@@ -45,7 +45,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
   const isViewInside = (timelineEvent) => {
     return timelineEvent.timelineEventDetails.startMinutes < viewStart() && timelineEvent.timelineEventDetails.endMinutes > viewEnd();
   };
-  const init2 = (elementIdentifier2, settings2) => {
+  const init = (elementIdentifier2, settings2) => {
     if (!elementIdentifier2)
       throw new Error(
         `Element argument is empty. DOM element | selector as first arg`
@@ -1223,7 +1223,7 @@ var TimelineContainer = (elementIdentifier, settings) => {
       })
     );
   };
-  init2(elementIdentifier, settings);
+  init(elementIdentifier, settings);
   return {
     focus,
     zoom,
@@ -1263,13 +1263,11 @@ var detectMapType = (timeline) => {
   const withMap = (timeline.events || []).filter((e) => e.map);
   if (!withMap.length) return null;
   const m = withMap[0].map;
-  if (m.lat !== void 0 || m.lng !== void 0) return "line";
-  if (m.centerLat !== void 0) return "polygon";
+  if ("lat" in m || "lng" in m) return "line";
+  if ("centerLat" in m) return "polygon";
   return null;
 };
-var buildWaypoints = (timeline) => (timeline.events || []).filter(
-  (e) => e.map && (e.map.lat !== void 0 || e.map.lng !== void 0)
-).map((e) => ({
+var buildWaypoints = (timeline) => (timeline.events || []).filter((e) => e.map && ("lat" in e.map || "lng" in e.map)).map((e) => ({
   minutes: demoParseToMinutes(e.start),
   coordinates: [e.map.lng, e.map.lat]
 })).sort((a, b) => a.minutes - b.minutes);
@@ -1300,7 +1298,7 @@ var buildLineCoords = (waypoints, centerMinutes) => {
   }
   return coords;
 };
-var buildPhases = (timeline) => (timeline.events || []).filter((e) => e.map && e.map.centerLat !== void 0).map((e) => {
+var buildPhases = (timeline) => (timeline.events || []).filter((e) => e.map && "centerLat" in e.map).map((e) => {
   const m = e.map;
   return {
     minutes: demoParseToMinutes(e.start),
@@ -1411,57 +1409,6 @@ var findMapAtTime = (allMapEvents, centerMinutes) => {
   candidates.sort((a, b) => b.depth - a.depth || a.duration - b.duration);
   return candidates[0].map;
 };
-
-// src/wiki.ts
-var initWiki = (wikiContainer, timelineContainer) => {
-  timelineContainer.addEventListener("selected.tl.event", async (e) => {
-    const detail = e.detail;
-    const wikiPath = detail.timelineEvent?.wiki;
-    if (!wikiPath) {
-      wikiContainer.style.display = "none";
-      return;
-    }
-    wikiContainer.style.display = "block";
-    wikiContainer.innerHTML = "<p>Loading Wikipedia content...</p>";
-    try {
-      let url = wikiPath;
-      if (!wikiPath.startsWith("http")) {
-        url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(
-          wikiPath
-        )}`;
-      } else if (wikiPath.includes("wikipedia.org/wiki/")) {
-        const title = wikiPath.split("wikipedia.org/wiki/")[1].split(/[#?]/)[0];
-        url = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(
-          title
-        )}`;
-      }
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Wikipedia content not found");
-      const data = await response.json();
-      renderWiki(wikiContainer, data);
-    } catch (error) {
-      wikiContainer.innerHTML = `<p>Error loading Wikipedia content: ${error}</p>`;
-    }
-  });
-};
-var renderWiki = (container, data) => {
-  const { title, extract_html, thumbnail, content_urls } = data;
-  let html = `
-    <div class="wiki-content">
-      <h3>${title}</h3>
-      <div class="wiki-body">
-        ${thumbnail ? `<img src="${thumbnail.source}" alt="${title}" style="float: right; margin-left: 1rem; max-width: 200px;">` : ""}
-        ${extract_html}
-      </div>
-      <div style="clear: both; margin-top: 1rem;">
-        <a href="${content_urls.desktop.page}" target="_blank">Read more on Wikipedia</a>
-      </div>
-    </div>
-  `;
-  container.innerHTML = html;
-};
-
-// src/index.ts
 var collectEventMinutes = (events) => {
   const minutes = [];
   for (const e of events || []) {
@@ -1473,12 +1420,10 @@ var collectEventMinutes = (events) => {
   }
   return minutes;
 };
-var init = async () => {
+var initDemo = async () => {
   const timelineContainer = document.querySelector("#timeline");
   const mapContainer = document.querySelector("#map");
-  const wikiContainer = document.querySelector("#wiki");
-  if (!timelineContainer || !mapContainer || !wikiContainer) return;
-  initWiki(wikiContainer, timelineContainer);
+  if (!timelineContainer || !mapContainer) return;
   const settings = await fetch("./src/settings.json").then(
     (r) => r.json()
   );
@@ -1645,7 +1590,7 @@ var init = async () => {
     if (!mapReady || !timelineOptions.autoZoom) return;
     const mapEntry = findMapAtTime(allMapEvents, centerMinutes);
     if (!mapEntry) return;
-    if (mapEntry.centerLat !== void 0 && mapEntry.centerLng !== void 0) {
+    if ("centerLat" in mapEntry && "centerLng" in mapEntry) {
       const { centerLng, centerLat, radiusLng = 0, radiusLat = 0 } = mapEntry;
       map.fitBounds(
         [
@@ -1654,7 +1599,7 @@ var init = async () => {
         ],
         { padding: 60, duration }
       );
-    } else if (mapEntry.lat !== void 0 && mapEntry.lng !== void 0) {
+    } else if ("lat" in mapEntry && "lng" in mapEntry) {
       map.flyTo({ center: [mapEntry.lng, mapEntry.lat], duration });
     }
   };
@@ -1680,7 +1625,7 @@ var init = async () => {
     if (!mapReady || !timelineOptions.autoZoom) return;
     const mapEntry = detail.timelineEvent?.map;
     if (!mapEntry) return;
-    if (mapEntry.centerLat !== void 0 && mapEntry.centerLng !== void 0) {
+    if ("centerLat" in mapEntry && "centerLng" in mapEntry) {
       const { centerLng, centerLat, radiusLng = 0, radiusLat = 0 } = mapEntry;
       map.fitBounds(
         [
@@ -1689,15 +1634,15 @@ var init = async () => {
         ],
         { padding: 60, duration: 800 }
       );
-    } else if (mapEntry.lat !== void 0 && mapEntry.lng !== void 0) {
+    } else if ("lat" in mapEntry && "lng" in mapEntry) {
       map.flyTo({ center: [mapEntry.lng, mapEntry.lat], duration: 800 });
     }
   });
   for (const tl of timelinesData) {
-    timeline.add(tl);
+    timeline.add({ id: tl.id, ...tl });
   }
   if (timelinesData.length) {
     timeline.select(timelinesData[0].title);
   }
 };
-init();
+initDemo();

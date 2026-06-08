@@ -1,34 +1,40 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Timelines Demo</title>
-		<style>
-			.tl__labels {
-				box-sizing: border-box;
-				border-top: 1px solid black;
-				border-bottom: 1px solid black;
-			}
-			.tl__divider {
-				border-left: 1px dashed gray;
-			}
-		</style>
-	</head>
-	<body>
-		<div id="timeline" style="height: 300px"></div>
-		<pre><code id="log"></code></pre>
-		<script type="module">
-			import { TimelineContainer } from "../dist/index.js";
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Timelines Demo</title>
+    <style>
+      .tl__labels {
+        box-sizing: border-box;
+        border-top: 1px solid black;
+        border-bottom: 1px solid black;
+      }
+      .tl__divider {
+        border-left: 1px dashed gray;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="timeline" style="height: 300px"></div>
+    <pre><code id="log"></code></pre>
+    <script type="module">
+      import { TimelineContainer } from "../dist/timeline.js";
 
-			const timelineContainer = document.querySelector("#timeline");
-			const log = document.querySelector("#log");
+      const timelineContainer = document.querySelector("#timeline");
+      const log = document.querySelector("#log");
 
-			timelineContainer.addEventListener("update.tl.container", (timelineEvent) => {
-				log.innerHTML = JSON.stringify(timelineEvent.detail, undefined, 2);
-			});
+      timelineContainer.addEventListener(
+        "update.tl.container",
+        (timelineEvent) => {
+          log.innerHTML = JSON.stringify(timelineEvent.detail, undefined, 2);
+        },
+      );
 
-			const timeline = TimelineContainer(timelineContainer, { start: "100bc", end: "100ad" });
-		</script>
-	</body>
+      const timeline = TimelineContainer(timelineContainer, {
+        start: "100bc",
+        end: "100ad",
+      });
+    </script>
+  </body>
 </html>

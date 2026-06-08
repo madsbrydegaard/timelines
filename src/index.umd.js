@@ -1,2 +1,2 @@
-import { TimelineContainer } from "./index";
+import { TimelineContainer } from "./timeline";
 window["TimelineContainer"] = TimelineContainer;

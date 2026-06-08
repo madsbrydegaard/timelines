@@ -16,7 +16,7 @@
       }
       body {
         display: grid;
-        grid-template-rows: minmax(320px, 1fr) 120px minmax(160px, auto);
+        grid-template-rows: minmax(320px, 1fr) 120px minmax(200px, auto);
       }
       #map {
         min-height: 320px;
@@ -24,6 +24,12 @@
       #timeline {
         min-height: 120px;
         position: relative;
+      }
+      #wiki {
+        padding: 24px;
+        background: #fbf8f3;
+        overflow-y: auto;
+        border-top: 1px solid #e5e0d8;
       }
       #log {
         margin: 0;
@@ -90,6 +96,7 @@
   <body>
     <div id="map"></div>
     <div id="timeline"></div>
+    <div id="wiki" style="display: none"></div>
     <pre><code id="log"></code></pre>
     <script type="module" src="dist/index.js"></script>
   </body>
